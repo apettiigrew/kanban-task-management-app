@@ -1,8 +1,8 @@
 "use client"
 
+import { Project } from "@/models/project"
 import React, { createContext, useContext, useState, ReactNode } from "react"
-import { Project } from "@/types/project"
-import { allProjects as initialProjects } from "@/data/projects"
+
 
 interface ProjectContextType {
   projects: Project[]
@@ -21,7 +21,7 @@ interface ProjectProviderProps {
 }
 
 export function ProjectProvider({ children }: ProjectProviderProps) {
-  const [projects, setProjects] = useState<Project[]>(initialProjects)
+  const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 

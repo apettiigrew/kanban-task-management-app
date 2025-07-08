@@ -1,7 +1,14 @@
 export interface ProjectWithColumnsAndTasks extends TProject {
     columns: TColumn[]
-  }
-  
+}
+export type TChecklist = {
+    id: string;
+    title: string;
+    cardId: string
+    createdAt: string;
+    updatedAt: string;
+    deletedAt: string;
+}
 export type TCard = {
     id: string;
     title: string;
@@ -39,10 +46,10 @@ export type TBoard = {
 
 const cardKey = Symbol('card');
 export type TCardData = {
-  [cardKey]: true;
-  card: TCard;
-  columnId: string;
-  rect: DOMRect;
+    [cardKey]: true;
+    card: TCard;
+    columnId: string;
+    rect: DOMRect;
 };
 
 export function getCardData({
@@ -66,9 +73,9 @@ export function isCardData(value: Record<string | symbol, unknown>): value is TC
  * Interface representing a drag source with associated data
  */
 export interface TDragSource {
-  source: {
-    data: Record<string | symbol, unknown>;
-  };
+    source: {
+        data: Record<string | symbol, unknown>;
+    };
 }
 
 export function isDraggingACard({ source }: TDragSource): boolean {
@@ -128,14 +135,14 @@ export function isDraggingAColumn({
 
 
 export function isShallowEqual(
-  obj1: Record<string, unknown>,
-  obj2: Record<string, unknown>,
+    obj1: Record<string, unknown>,
+    obj2: Record<string, unknown>,
 ): boolean {
-  const keys1 = Object.keys(obj1);
-  const keys2 = Object.keys(obj2);
+    const keys1 = Object.keys(obj1);
+    const keys2 = Object.keys(obj2);
 
-  if (keys1.length !== keys2.length) {
-    return false;
-  }
-  return keys1.every((key1) => Object.is(obj1[key1], obj2[key1]));
+    if (keys1.length !== keys2.length) {
+        return false;
+    }
+    return keys1.every((key1) => Object.is(obj1[key1], obj2[key1]));
 }
