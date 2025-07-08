@@ -1,7 +1,0 @@
-// Import the css reset and fonts first!
-@use './../../node_modules/reset-css/sass/reset';
-
-@use './global/defaults.scss';
-@use './fonts/ubuntu/index';
-@use "./global/app-button.scss";
-@use "./global/markdown-editor.scss";

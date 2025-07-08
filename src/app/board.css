@@ -1,0 +1,33 @@
+/* drag and drop styles */
+.task-dragging {
+  opacity: 0.5;
+  transform: scale(1.02);
+  box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+}
+
+.task-card {
+  transition: transform 0.2s ease, opacity 0.2s ease, box-shadow 0.2s ease;
+}
+
+.list-dragging {
+  opacity: 0.7;
+  box-shadow: 0 15px 25px rgba(0, 0, 0, 0.15);
+}
+
+.task-list {
+  transition: transform 0.2s ease, opacity 0.2s ease, box-shadow 0.2s ease;
+}
+
+.drop-indicator {
+  height: 2px;
+  margin: 4px 0;
+  background-color: hsl(var(--primary));
+  border-radius: 1px;
+}
+
+.list-drop-indicator {
+  width: 2px;
+  margin: 0 4px;
+  background-color: hsl(var(--primary));
+  border-radius: 1px;
+}

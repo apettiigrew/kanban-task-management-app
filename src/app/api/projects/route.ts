@@ -1,86 +1,77 @@
+import {
+  createSuccessResponse,
+  handleAPIError,
+  validateRequestBody
+} from '@/lib/api-error-handler'
+import { prisma } from '@/lib/prisma'
+import { createProjectSchema } from '@/lib/validations/project'
 import { NextRequest } from 'next/server'
-import { prisma } from '@/lib/database'
-import { handleApiError, validateSchema, parseRequestBody, createSuccessResponse } from '@/utils/api-error-handler'
-import { validationSchemas } from '@/utils/validation-schemas'
-import { requireAuth } from '@/lib/auth-utils'
 
-// GET /api/projects - Get all projects for the authenticated user
-export async function GET() {
-
+// GET /api/projects - Get all projects
+export async function GET(request: NextRequest) {
   try {
-    const user = await requireAuth()
     
+    const { searchParams } = new URL(request.url)
+    const includeStats = searchParams.get('includeStats') === 'true'
+    const includeRelations = searchParams.get('includeRelations') === 'true'
+
     const projects = await prisma.project.findMany({
-      where: {
-        userId: user.id,
-      },
       include: {
-        columns: {
-          orderBy: { position: 'asc' },
-          include: {
-            tasks: {
-              orderBy: { position: 'asc' },
-            },
-          },
-        },
-        _count: {
+        columns: includeRelations,
+        cards: includeRelations ? {
           select: {
-            tasks: true,
-          },
-        },
+            id: true,
+            title: true,
+            order: true,
+            columnId: true,
+            createdAt: true,
+          }
+        } : false
       },
-      orderBy: { updatedAt: 'desc' },
     })
 
-    return createSuccessResponse(projects)
+    return createSuccessResponse(projects, 'Projects fetched successfully')
   } catch (error) {
-    return handleApiError(error)
+    return handleAPIError(error, '/api/projects')
   }
 }
 
 // POST /api/projects - Create a new project
 export async function POST(request: NextRequest) {
   try {
-    const user = await requireAuth()
+   
 
-    const body = await parseRequestBody(request)
-    const validatedData = validateSchema(validationSchemas.project.create, body)
+    const body = await request.json()
+    
+    // Validate the request body using our validation helper
+    const validatedData = validateRequestBody(createProjectSchema, body)
 
-    const { name, description } = validatedData
-
-    // Create the project with default columns
     const project = await prisma.project.create({
-      data: {
-        name,
-        description: description || null,
-        userId: user.id,
-        columns: {
-          create: [
-            { name: 'To Do', position: 0 },
-            { name: 'In Progress', position: 1 },
-            { name: 'Done', position: 2 },
-          ],
-        },
-      },
+      data: validatedData,
       include: {
-        columns: {
-          orderBy: { position: 'asc' },
-          include: {
-            tasks: {
-              orderBy: { position: 'asc' },
-            },
-          },
-        },
         _count: {
           select: {
-            tasks: true,
-          },
-        },
-      },
+            cards: true,
+            columns: true,
+          }
+        }
+      }
     })
 
-    return createSuccessResponse(project, 201, 'Project created successfully')
+    // Transform to include stats
+    const { _count, ...projectData } = project
+    const transformedProject = {
+      ...projectData,
+      taskCount: _count.cards,
+      columnCount: _count.columns,
+    }
+
+    return createSuccessResponse(
+      transformedProject,
+      'Project created successfully',
+      201
+    )
   } catch (error) {
-    return handleApiError(error)
+    return handleAPIError(error, '/api/projects')
   }
 }

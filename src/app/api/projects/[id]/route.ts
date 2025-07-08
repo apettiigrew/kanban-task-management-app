@@ -1,137 +1,122 @@
 import { NextRequest } from 'next/server'
-import { prisma } from '@/lib/database'
-import { handleApiError, validateSchema, parseRequestBody, createSuccessResponse, NotFoundError } from '@/utils/api-error-handler'
-import { validationSchemas } from '@/utils/validation-schemas'
-import { requireAuth } from '@/lib/auth-utils'
+import { prisma } from '@/lib/prisma'
+import { updateProjectSchema } from '@/lib/validations/project'
+import {
+  handleAPIError,
+  createSuccessResponse,
+  validateRequestBody,
+  checkRateLimit,
+  NotFoundError
+} from '@/lib/api-error-handler'
 
-// Helper function to verify project ownership
-async function verifyProjectOwnership(projectId: string, userId: string) {
-  const project = await prisma.project.findFirst({
-    where: {
-      id: projectId,
-      userId: userId,
-    },
-  })
-
-  if (!project) {
-    throw new NotFoundError('Project not found or access denied')
-  }
-
-  return project
-}
-
-// GET /api/projects/[id] - Get a specific project by ID
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+// GET /api/projects/[id] - Get a specific project
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }>}) {
   try {
-    const user = await requireAuth()
+    const { id } = await params;
 
-    const { id: projectId } = validateSchema(validationSchemas.project.params, params) as { id: string }
-
-    const project = await prisma.project.findFirst({
-      where: {
-        id: projectId,
-        userId: user.id,
-      },
+    // order columsn by order fields in ascending order
+    const project = await prisma.project.findUnique({
+      where: { id },
       include: {
         columns: {
-          orderBy: { position: 'asc' },
+          orderBy: {
+            order: 'asc'
+          },
           include: {
-            tasks: {
-              orderBy: { position: 'asc' },
-            },
-          },
-        },
-        _count: {
-          select: {
-            tasks: true,
-          },
-        },
+            cards: {
+              orderBy: {
+                order: 'asc'
+              }
+            }
+          }
+        }
       },
     })
 
     if (!project) {
-      throw new NotFoundError('Project not found')
+      throw new NotFoundError('Project')
     }
 
-    return createSuccessResponse(project)
+    return createSuccessResponse(project, 'Project fetched successfully')
   } catch (error) {
-    return handleApiError(error)
+    const { id } = await params;
+    return handleAPIError(error, `/api/projects/${id}`)
   }
 }
 
 // PUT /api/projects/[id] - Update a specific project
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const user = await requireAuth()
+    const { id } = await params;
+    const body = await request.json()
 
-    const { id: projectId } = validateSchema(validationSchemas.project.params, params) as { id: string }
-    
-    // Verify project ownership
-    await verifyProjectOwnership(projectId, user.id)
+    // Validate the request body using our validation helper
+    const validatedData = validateRequestBody(updateProjectSchema, body)
 
-    const body = await parseRequestBody(request)
-    const validatedData = validateSchema(validationSchemas.project.update, body) as { name?: string; description?: string }
-
-    // Update the project
-    const updatedProject = await prisma.project.update({
-      where: { id: projectId },
-      data: {
-        ...validatedData,
-        updatedAt: new Date(),
-      },
-      include: {
-        columns: {
-          orderBy: { position: 'asc' },
-          include: {
-            tasks: {
-              orderBy: { position: 'asc' },
-            },
-          },
-        },
-        _count: {
-          select: {
-            tasks: true,
-          },
-        },
-      },
+    // Check if project exists
+    const existingProject = await prisma.project.findUnique({
+      where: { id },
     })
 
-    return createSuccessResponse(updatedProject, 200, 'Project updated successfully')
+    if (!existingProject) {
+      throw new NotFoundError('Project')
+    }
+
+    const project = await prisma.project.update({
+      where: { id },
+      data: validatedData,
+      include: {
+        _count: {
+          select: {
+            cards: true,
+            columns: true,
+          }
+        }
+      }
+    })
+
+    // Transform to include stats
+    const { _count, ...projectData } = project
+    const transformedProject = {
+      ...projectData,
+      taskCount: _count.cards,
+      columnCount: _count.columns,
+    }
+
+    return createSuccessResponse(transformedProject, 'Project updated successfully')
   } catch (error) {
-    return handleApiError(error)
+    const { id } = await params;
+    return handleAPIError(error, `/api/projects/${id}`)
   }
 }
 
 // DELETE /api/projects/[id] - Delete a specific project
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const user = await requireAuth()
-
-    const { id: projectId } = validateSchema(validationSchemas.project.params, params) as { id: string }
-    
-    // Verify project ownership
-    await verifyProjectOwnership(projectId, user.id)
-
-    // Delete the project (cascade delete will handle columns and tasks)
-    await prisma.project.delete({
-      where: { id: projectId },
+    const { id } = await params;
+    // Check if project exists
+    const existingProject = await prisma.project.findUnique({
+      where: { id },
     })
 
-    return createSuccessResponse(
-      { id: projectId }, 
-      200, 
-      'Project deleted successfully'
-    )
+    if (!existingProject) {
+      throw new NotFoundError('Project')
+    }
+
+    // Delete the project (cascade deletion will handle related columns and tasks)
+    await prisma.project.delete({
+      where: { id },
+    })
+
+    return createSuccessResponse(undefined, 'Project deleted successfully')
   } catch (error) {
-    return handleApiError(error)
+    const { id } = await params;
+    return handleAPIError(error, `/api/projects/${id}`)
   }
 }

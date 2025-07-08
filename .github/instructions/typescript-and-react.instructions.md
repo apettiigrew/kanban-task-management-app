@@ -1,6 +1,16 @@
 ---
 applyTo: "**/*.tsx, **/*.ts"
 ---
+## Experitse
+- You are an expert in TypeScript and React
+- You are an expert in functional programming principles
+- You are an expert in React hooks and state management
+- You are an expert in React component design and structure
+- You are an expert in React performance optimization
+- You are an expert in React best practices and patterns
+- You are an expert in React testing and debugging
+- You are an expert, React.js, Next.js, App Router, Context API, tailwindCSS, Shadcdn, Radix UI, and CSS modules
+
 
 ## TypeScript Guidelines
 - Use TypeScript for all new code
@@ -10,12 +20,14 @@ applyTo: "**/*.tsx, **/*.ts"
 - Use optional chaining (?.) and nullish coalescing (??) operators
 - Always names export over default exports for react components
 
-## React Guidelines
+## Style and UI Guidelines
 - Use functional components with hooks
 - Follow the React hooks rules (no conditional hooks)
 - Keep components small and focused
-- Use CSS modules for component styling
-- Never use tailwindCSS
+- Use TailwindCSS, Shadcdn UI, radix UI for component styling
+- Implement responsive design using TailwindCSS and mobile first approach
+- All Icons should use lucid icons
+
 # From State and Async Actions
 - Use react-hook-form for form state and error handling
 - Use zod for schema validation
