@@ -48,11 +48,13 @@ import {
   Heading4,
   Heading5,
   Heading6,
-  Type
+  Type,
+  SquareCheck
 } from 'lucide-react'
 import { TaskDeleteDialog } from './task-delete-dialog'
 import { Textarea } from '../ui/textarea'
 import { DeleteActionButton } from '../delete-action-button'
+import { AddChecklistButton } from '../add-checklist-button'
 
 interface TaskEditModalProps {
   card: TCard
@@ -449,7 +451,7 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
                   </p>
                 </div>
               )}
-            
+
               {columnTitle !== '' && columnTitle !== null && columnTitle !== undefined && (
                 <div className="flex items-center gap-2 text-sm p-2">
                   <span>in list</span>
@@ -524,15 +526,36 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
                           <p className="text-muted-foreground">Add a description...</p>
                         )}
                       </div>
+
                     )}
+                    <div className="flex flex-col justify-items-start border-1 border-orange-700 p-1 gap-1">
+                      <div className="flex items-center gap-1">
+                        <SquareCheck className="flex-initial" />
+                        <p className="flex-auto">Checklist</p>
+                        <Trash2 className="h-4 w-4 flex-grow-0 flex-shrink-0" />
+                      </div>
+                      <div className="border-1">
+                        <p>10%</p>
+                      </div>
+                      <div className="border-1">
+                        input box
+                      </div>
+                      <div className="border-1">
+                        action buttons
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
-              <div className="flex-[1_1_auto]">
+              <div className="flex flex-[1_1_auto] flex-col gap-1">
                 <p className="text-sm font-medium mb-2">Actions</p>
-                <DeleteActionButton onClick={() => setIsDeleteDialogOpen(true)}>
+                <DeleteActionButton onClick={() => setIsDeleteDialogOpen(true)} className="mb-2">
                   Delete Card
                 </DeleteActionButton>
+
+                <AddChecklistButton>
+                  Add Checklist
+                </AddChecklistButton>
               </div>
             </div>
           </div>

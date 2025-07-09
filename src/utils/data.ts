@@ -9,6 +9,7 @@ export type TChecklist = {
     updatedAt: string;
     deletedAt: string;
 }
+
 export type TCard = {
     id: string;
     title: string;
