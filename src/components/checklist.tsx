@@ -18,6 +18,7 @@ interface ChecklistProps {
   onAddItem?: (item: string) => void
   onDeleteItem?: (itemId: string) => void
   onToggleItem?: (itemId: string) => void
+  onUpdateTitle?: (newTitle: string) => void
   onDelete?: () => void
   className?: string
 }
@@ -29,12 +30,15 @@ export function Checklist(props: ChecklistProps) {
     onAddItem, 
     onDeleteItem,
     onToggleItem,
+    onUpdateTitle,
     onDelete, 
     className 
   } = props;
   
   const [isAddingItem, setIsAddingItem] = useState(false);
   const [newItemText, setNewItemText] = useState('');
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [editedTitle, setEditedTitle] = useState(title);
   
   const completedItems = items.filter(item => item.isCompleted).length;
   const progress = items.length > 0 ? Math.round((completedItems / items.length) * 100) : 0;
@@ -59,11 +63,63 @@ export function Checklist(props: ChecklistProps) {
     }
   };
 
+  const handleTitleSave = () => {
+    const trimmedTitle = editedTitle.trim();
+    
+    // Validation: prevent empty titles
+    if (!trimmedTitle) {
+      // Reset to original title if empty
+      setEditedTitle(title);
+      setIsEditingTitle(false);
+      return;
+    }
+
+    // Only update if title actually changed
+    if (trimmedTitle !== title && onUpdateTitle) {
+      onUpdateTitle(trimmedTitle);
+    }
+    
+    setIsEditingTitle(false);
+  };
+
+  const handleTitleCancel = () => {
+    setEditedTitle(title);
+    setIsEditingTitle(false);
+  };
+
+  const handleTitleClick = () => {
+    setEditedTitle(title);
+    setIsEditingTitle(true);
+  };
+
   return (
     <div className={`flex flex-col justify-items-start p-3 gap-3 border rounded-lg bg-card ${className || ''}`}>
       <div className="flex items-center gap-2">
         <SquareCheck className="h-4 w-4 flex-shrink-0" />
-        <p className="flex-1 font-medium">{title}</p>
+        {isEditingTitle ? (
+          <Input
+            type="text"
+            value={editedTitle}
+            onChange={(e) => setEditedTitle(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                handleTitleSave();
+              } else if (e.key === 'Escape') {
+                handleTitleCancel();
+              }
+            }}
+            onBlur={handleTitleSave}
+            autoFocus
+            className="flex-1 h-8 text-sm font-medium"
+          />
+        ) : (
+          <p 
+            className="flex-1 font-medium cursor-pointer hover:bg-muted/50 px-2 py-1 rounded transition-colors"
+            onClick={handleTitleClick}
+          >
+            {title}
+          </p>
+        )}
         <Trash2 
           className="h-4 w-4 flex-shrink-0 cursor-pointer hover:text-destructive transition-colors" 
           onClick={onDelete} 

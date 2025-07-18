@@ -482,6 +482,14 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
     ))
   }, [])
 
+  const updateChecklistTitle = useCallback((checklistId: string, newTitle: string) => {
+    setChecklists(prev => prev.map(checklist => 
+      checklist.id === checklistId 
+        ? { ...checklist, title: newTitle }
+        : checklist
+    ))
+  }, [])
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContentWithoutClose className="sm:max-w-[800px]">
@@ -606,6 +614,7 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
                         onDeleteItem={(itemId) => deleteChecklistItem(checklist.id, itemId)}
                         onToggleItem={(itemId) => toggleChecklistItem(checklist.id, itemId)}
                         onDelete={() => deleteChecklist(checklist.id)}
+                        onUpdateTitle={(newTitle) => updateChecklistTitle(checklist.id, newTitle)}
                         className="mt-4"
                       />
                     ))}
