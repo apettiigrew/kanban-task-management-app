@@ -16,6 +16,7 @@ function DashboardContent() {
   // Format error message for display
   const errorMessage = error instanceof Error ? error.message : error ? String(error) : null
 
+  console.log(projects)
   return (
     <div className="flex flex-col h-full w-full">
       <DashboardHeader />

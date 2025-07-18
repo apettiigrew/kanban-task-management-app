@@ -64,7 +64,7 @@ interface ColumnProps {
 }
 export function Column({ column, onDelete }: ColumnProps) {
 
-    console.log("column", column);
+    // console.log("column", column);
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [columnTitle, setColumnTitle] = useState(column.title);
     const [isAddingCard, setIsAddingCard] = useState(false);
@@ -99,7 +99,7 @@ export function Column({ column, onDelete }: ColumnProps) {
     // Update column mutation with optimistic updates
     const updateColumnMutation = useUpdateColumn({
         onSuccess: (data) => {
-            console.log("updateColumnMutation onSuccess", data);
+            // console.log("updateColumnMutation onSuccess", data);
         },
         onError: (error: FormError) => {
             toast.error(error.message || 'Failed to update column title');

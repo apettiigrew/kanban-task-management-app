@@ -27,7 +27,7 @@ interface BoardProps {
 }
 
 export function Board({ project }: BoardProps) {
-    console.log("project", project);
+    // console.log("project", project);
     const [projectState, setProjectState] = useState(project);
     const [isAddingList, setIsAddingList] = useState(false);
     const [newListTitle, setNewListTitle] = useState('');
@@ -75,7 +75,7 @@ export function Board({ project }: BoardProps) {
     const moveTaskMutation = useMoveTask({
         onSuccess: () => {
             // invalidateByProject(project.id);
-            console.log("moveTaskMutation onSuccess", projectState);
+            // console.log("moveTaskMutation onSuccess", projectState);
         },
         onError: (error: FormError) => {
             toast.error(error.message || 'Failed to move task');
@@ -142,7 +142,7 @@ export function Board({ project }: BoardProps) {
             return;
         }
 
-        console.log("projectState.columns", projectState.columns);
+        // console.log("projectState.columns", projectState.columns);
         var order = 0;
         if (projectState.columns.length === 0) {
             order = 0;
@@ -207,7 +207,7 @@ export function Board({ project }: BoardProps) {
 
                     // dropping on a card
                     if (isCardDropTargetData(dropTargetData)) {
-                        console.log("dropping on a card");
+                        // console.log("dropping on a card");
                         const destinationColumnIndex = projectState.columns.findIndex(
                             (column) => column.id === dropTargetData.columnId,
                         );
@@ -314,7 +314,7 @@ export function Board({ project }: BoardProps) {
                             ...destination,
                             cards: reorderedDestinationCards,
                         };
-                        console.log("columns", columns);
+                        // console.log("columns", columns);
 
                         // Optimistically update UI
                         setProjectState(prev => ({

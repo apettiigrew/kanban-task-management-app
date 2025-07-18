@@ -23,7 +23,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useQueryClient } from '@tanstack/react-query'
 import { EditorContent, useEditor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import DOMPurify from 'dompurify'
@@ -57,7 +57,7 @@ import { TaskDeleteDialog } from './task-delete-dialog'
 import { Textarea } from '../ui/textarea'
 import { DeleteActionButton } from '../delete-action-button'
 import { AddChecklistButton } from '../add-checklist-button'
-import { Checklist } from '../checklist'
+import { Checklist } from '../checklist'  
 
 interface TaskEditModalProps {
   card: TCard
@@ -65,6 +65,19 @@ interface TaskEditModalProps {
   isOpen: boolean
   onClose: () => void
 }
+
+interface CheckListItem {
+  id: string
+  title: string
+  isCompleted: boolean
+}
+
+interface CheckList {
+  id: string
+  title: string
+  items: CheckListItem[]
+}
+
 
 interface EditorToolbarProps {
   editor: any
@@ -293,6 +306,8 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
   const queryClient = useQueryClient()
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
+  const [checklist, setChecklist] = useState<CheckList[]>([]);
+
   const form = useForm({
     resolver: zodResolver(updateTaskSchema),
     defaultValues: {
@@ -416,6 +431,10 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
     }
   }, [isEditingTitle, title])
 
+  const addChecklist = useCallback(()=>{
+
+  },[])
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContentWithoutClose className="sm:max-w-[800px]">
@@ -500,14 +519,12 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
                           <Button
                             variant="outline"
                             onClick={handleDescriptionCancel}
-                            disabled={updateTaskMutation.isPending}
-                          >
+                            disabled={updateTaskMutation.isPending}>
                             Cancel
                           </Button>
                           <Button
                             onClick={handleDescriptionSave}
-                            disabled={updateTaskMutation.isPending}
-                          >
+                            disabled={updateTaskMutation.isPending}>
                             Save
                           </Button>
                         </div>
@@ -531,11 +548,11 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
                       </div>
 
                     )}
-                    <Checklist
-                      progress={25}
+                    {/* <Checklist
+                      progress={0}
                       onAddItem={(item) => console.log('Adding:', item)}
                       onDelete={() => console.log('Deleting checklist')}
-                    />
+                    /> */}
                    
                   </div>
                 </div>
@@ -546,7 +563,7 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
                   Delete Card
                 </DeleteActionButton>
 
-                <AddChecklistButton>
+                <AddChecklistButton onClick={addChecklist}>
                   Add Checklist
                 </AddChecklistButton>
               </div>
