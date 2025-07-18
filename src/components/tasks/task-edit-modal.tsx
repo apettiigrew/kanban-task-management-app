@@ -68,7 +68,7 @@ interface TaskEditModalProps {
 
 interface CheckListItem {
   id: string
-  title: string
+  text: string
   isCompleted: boolean
 }
 
@@ -306,7 +306,7 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
   const queryClient = useQueryClient()
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
-  const [checklist, setChecklist] = useState<CheckList[]>([]);
+  const [checklists, setChecklists] = useState<CheckList[]>([]);
 
   const form = useForm({
     resolver: zodResolver(updateTaskSchema),
@@ -431,9 +431,56 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
     }
   }, [isEditingTitle, title])
 
-  const addChecklist = useCallback(()=>{
+  const addChecklist = useCallback((title: string) => {
+    const newChecklist: CheckList = {
+      id: `checklist-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      title,
+      items: []
+    }
+    setChecklists(prev => [...prev, newChecklist])
+  }, [])
 
-  },[])
+  const deleteChecklist = useCallback((checklistId: string) => {
+    setChecklists(prev => prev.filter(checklist => checklist.id !== checklistId))
+  }, [])
+
+  const addChecklistItem = useCallback((checklistId: string, itemText: string) => {
+    const newItem: CheckListItem = {
+      id: `item-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      text: itemText,
+      isCompleted: false
+    }
+    
+    setChecklists(prev => prev.map(checklist => 
+      checklist.id === checklistId 
+        ? { ...checklist, items: [...checklist.items, newItem] }
+        : checklist
+    ))
+  }, [])
+
+  const deleteChecklistItem = useCallback((checklistId: string, itemId: string) => {
+    
+    setChecklists(prev => prev.map(checklist => 
+      checklist.id === checklistId 
+        ? { ...checklist, items: checklist.items.filter(item => item.id !== itemId) }
+        : checklist
+    ))
+  }, [])
+
+  const toggleChecklistItem = useCallback((checklistId: string, itemId: string) => {
+    setChecklists(prev => prev.map(checklist => 
+      checklist.id === checklistId 
+        ? { 
+            ...checklist, 
+            items: checklist.items.map(item => 
+              item.id === itemId 
+                ? { ...item, isCompleted: !item.isCompleted }
+                : item
+            )
+          }
+        : checklist
+    ))
+  }, [])
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -548,11 +595,20 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
                       </div>
 
                     )}
-                    {/* <Checklist
-                      progress={0}
-                      onAddItem={(item) => console.log('Adding:', item)}
-                      onDelete={() => console.log('Deleting checklist')}
-                    /> */}
+                    
+                    {/* Render all checklists */}
+                    {checklists.map((checklist) => (
+                      <Checklist
+                        key={checklist.id}
+                        title={checklist.title}
+                        items={checklist.items}
+                        onAddItem={(itemText) => addChecklistItem(checklist.id, itemText)}
+                        onDeleteItem={(itemId) => deleteChecklistItem(checklist.id, itemId)}
+                        onToggleItem={(itemId) => toggleChecklistItem(checklist.id, itemId)}
+                        onDelete={() => deleteChecklist(checklist.id)}
+                        className="mt-4"
+                      />
+                    ))}
                    
                   </div>
                 </div>
@@ -563,7 +619,7 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
                   Delete Card
                 </DeleteActionButton>
 
-                <AddChecklistButton onClick={addChecklist}>
+                <AddChecklistButton onAddChecklist={addChecklist}>
                   Add Checklist
                 </AddChecklistButton>
               </div>
