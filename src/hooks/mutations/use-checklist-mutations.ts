@@ -173,9 +173,6 @@ export const useDeleteChecklist = (options: UseDeleteChecklistOptions = {}) => {
         mutationKey: ['deleteChecklist'],
         mutationFn: deleteChecklist,
         onSuccess: () => {
-            // Invalidate all project queries
-            queryClient.invalidateQueries({ queryKey: ['projects'] })
-
             if (options.onSuccess) {
                 options.onSuccess()
             }

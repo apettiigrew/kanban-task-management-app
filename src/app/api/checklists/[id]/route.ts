@@ -79,7 +79,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
   try {
     const { id } = await params
 
-    // Check if checklist exists
+    // Check if checklist exists and get its details
     const existingChecklist = await prisma.checklist.findUnique({
       where: { id },
     })
@@ -88,9 +88,32 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
       throw new NotFoundError('Checklist')
     }
 
-    // Delete the checklist (cascade will handle items)
-    await prisma.checklist.delete({
-      where: { id }
+    await prisma.$transaction(async (tx) => {
+
+      await tx.checklist.delete({
+        where: { id }
+      })
+
+      const checklistsToReorder = await tx.checklist.findMany({
+        where: {
+          cardId: existingChecklist.cardId,
+          order: {
+            gt: existingChecklist.order
+          }
+        },
+        orderBy: {
+          order: 'asc'
+        }
+      })
+
+      const updatePromises = checklistsToReorder.map((checklist,index) =>
+        tx.checklist.update({
+          where: { id: checklist.id },
+          data: { order: index }
+        })
+      )
+
+      await Promise.all(updatePromises)
     })
 
     return createSuccessResponse(null, 'Checklist deleted successfully')
