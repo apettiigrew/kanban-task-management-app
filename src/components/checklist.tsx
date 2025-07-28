@@ -3,7 +3,7 @@
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { RenderIf } from '@/utils/render-if'
-import { SquareCheck, Trash2, Plus, Square, Check } from 'lucide-react'
+import { Plus, Square, SquareCheck, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 
 interface ChecklistItem {

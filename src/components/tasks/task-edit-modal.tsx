@@ -1,4 +1,4 @@
-'use client'
+"use client"
 
 import { Button } from '@/components/ui/button'
 import {
@@ -12,10 +12,18 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Input } from '@/components/ui/input'
+
 import { Separator } from '@/components/ui/separator'
 import { useUpdateTask } from '@/hooks/mutations/use-task-mutations'
-import { useColumn } from '@/hooks/queries/use-columns'
+import { 
+  useCreateChecklist, 
+  useCreateChecklistItem, 
+  useUpdateChecklist, 
+  useUpdateChecklistItem, 
+  useDeleteChecklist, 
+  useDeleteChecklistItem 
+} from '@/hooks/mutations/use-checklist-mutations'
+
 import { FormError } from '@/lib/form-error-handler'
 import { updateTaskSchema } from '@/lib/validations/task'
 import { TCard } from '@/utils/data'
@@ -29,7 +37,6 @@ import { toast } from 'sonner'
 import DOMPurify from 'dompurify'
 import {
   TextIcon,
-  Trash2,
   X,
   Bold,
   Italic,
@@ -49,9 +56,6 @@ import {
   Heading5,
   Heading6,
   Type,
-  SquareCheck,
-  Plus,
-  Check
 } from 'lucide-react'
 import { TaskDeleteDialog } from './task-delete-dialog'
 import { Textarea } from '../ui/textarea'
@@ -66,16 +70,17 @@ interface TaskEditModalProps {
   onClose: () => void
 }
 
-interface CheckListItem {
-  id: string
-  text: string
-  isCompleted: boolean
-}
-
-interface CheckList {
+// Use types from validations
+type CheckList = {
   id: string
   title: string
   items: CheckListItem[]
+}
+
+type CheckListItem = {
+  id: string
+  text: string
+  isCompleted: boolean
 }
 
 
@@ -299,14 +304,13 @@ const MenuBar = ({ editor }: EditorToolbarProps) => {
 
 export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditModalProps) {
   const [title, setTitle] = useState(card.title)
-  const [description, setDescription] = useState(card.description)
   const [isEditingTitle, setIsEditingTitle] = useState(false)
   const [isEditingDescription, setIsEditingDescription] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
-  const queryClient = useQueryClient()
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
-  const [checklists, setChecklists] = useState<CheckList[]>([]);
+  const [checklists, setChecklists] = useState<CheckList[]>([])
+  const [optimisticChecklists, setOptimisticChecklists] = useState<string[]>([]) // Track optimistic checklist IDs
 
   const form = useForm({
     resolver: zodResolver(updateTaskSchema),
@@ -431,64 +435,280 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
     }
   }, [isEditingTitle, title])
 
+  // Initialize mutation hooks
+  const createChecklistMutation = useCreateChecklist()
+  const createChecklistItemMutation = useCreateChecklistItem()
+  const updateChecklistMutation = useUpdateChecklist()
+  const updateChecklistItemMutation = useUpdateChecklistItem()
+  const deleteChecklistMutation = useDeleteChecklist()
+  const deleteChecklistItemMutation = useDeleteChecklistItem()
+
   const addChecklist = useCallback((title: string) => {
-    const newChecklist: CheckList = {
-      id: `checklist-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    // Create optimistic checklist immediately
+    const tempId = `temp-checklist-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+    const optimisticChecklist: CheckList = {
+      id: tempId,
       title,
       items: []
     }
-    setChecklists(prev => [...prev, newChecklist])
-  }, [])
+    
+    // Add to optimistic state immediately
+    setChecklists(prev => [...prev, optimisticChecklist])
+    setOptimisticChecklists(prev => [...prev, tempId])
+    
+    // Call backend API
+    createChecklistMutation.mutate(
+      { title, cardId: card.id as string, order: checklists.length },
+      {
+        onSuccess: (realChecklist) => {
+          // Replace optimistic checklist with real data
+          setChecklists(prev => prev.map(checklist => 
+            checklist.id === tempId 
+              ? { 
+                  id: realChecklist.id, 
+                  title: realChecklist.title, 
+                  items: realChecklist.items.map(item => ({
+                    id: item.id,
+                    text: item.text,
+                    isCompleted: item.isCompleted
+                  }))
+                }
+              : checklist
+          ))
+          setOptimisticChecklists(prev => prev.filter(id => id !== tempId))
+        },
+        onError: () => {
+          // Remove optimistic checklist on error
+          setChecklists(prev => prev.filter(checklist => checklist.id !== tempId))
+          setOptimisticChecklists(prev => prev.filter(id => id !== tempId))
+          toast.error('Failed to create checklist')
+        }
+      }
+    )
+  }, [card.id, createChecklistMutation, checklists.length])
 
   const deleteChecklist = useCallback((checklistId: string) => {
+    // Optimistically remove checklist
+    const checklistToDelete = checklists.find(c => c.id === checklistId)
+    if (!checklistToDelete) return
+    
     setChecklists(prev => prev.filter(checklist => checklist.id !== checklistId))
-  }, [])
+    
+    // Only call API for real checklists (not optimistic ones)
+    if (!optimisticChecklists.includes(checklistId)) {
+      deleteChecklistMutation.mutate(checklistId, {
+        onError: () => {
+          // Restore checklist on error
+          setChecklists(prev => [...prev, checklistToDelete])
+          toast.error('Failed to delete checklist')
+        }
+      })
+    }
+  }, [checklists, optimisticChecklists, deleteChecklistMutation])
 
-  const addChecklistItem = useCallback((checklistId: string, itemText: string) => {
+    const addChecklistItem = useCallback((checklistId: string, itemText: string) => {
+    const tempId = `temp-item-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
     const newItem: CheckListItem = {
-      id: `item-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      id: tempId,
       text: itemText,
       isCompleted: false
     }
-    
-    setChecklists(prev => prev.map(checklist => 
-      checklist.id === checklistId 
+
+    // Optimistically add item
+    setChecklists(prev => prev.map(checklist =>
+      checklist.id === checklistId
         ? { ...checklist, items: [...checklist.items, newItem] }
         : checklist
     ))
-  }, [])
 
-  const deleteChecklistItem = useCallback((checklistId: string, itemId: string) => {
-    
-    setChecklists(prev => prev.map(checklist => 
-      checklist.id === checklistId 
+    // Only call API for real checklists (not optimistic ones)
+    if (!optimisticChecklists.includes(checklistId)) {
+      const checklist = checklists.find(c => c.id === checklistId)
+      const itemOrder = checklist?.items.length || 0
+      
+      createChecklistItemMutation.mutate(
+        { text: itemText, checklistId, order: itemOrder, isCompleted: false },
+        {
+          onSuccess: (realItem) => {
+            // Replace optimistic item with real data
+            setChecklists(prev => prev.map(checklist =>
+              checklist.id === checklistId
+                ? {
+                    ...checklist,
+                    items: checklist.items.map(item =>
+                      item.id === tempId
+                        ? { id: realItem.id, text: realItem.text, isCompleted: realItem.isCompleted }
+                        : item
+                    )
+                  }
+                : checklist
+            ))
+          },
+          onError: () => {
+            // Remove optimistic item on error
+            setChecklists(prev => prev.map(checklist =>
+              checklist.id === checklistId
+                ? { ...checklist, items: checklist.items.filter(item => item.id !== tempId) }
+                : checklist
+            ))
+            toast.error('Failed to add checklist item')
+          }
+        }
+      )
+    }
+  }, [checklists, optimisticChecklists, createChecklistItemMutation])
+
+    const deleteChecklistItem = useCallback((checklistId: string, itemId: string) => {
+    // Find the item to delete for potential restoration
+    const checklist = checklists.find(c => c.id === checklistId)
+    const itemToDelete = checklist?.items.find(item => item.id === itemId)
+    if (!itemToDelete) return
+
+    // Optimistically remove item
+    setChecklists(prev => prev.map(checklist =>
+      checklist.id === checklistId
         ? { ...checklist, items: checklist.items.filter(item => item.id !== itemId) }
         : checklist
     ))
-  }, [])
 
-  const toggleChecklistItem = useCallback((checklistId: string, itemId: string) => {
-    setChecklists(prev => prev.map(checklist => 
-      checklist.id === checklistId 
+    // Only call API for real items (not optimistic ones)
+    if (!itemId.startsWith('temp-')) {
+      deleteChecklistItemMutation.mutate(itemId, {
+        onError: () => {
+          // Restore item on error
+          setChecklists(prev => prev.map(checklist =>
+            checklist.id === checklistId
+              ? { ...checklist, items: [...checklist.items, itemToDelete] }
+              : checklist
+          ))
+          toast.error('Failed to delete checklist item')
+        }
+      })
+    }
+  }, [checklists, deleteChecklistItemMutation])
+
+    const toggleChecklistItem = useCallback((checklistId: string, itemId: string) => {
+    const checklist = checklists.find(c => c.id === checklistId)
+    const item = checklist?.items.find(i => i.id === itemId)
+    if (!item) return
+
+    const newCompletedState = !item.isCompleted
+
+    // Optimistically update
+    setChecklists(prev => prev.map(checklist =>
+      checklist.id === checklistId
+        ? {
+          ...checklist,
+          items: checklist.items.map(item =>
+            item.id === itemId
+              ? { ...item, isCompleted: newCompletedState }
+              : item
+          )
+        }
+        : checklist
+    ))
+
+    // Only call API for real items (not optimistic ones)
+    if (!itemId.startsWith('temp-')) {
+      updateChecklistItemMutation.mutate(
+        { id: itemId, isCompleted: newCompletedState },
+        {
+          onError: () => {
+            // Revert optimistic update on error
+            setChecklists(prev => prev.map(checklist =>
+              checklist.id === checklistId
+                ? {
+                  ...checklist,
+                  items: checklist.items.map(item =>
+                    item.id === itemId
+                      ? { ...item, isCompleted: !newCompletedState }
+                      : item
+                  )
+                }
+                : checklist
+            ))
+            toast.error('Failed to update checklist item')
+          }
+        }
+      )
+    }
+  }, [checklists, updateChecklistItemMutation])
+
+    const updateChecklistTitle = useCallback((checklistId: string, newTitle: string) => {
+    const originalTitle = checklists.find(c => c.id === checklistId)?.title
+    if (!originalTitle || originalTitle === newTitle) return
+
+    // Optimistically update
+    setChecklists(prev => prev.map(checklist =>
+      checklist.id === checklistId
+        ? { ...checklist, title: newTitle }
+        : checklist
+    ))
+
+    // Only call API for real checklists (not optimistic ones)
+    if (!optimisticChecklists.includes(checklistId)) {
+      updateChecklistMutation.mutate(
+        { id: checklistId, title: newTitle },
+        {
+          onError: () => {
+            setChecklists(prev => prev.map(checklist =>
+              checklist.id === checklistId
+                ? { ...checklist, title: originalTitle }
+                : checklist
+            ))
+            toast.error('Failed to update checklist title')
+          }
+        }
+      )
+    }
+  }, [checklists, optimisticChecklists, updateChecklistMutation])
+
+  // Note: updateChecklistItemTitle function is defined but not used as the Checklist component doesn't support item title editing yet
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const updateChecklistItemTitle = useCallback((checkListIndex: number, itemId: string, newTitle: string) => {
+    const checklist = checklists[checkListIndex]
+    const originalText = checklist?.items.find(i => i.id === itemId)?.text
+    if (!originalText || originalText === newTitle) return
+
+    // Optimistically update
+    setChecklists(prev => prev.map(checklist =>
+      checklist.id === checklists[checkListIndex].id
         ? { 
             ...checklist, 
             items: checklist.items.map(item => 
               item.id === itemId 
-                ? { ...item, isCompleted: !item.isCompleted }
+                ? { ...item, text: newTitle } 
                 : item
             )
           }
         : checklist
     ))
-  }, [])
 
-  const updateChecklistTitle = useCallback((checklistId: string, newTitle: string) => {
-    setChecklists(prev => prev.map(checklist => 
-      checklist.id === checklistId 
-        ? { ...checklist, title: newTitle }
-        : checklist
-    ))
-  }, [])
+    // Only call API for real items (not optimistic ones)
+    if (!itemId.startsWith('temp-')) {
+      updateChecklistItemMutation.mutate(
+        { id: itemId, text: newTitle },
+        {
+          onError: () => {
+            // Revert optimistic update on error
+            setChecklists(prev => prev.map(checklist =>
+              checklist.id === checklists[checkListIndex].id
+                ? { 
+                    ...checklist, 
+                    items: checklist.items.map(item => 
+                      item.id === itemId 
+                        ? { ...item, text: originalText } 
+                        : item
+                    )
+                  }
+                : checklist
+            ))
+            toast.error('Failed to update checklist item text')
+          }
+        }
+      )
+    }
+  }, [checklists, updateChecklistItemMutation])
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
