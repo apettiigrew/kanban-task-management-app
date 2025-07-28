@@ -147,3 +147,54 @@ export function isShallowEqual(
     }
     return keys1.every((key1) => Object.is(obj1[key1], obj2[key1]));
 }
+
+// Checklist drag and drop data structures
+const checklistKey = Symbol('checklist');
+export type TChecklistData = {
+    [checklistKey]: true;
+    checklist: TChecklist;
+    cardId: string;
+    rect: DOMRect;
+};
+
+export function getChecklistData({
+    checklist,
+    rect,
+    cardId,
+}: Omit<TChecklistData, typeof checklistKey>): TChecklistData {
+    return {
+        [checklistKey]: true,
+        rect,
+        checklist,
+        cardId,
+    };
+}
+
+export function isChecklistData(value: Record<string | symbol, unknown>): value is TChecklistData {
+    return Boolean(value[checklistKey]);
+}
+
+export function isDraggingAChecklist({ source }: TDragSource): boolean {
+    return isChecklistData(source.data);
+}
+
+const checklistDropTargetKey = Symbol('checklist-drop-target');
+export type TChecklistDropTargetData = {
+    [checklistDropTargetKey]: true;
+    checklist: TChecklist;
+};
+
+export function isChecklistDropTargetData(
+    value: Record<string | symbol, unknown>,
+): value is TChecklistDropTargetData {
+    return Boolean(value[checklistDropTargetKey]);
+}
+
+export function getChecklistDropTargetData({
+    checklist,
+}: Omit<TChecklistDropTargetData, typeof checklistDropTargetKey>): TChecklistDropTargetData {
+    return {
+        [checklistDropTargetKey]: true,
+        checklist,
+    };
+}

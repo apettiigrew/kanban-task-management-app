@@ -47,6 +47,16 @@ const deleteChecklistItem = async (id: string): Promise<void> => {
     })
 }
 
+const reorderChecklists = async (data: { 
+    cardId: string;
+    checklistOrders: { id: string; order: number }[] 
+}): Promise<void> => {
+    return apiRequest<void>('/api/checklists/reorder', {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+    })
+}
+
 // Type definitions for mutation options
 interface UseCreateChecklistOptions {
     onSuccess?: (data: Checklist) => void
@@ -78,6 +88,11 @@ interface UseUpdateChecklistItemOptions {
 }
 
 interface UseDeleteChecklistItemOptions {
+    onSuccess?: () => void
+    onError?: (error: FormError) => void
+}
+
+interface UseReorderChecklistsOptions {
     onSuccess?: () => void
     onError?: (error: FormError) => void
 }
@@ -244,4 +259,27 @@ export const useDeleteChecklistItem = (options: UseDeleteChecklistItemOptions = 
             }
         },
     })
-} 
+}
+
+// Reorder checklists mutation
+export const useReorderChecklists = (options: UseReorderChecklistsOptions = {}) => {
+    const queryClient = useQueryClient()
+
+    return useMutation({
+        mutationKey: ['reorderChecklists'],
+        mutationFn: reorderChecklists,
+        onSuccess: () => {
+            // Invalidate all project queries
+            queryClient.invalidateQueries({ queryKey: ['projects'] })
+
+            if (options.onSuccess) {
+                options.onSuccess()
+            }
+        },
+        onError: (error: FormError) => {
+            if (options.onError) {
+                options.onError(error)
+            }
+        },
+    })
+}

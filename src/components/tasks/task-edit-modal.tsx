@@ -21,12 +21,24 @@ import {
   useUpdateChecklist, 
   useUpdateChecklistItem, 
   useDeleteChecklist, 
-  useDeleteChecklistItem 
+  useDeleteChecklistItem,
+  useReorderChecklists
 } from '@/hooks/mutations/use-checklist-mutations'
 
 import { FormError } from '@/lib/form-error-handler'
 import { updateTaskSchema } from '@/lib/validations/task'
-import { TCard } from '@/utils/data'
+import { 
+  TCard, 
+  isChecklistData, 
+  isChecklistDropTargetData, 
+  isDraggingAChecklist 
+} from '@/utils/data'
+import { monitorForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter'
+import { combine } from '@atlaskit/pragmatic-drag-and-drop/combine'
+import { 
+  extractClosestEdge 
+} from '@atlaskit/pragmatic-drag-and-drop-hitbox/closest-edge'
+import { reorderWithEdge } from '@atlaskit/pragmatic-drag-and-drop-hitbox/util/reorder-with-edge'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useQueryClient } from '@tanstack/react-query'
 import { EditorContent, useEditor } from '@tiptap/react'
@@ -442,6 +454,75 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
   const updateChecklistItemMutation = useUpdateChecklistItem()
   const deleteChecklistMutation = useDeleteChecklist()
   const deleteChecklistItemMutation = useDeleteChecklistItem()
+  const reorderChecklistsMutation = useReorderChecklists()
+
+  // Add checklist drop monitoring
+  useEffect(() => {
+    return combine(
+      monitorForElements({
+        canMonitor: isDraggingAChecklist,
+        onDrop({ source, location }) {
+          const dragging = source.data;
+          if (!isChecklistData(dragging)) {
+            return;
+          }
+
+          const innerMost = location.current.dropTargets[0];
+          if (!innerMost) {
+            return;
+          }
+
+          const dropTargetData = innerMost.data;
+          if (!isChecklistDropTargetData(dropTargetData)) {
+            return;
+          }
+
+          const sourceChecklistId = dragging.checklist.id;
+          const targetChecklistId = dropTargetData.checklist.id;
+
+          if (sourceChecklistId === targetChecklistId) {
+            return;
+          }
+
+          const sourceIndex = checklists.findIndex(checklist => checklist.id === sourceChecklistId);
+          const targetIndex = checklists.findIndex(checklist => checklist.id === targetChecklistId);
+
+          if (sourceIndex === -1 || targetIndex === -1) {
+            return;
+          }
+
+          const closestEdge = extractClosestEdge(dropTargetData);
+          const reordered = reorderWithEdge({
+            axis: 'vertical',
+            list: checklists,
+            startIndex: sourceIndex,
+            indexOfTarget: targetIndex,
+            closestEdgeOfTarget: closestEdge,
+          });
+
+          // Optimistically update UI
+          setChecklists(reordered);
+
+          // Persist the reordering
+          const checklistOrders = reordered.map((checklist, index) => ({
+            id: checklist.id,
+            order: index
+          }));
+
+          reorderChecklistsMutation.mutate({
+            cardId: card.id,
+            checklistOrders
+          }, {
+            onError: () => {
+              // Revert on error
+              setChecklists(checklists);
+              toast.error('Failed to reorder checklists');
+            }
+          });
+        }
+      })
+    );
+  }, [checklists, card.id, reorderChecklistsMutation])
 
   const addChecklist = useCallback((title: string) => {
     // Create optimistic checklist immediately
@@ -828,6 +909,8 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
                     {checklists.map((checklist) => (
                       <Checklist
                         key={checklist.id}
+                        id={checklist.id}
+                        cardId={card.id}
                         title={checklist.title}
                         items={checklist.items}
                         onAddItem={(itemText) => addChecklistItem(checklist.id, itemText)}
