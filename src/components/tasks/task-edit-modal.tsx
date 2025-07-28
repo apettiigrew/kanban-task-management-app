@@ -24,6 +24,7 @@ import {
   useDeleteChecklistItem,
   useReorderChecklists
 } from '@/hooks/mutations/use-checklist-mutations'
+import { useChecklistsByCard, checklistKeys } from '@/hooks/queries/use-checklists'
 
 import { FormError } from '@/lib/form-error-handler'
 import { updateTaskSchema } from '@/lib/validations/task'
@@ -321,8 +322,31 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
+  // Fetch checklists for this card
+  const { 
+    data: fetchedChecklists = [], 
+    isLoading: isLoadingChecklists, 
+    error: checklistError 
+  } = useChecklistsByCard(card.id)
+  
   const [checklists, setChecklists] = useState<CheckList[]>([])
   const [optimisticChecklists, setOptimisticChecklists] = useState<string[]>([]) // Track optimistic checklist IDs
+
+  // Sync fetched checklists with local state
+  useEffect(() => {
+    if (fetchedChecklists) {
+      const transformedChecklists: CheckList[] = fetchedChecklists.map(checklist => ({
+        id: checklist.id,
+        title: checklist.title,
+        items: checklist.items.map(item => ({
+          id: item.id,
+          text: item.text,
+          isCompleted: item.isCompleted
+        }))
+      }))
+      setChecklists(transformedChecklists)
+    }
+  }, [fetchedChecklists])
 
   const form = useForm({
     resolver: zodResolver(updateTaskSchema),
@@ -447,14 +471,43 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
     }
   }, [isEditingTitle, title])
 
-  // Initialize mutation hooks
-  const createChecklistMutation = useCreateChecklist()
-  const createChecklistItemMutation = useCreateChecklistItem()
-  const updateChecklistMutation = useUpdateChecklist()
-  const updateChecklistItemMutation = useUpdateChecklistItem()
-  const deleteChecklistMutation = useDeleteChecklist()
-  const deleteChecklistItemMutation = useDeleteChecklistItem()
-  const reorderChecklistsMutation = useReorderChecklists()
+  // Initialize mutation hooks with query invalidation
+  const queryClient = useQueryClient()
+  const createChecklistMutation = useCreateChecklist({
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: checklistKeys.byCard(card.id) })
+    }
+  })
+  const createChecklistItemMutation = useCreateChecklistItem({
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: checklistKeys.byCard(card.id) })
+    }
+  })
+  const updateChecklistMutation = useUpdateChecklist({
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: checklistKeys.byCard(card.id) })
+    }
+  })
+  const updateChecklistItemMutation = useUpdateChecklistItem({
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: checklistKeys.byCard(card.id) })
+    }
+  })
+  const deleteChecklistMutation = useDeleteChecklist({
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: checklistKeys.byCard(card.id) })
+    }
+  })
+  const deleteChecklistItemMutation = useDeleteChecklistItem({
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: checklistKeys.byCard(card.id) })
+    }
+  })
+  const reorderChecklistsMutation = useReorderChecklists({
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: checklistKeys.byCard(card.id) })
+    }
+  })
 
   // Add checklist drop monitoring
   useEffect(() => {
@@ -903,6 +956,23 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
                         )}
                       </div>
 
+                    )}
+                    
+                    {/* Loading state for checklists */}
+                    {isLoadingChecklists && (
+                      <div className="flex items-center justify-center py-4">
+                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+                        <span className="ml-2 text-sm text-muted-foreground">Loading checklists...</span>
+                      </div>
+                    )}
+                    
+                    {/* Error state for checklists */}
+                    {checklistError && (
+                      <div className="rounded-md border border-destructive/20 bg-destructive/10 p-3">
+                        <p className="text-sm text-destructive">
+                          Failed to load checklists. Please try refreshing the page.
+                        </p>
+                      </div>
                     )}
                     
                     {/* Render all checklists */}
