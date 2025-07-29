@@ -4,6 +4,7 @@ import { apiRequest, FormError } from '@/lib/form-error-handler'
 import { CreateChecklist, CreateChecklistItem, UpdateChecklist, UpdateChecklistItem, Checklist, ChecklistItem } from '@/lib/validations/checklist'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { projectKeys } from '../queries/use-projects'
+import { checklistKeys } from '../queries/use-checklists'
 import { ProjectWithColumnsAndTasks } from '@/utils/data'
 
 // API client functions for mutations
@@ -187,15 +188,10 @@ export const useDeleteChecklist = (options: UseDeleteChecklistOptions = {}) => {
 
 // Create checklist item mutation
 export const useCreateChecklistItem = (options: UseCreateChecklistItemOptions = {}) => {
-    const queryClient = useQueryClient()
-
     return useMutation({
         mutationKey: ['createChecklistItem'],
         mutationFn: createChecklistItem,
         onSuccess: (data) => {
-            // Invalidate all project queries
-            queryClient.invalidateQueries({ queryKey: ['projects'] })
-
             if (options.onSuccess) {
                 options.onSuccess(data)
             }

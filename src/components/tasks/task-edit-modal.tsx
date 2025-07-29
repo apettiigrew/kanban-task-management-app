@@ -44,7 +44,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useQueryClient } from '@tanstack/react-query'
 import { EditorContent, useEditor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
-import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
+import { useState, useRef, useEffect, useCallback, useMemo, memo } from 'react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import DOMPurify from 'dompurify'
@@ -102,7 +102,7 @@ interface EditorToolbarProps {
 }
 
 // MenuBar for Tiptap formatting - redesigned to match Simple Editor template
-const MenuBar = ({ editor }: EditorToolbarProps) => {
+const MenuBar = memo(({ editor }: EditorToolbarProps) => {
   if (!editor) return null
 
   const getHeadingIcon = () => {
@@ -313,7 +313,7 @@ const MenuBar = ({ editor }: EditorToolbarProps) => {
       </Button>
     </div>
   )
-}
+})    
 
 export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditModalProps) {
   const [title, setTitle] = useState(card.title)
@@ -329,20 +329,9 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
     error: checklistError 
   } = useChecklistsByCard(card.id)
 
-  const transformedChecklists = useMemo(() => {
-    const transformedChecklists: CheckList[] = fetchedChecklists.map(checklist => ({
-      id: checklist.id,
-      title: checklist.title,
-      items: checklist.items.map(item => ({
-        id: item.id,
-        text: item.text,
-        isCompleted: item.isCompleted
-      }))
-    }))
-    return transformedChecklists
-  }, [fetchedChecklists])
   
-  const [checklists, setChecklists] = useState<CheckList[]>(transformedChecklists)
+  
+  const [checklists, setChecklists] = useState<CheckList[]>([])
   const [optimisticChecklists, setOptimisticChecklists] = useState<string[]>([]) // Track optimistic checklist IDs
 
   // Sync fetched checklists with local state

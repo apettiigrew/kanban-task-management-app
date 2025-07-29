@@ -310,7 +310,7 @@ export function ChecklistDisplay(props: ChecklistDisplayProps) {
         ref={innerRef}
         className={cc(
           `flex flex-col justify-items-start p-3 gap-3 border rounded-lg bg-card transition-all duration-200 ease-in-out cursor-pointer`,
-          'hover:shadow-lg hover:border-2 hover:border-blue-900 hover:bg-blue-50 active:cursor-grabbing',
+          'active:cursor-grabbing',
           innerStyles[state.type],
           classIf(state.type === 'is-dragging', 'opacity-50 shadow-none'),
           className || ''
