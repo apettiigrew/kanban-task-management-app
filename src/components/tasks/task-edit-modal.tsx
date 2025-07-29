@@ -799,21 +799,19 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
     }
   }, [checklists, optimisticChecklists, updateChecklistMutation])
 
-  // Note: updateChecklistItemTitle function is defined but not used as the Checklist component doesn't support item title editing yet
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const updateChecklistItemTitle = useCallback((checkListIndex: number, itemId: string, newTitle: string) => {
-    const checklist = checklists[checkListIndex]
+  const updateChecklistItemText = useCallback((checklistId: string, itemId: string, newText: string) => {
+    const checklist = checklists.find(c => c.id === checklistId)
     const originalText = checklist?.items.find(i => i.id === itemId)?.text
-    if (!originalText || originalText === newTitle) return
+    if (!originalText || originalText === newText) return
 
     // Optimistically update
     setChecklists(prev => prev.map(checklist =>
-      checklist.id === checklists[checkListIndex].id
+      checklist.id === checklistId
         ? { 
             ...checklist, 
             items: checklist.items.map(item => 
               item.id === itemId 
-                ? { ...item, text: newTitle } 
+                ? { ...item, text: newText } 
                 : item
             )
           }
@@ -823,12 +821,12 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
     // Only call API for real items (not optimistic ones)
     if (!itemId.startsWith('temp-')) {
       updateChecklistItemMutation.mutate(
-        { id: itemId, text: newTitle },
+        { id: itemId, text: newText },
         {
           onError: () => {
             // Revert optimistic update on error
             setChecklists(prev => prev.map(checklist =>
-              checklist.id === checklists[checkListIndex].id
+              checklist.id === checklistId
                 ? { 
                     ...checklist, 
                     items: checklist.items.map(item => 
@@ -990,6 +988,7 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
                         onToggleItem={(itemId) => toggleChecklistItem(checklist.id, itemId)}
                         onDelete={() => deleteChecklist(checklist.id)}
                         onUpdateTitle={(newTitle) => updateChecklistTitle(checklist.id, newTitle)}
+                        onUpdateItemText={(itemId, newText) => updateChecklistItemText(checklist.id, itemId, newText)}
                         className="mt-4"
                       />
                     ))}

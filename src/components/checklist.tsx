@@ -40,6 +40,7 @@ interface ChecklistProps {
   onDeleteItem?: (itemId: string) => void
   onToggleItem?: (itemId: string) => void
   onUpdateTitle?: (newTitle: string) => void
+  onUpdateItemText?: (itemId: string, newText: string) => void
   onDelete?: () => void
   className?: string
 }
@@ -64,6 +65,7 @@ export function Checklist(props: ChecklistProps) {
     onDeleteItem,
     onToggleItem,
     onUpdateTitle,
+    onUpdateItemText,
     onDelete, 
     className 
   } = props;
@@ -73,6 +75,8 @@ export function Checklist(props: ChecklistProps) {
   const [newItemText, setNewItemText] = useState('');
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editedTitle, setEditedTitle] = useState(title);
+  const [editingItemId, setEditingItemId] = useState<string | null>(null);
+  const [editedItemTexts, setEditedItemTexts] = useState<Record<string, string>>({});
   const outerRef = useRef<HTMLDivElement | null>(null);
   const innerRef = useRef<HTMLDivElement | null>(null);
   
@@ -136,7 +140,7 @@ export function Checklist(props: ChecklistProps) {
         onDrop: () => setChecklistState({ type: 'idle' }),
       })
     );
-  }, [checklist.id, checklist.title]);
+  }, [checklist, cardId]);
 
   const handleAddItem = () => {
     const trimmedText = newItemText.trim();
@@ -187,6 +191,49 @@ export function Checklist(props: ChecklistProps) {
     setIsEditingTitle(true);
   };
 
+  const handleItemTextClick = (itemId: string, currentText: string) => {
+    setEditingItemId(itemId);
+    setEditedItemTexts(prev => ({
+      ...prev,
+      [itemId]: currentText
+    }));
+  };
+
+  const handleItemTextSave = (itemId: string) => {
+    const editedText = editedItemTexts[itemId]?.trim();
+    const originalItem = items.find(item => item.id === itemId);
+    
+    if (!editedText) {
+      // Reset to original text if empty
+      if (originalItem) {
+        setEditedItemTexts(prev => ({
+          ...prev,
+          [itemId]: originalItem.text
+        }));
+      }
+      setEditingItemId(null);
+      return;
+    }
+
+    // Only update if text actually changed
+    if (editedText !== originalItem?.text && onUpdateItemText) {
+      onUpdateItemText(itemId, editedText);
+    }
+    
+    setEditingItemId(null);
+  };
+
+  const handleItemTextCancel = (itemId: string) => {
+    const originalItem = items.find(item => item.id === itemId);
+    if (originalItem) {
+      setEditedItemTexts(prev => ({
+        ...prev,
+        [itemId]: originalItem.text
+      }));
+    }
+    setEditingItemId(null);
+  };
+
   return (
     <>
       {checklistState.type === 'is-over' && checklistState.closestEdge === 'top' && (
@@ -207,6 +254,8 @@ export function Checklist(props: ChecklistProps) {
         newItemText={newItemText}
         isEditingTitle={isEditingTitle}
         editedTitle={editedTitle}
+        editingItemId={editingItemId}
+        editedItemTexts={editedItemTexts}
         onAddItem={handleAddItem}
         onCancelAdd={handleCancelAdd}
         onToggleItem={handleToggleItem}
@@ -214,10 +263,14 @@ export function Checklist(props: ChecklistProps) {
         onTitleSave={handleTitleSave}
         onTitleCancel={handleTitleCancel}
         onTitleClick={handleTitleClick}
+        onItemTextClick={handleItemTextClick}
+        onItemTextSave={handleItemTextSave}
+        onItemTextCancel={handleItemTextCancel}
         onDelete={onDelete}
         setIsAddingItem={setIsAddingItem}
         setNewItemText={setNewItemText}
         setEditedTitle={setEditedTitle}
+        setEditedItemTexts={setEditedItemTexts}
         className={className}
       />
 
@@ -255,6 +308,8 @@ interface ChecklistDisplayProps {
   newItemText: string;
   isEditingTitle: boolean;
   editedTitle: string;
+  editingItemId: string | null;
+  editedItemTexts: Record<string, string>;
   onAddItem: () => void;
   onCancelAdd: () => void;
   onToggleItem: (itemId: string) => void;
@@ -262,16 +317,19 @@ interface ChecklistDisplayProps {
   onTitleSave: () => void;
   onTitleCancel: () => void;
   onTitleClick: () => void;
+  onItemTextClick: (itemId: string, currentText: string) => void;
+  onItemTextSave: (itemId: string) => void;
+  onItemTextCancel: (itemId: string) => void;
   onDelete?: () => void;
   setIsAddingItem: (value: boolean) => void;
   setNewItemText: (value: string) => void;
   setEditedTitle: (value: string) => void;
+  setEditedItemTexts: (value: Record<string, string> | ((prev: Record<string, string>) => Record<string, string>)) => void;
   className?: string;
 }
 
 export function ChecklistDisplay(props: ChecklistDisplayProps) {
   const {
-    cardId,
     state,
     outerRef,
     innerRef,
@@ -283,6 +341,8 @@ export function ChecklistDisplay(props: ChecklistDisplayProps) {
     newItemText,
     isEditingTitle,
     editedTitle,
+    editingItemId,
+    editedItemTexts,
     onAddItem,
     onCancelAdd,
     onToggleItem,
@@ -290,10 +350,14 @@ export function ChecklistDisplay(props: ChecklistDisplayProps) {
     onTitleSave,
     onTitleCancel,
     onTitleClick,
+    onItemTextClick,
+    onItemTextSave,
+    onItemTextCancel,
     onDelete,
     setIsAddingItem,
     setNewItemText,
     setEditedTitle,
+    setEditedItemTexts,
     className
   } = props;
 
@@ -375,9 +439,33 @@ export function ChecklistDisplay(props: ChecklistDisplayProps) {
                   <Square className="h-4 w-4 text-muted-foreground" />
                 )}
               </button>
-              <p className={`flex-1 ${item.isCompleted ? 'line-through text-muted-foreground' : ''}`}>
-                {item.text}
-              </p>
+              {editingItemId === item.id ? (
+                <Input
+                  type="text"
+                  value={editedItemTexts[item.id] || item.text}
+                  onChange={(e) => setEditedItemTexts(prev => ({
+                    ...prev,
+                    [item.id]: e.target.value
+                  }))}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      onItemTextSave(item.id);
+                    } else if (e.key === 'Escape') {
+                      onItemTextCancel(item.id);
+                    }
+                  }}
+                  onBlur={() => onItemTextSave(item.id)}
+                  autoFocus
+                  className="flex-1 h-8 text-sm"
+                />
+              ) : (
+                <p 
+                  className={`flex-1 cursor-pointer hover:bg-muted/50 px-2 py-1 rounded transition-colors ${item.isCompleted ? 'line-through text-muted-foreground' : ''}`}
+                  onClick={() => onItemTextClick(item.id, item.text)}
+                >
+                  {item.text}
+                </p>
+              )}
               <button
                 onClick={() => onDeleteItem?.(item.id)}
                 className="opacity-0 group-hover:opacity-100 transition-opacity"
