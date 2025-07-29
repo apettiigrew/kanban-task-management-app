@@ -12,7 +12,6 @@ export async function GET(request: NextRequest) {
   try {
     
     const { searchParams } = new URL(request.url)
-    const includeStats = searchParams.get('includeStats') === 'true'
     const includeRelations = searchParams.get('includeRelations') === 'true'
 
     const projects = await prisma.project.findMany({
@@ -42,8 +41,6 @@ export async function POST(request: NextRequest) {
    
 
     const body = await request.json()
-    
-    // Validate the request body using our validation helper
     const validatedData = validateRequestBody(createProjectSchema, body)
 
     const project = await prisma.project.create({

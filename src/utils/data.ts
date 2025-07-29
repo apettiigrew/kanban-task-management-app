@@ -1,49 +1,6 @@
-export interface ProjectWithColumnsAndTasks extends TProject {
-    columns: TColumn[]
-}
-export type TChecklist = {
-    id: string;
-    title: string;
-    cardId: string
-    createdAt: string;
-    updatedAt: string;
-    deletedAt: string;
-}
-
-export type TCard = {
-    id: string;
-    title: string;
-    description: string;
-    columnId: string;
-    order: number;
-    projectId: string;
-};
-
-export interface TProject {
-    id: string;
-    title: string;
-    description: string;
-    createdAt: Date;
-    updatedAt: Date;
-    columns: TColumn[];
-    cards: TCard[];
-}
-
-export type TColumn = {
-    id: string;
-    title: string;
-    cards: TCard[];
-    createdAt: Date;
-    updatedAt: Date;
-    order: number;
-    projectId: string;
-};
-
-export type TBoard = {
-    id: string;
-    title: string;
-    columns: TColumn[];
-};
+import { TCard } from "@/models/card";
+import { TColumn } from "@/models/column";
+import { TChecklist } from "@/models/checklist";
 
 const cardKey = Symbol('card');
 export type TCardData = {

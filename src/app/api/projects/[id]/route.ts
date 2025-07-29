@@ -5,7 +5,6 @@ import {
   handleAPIError,
   createSuccessResponse,
   validateRequestBody,
-  checkRateLimit,
   NotFoundError
 } from '@/lib/api-error-handler'
 

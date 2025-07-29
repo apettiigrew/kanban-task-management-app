@@ -1,7 +1,9 @@
-export interface Checklist {
+export type TChecklist = {
   id: string;
   title: string;
-  createdAt?: Date;
-  updatedAt?: Date;
-  deletedAt?: Date | null;
+  cardId: string
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string;
 }
+

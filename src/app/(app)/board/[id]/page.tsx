@@ -4,7 +4,8 @@ import { Board } from "@/components/board"
 import { ErrorBoundary } from "@/components/error-boundary"
 import { RouteLoading } from "@/components/route-loading"
 import { useProject } from "@/hooks/queries/use-projects"
-import { ProjectWithColumnsAndTasks } from "@/utils/data"
+import { TProject } from "@/models/project"
+
 import { useParams } from "next/navigation"
 import { Suspense } from "react"
 
@@ -74,7 +75,7 @@ function BoardContent({ projectId }: BoardContentProps) {
 
       <main className="flex-1 overflow-x-auto overflow-y-hidden">
         <Suspense fallback={<RouteLoading message="Loading board..." />}>
-          {project && <Board project={project as ProjectWithColumnsAndTasks} />}
+          {project && <Board project={project as TProject} />}
         </Suspense>
       </main>
     </div>

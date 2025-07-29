@@ -7,7 +7,7 @@ import { useCreateColumn, useReorderColumns, useDeleteColumn } from '@/hooks/mut
 import { useMoveTask, useReorderTasks } from '@/hooks/mutations/use-task-mutations';
 import { FormError } from '@/lib/form-error-handler';
 import { SettingsContext } from '@/providers/settings-context';
-import { isCardData, isCardDropTargetData, isColumnData, isDraggingACard, isDraggingAColumn, ProjectWithColumnsAndTasks, TCard, TColumn } from '@/utils/data';
+import { isCardData, isCardDropTargetData, isColumnData, isDraggingACard, isDraggingAColumn } from '@/utils/data';
 import { autoScrollForElements } from '@atlaskit/pragmatic-drag-and-drop-auto-scroll/element';
 import { unsafeOverflowAutoScrollForElements } from '@atlaskit/pragmatic-drag-and-drop-auto-scroll/unsafe-overflow/element';
 import {
@@ -21,29 +21,27 @@ import { PlusCircle } from 'lucide-react';
 import { useContext, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { Column } from './column';
+import { TProject } from '@/models/project';
+import { TColumn } from '@/models/column';
+import { TCard } from '@/models/card';
 
 interface BoardProps {
-    project: ProjectWithColumnsAndTasks
+    project: TProject   
 }
 
 export function Board({ project }: BoardProps) {
-    // console.log("project", project);
+    
     const [projectState, setProjectState] = useState(project);
     const [isAddingList, setIsAddingList] = useState(false);
     const [newListTitle, setNewListTitle] = useState('');
     const { settings } = useContext(SettingsContext);
     const scrollableRef = useRef<HTMLDivElement | null>(null);
 
-    useEffect(() => {
-        setProjectState(project);
-    }, [project]);
-
     // Create column mutation with database persistence
     const createColumnMutation = useCreateColumn({
         onSuccess: (data) => {
             setNewListTitle('');
             setIsAddingList(false);
-            // Replace the optimistic column with the real one from server
             setProjectState(prev => ({
                 ...prev,
                 columns: prev.columns.map(col =>
@@ -74,12 +72,10 @@ export function Board({ project }: BoardProps) {
     // Task mutation hooks for drag and drop functionality
     const moveTaskMutation = useMoveTask({
         onSuccess: () => {
-            // invalidateByProject(project.id);
-            // console.log("moveTaskMutation onSuccess", projectState);
+          
         },
         onError: (error: FormError) => {
             toast.error(error.message || 'Failed to move task');
-            // Revert to previous state on error
             setProjectState(project);
         }
     });
@@ -90,7 +86,6 @@ export function Board({ project }: BoardProps) {
         },
         onError: (error: FormError) => {
             toast.error(error.message || 'Failed to reorder tasks');
-            // Revert to previous state on error
             setProjectState(project);
         }
     });

@@ -1,13 +1,18 @@
-export interface Project {
-  id?: number;
-  title: string;
-  description: string | null;
-  created_at?: Date;
-  updated_at?: Date;
-  deleted_at?: Date | null;
-}
+import { TCard } from "./card";
+import { TColumn } from "./column";
 
 export interface CreateProjectDTO {
   title: string;
   description: string | null;
-} 
+}
+
+export interface TProject {
+  id: string;
+  title: string;
+  description: string;
+  columns: TColumn[];
+  cards: TCard[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
