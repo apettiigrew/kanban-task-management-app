@@ -1,29 +1,17 @@
-// TailwindCSS version of the CardTask component
-import {
-  draggable,
-  dropTargetForElements,
-} from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
-import { combine } from '@atlaskit/pragmatic-drag-and-drop/combine';
 import {
   attachClosestEdge,
   extractClosestEdge,
   type Edge,
 } from '@atlaskit/pragmatic-drag-and-drop-hitbox/closest-edge';
-import React, { MutableRefObject, useEffect, useRef, useState } from 'react';
-import { MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
-
+import { combine } from '@atlaskit/pragmatic-drag-and-drop/combine';
 import {
-  TCard,
-  getCardData,
-  getCardDropTargetData,
-  isCardData,
-  isDraggingACard,
-  isShallowEqual,
-} from '@/utils/data';
-import { cc, classIf } from '@/utils/style-utils';
-import { TaskEditModal } from './tasks/task-edit-modal';
-import { TaskDeleteDialog } from './tasks/task-delete-dialog';
-import { Task } from '@/lib/validations/task';
+  draggable,
+  dropTargetForElements,
+} from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
+import { Pencil, Trash2 } from 'lucide-react';
+import React, { MutableRefObject, useEffect, useRef, useState } from 'react';
+
+import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,8 +19,18 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Button } from '@/components/ui/button';
+import { TCard } from '@/models/card';
+import {
+  getCardData,
+  getCardDropTargetData,
+  isCardData,
+  isDraggingACard,
+  isShallowEqual,
+} from '@/utils/data';
+import { cc, classIf } from '@/utils/style-utils';
 import { TextIcon } from './icons/icons';
+import { TaskDeleteDialog } from './tasks/task-delete-dialog';
+import { TaskEditModal } from './tasks/task-edit-modal';
 
 interface CardProps {
   card: TCard;

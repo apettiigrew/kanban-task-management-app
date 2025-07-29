@@ -8,10 +8,10 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
-import { Project } from "@/types/project"
+import { TProject } from "@/models/project"
 
 interface CollapsibleProjectsListProps {
-  projects: Project[]
+  projects: TProject[]
   showAllProjects: boolean
   onToggleShowAll: () => void
   maxDisplayed?: number
@@ -79,7 +79,7 @@ export function CollapsibleProjectsList({
                       <span>{project.title}</span>
                     </div>
                     <span className="text-muted-foreground">
-                      {project.tasks?.length || 0}
+                      {project.cards?.length || 0}
                     </span>
                   </Link>
                 </SidebarMenuButton>

@@ -15,8 +15,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { RenderIf } from '@/utils/render-if'
 import { Plus, Square, SquareCheck, Trash2 } from 'lucide-react'
+import { TChecklist } from '@/models/checklist';
 import {
-  TChecklist,
   TChecklistItem,
   getChecklistData,
   getChecklistDropTargetData,

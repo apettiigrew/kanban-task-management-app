@@ -4,7 +4,7 @@ import React from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { ProjectForm } from "@/components/project-form"
 import { useUpdateProject } from "@/hooks/queries/use-projects"
-import { TProject } from '@/utils/data'
+import { TProject } from '@/models/project'
 import { toast } from "sonner"
 import { FormError } from "@/lib/form-error-handler"
 
