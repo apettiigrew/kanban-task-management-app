@@ -198,3 +198,65 @@ export function getChecklistDropTargetData({
         checklist,
     };
 }
+
+// Checklist item drag and drop data structures
+export type TChecklistItem = {
+    id: string;
+    text: string;
+    isCompleted: boolean;
+    checklistId: string;
+    order: number;
+}
+
+const checklistItemKey = Symbol('checklist-item');
+export type TChecklistItemData = {
+    [checklistItemKey]: true;
+    item: TChecklistItem;
+    checklistId: string;
+    rect: DOMRect;
+};
+
+export function getChecklistItemData({
+    item,
+    rect,
+    checklistId,
+}: Omit<TChecklistItemData, typeof checklistItemKey>): TChecklistItemData {
+    return {
+        [checklistItemKey]: true,
+        rect,
+        item,
+        checklistId,
+    };
+}
+
+export function isChecklistItemData(value: Record<string | symbol, unknown>): value is TChecklistItemData {
+    return Boolean(value[checklistItemKey]);
+}
+
+export function isDraggingAChecklistItem({ source }: TDragSource): boolean {
+    return isChecklistItemData(source.data);
+}
+
+const checklistItemDropTargetKey = Symbol('checklist-item-drop-target');
+export type TChecklistItemDropTargetData = {
+    [checklistItemDropTargetKey]: true;
+    item: TChecklistItem;
+    checklistId: string;
+};
+
+export function isChecklistItemDropTargetData(
+    value: Record<string | symbol, unknown>,
+): value is TChecklistItemDropTargetData {
+    return Boolean(value[checklistItemDropTargetKey]);
+}
+
+export function getChecklistItemDropTargetData({
+    item,
+    checklistId,
+}: Omit<TChecklistItemDropTargetData, typeof checklistItemDropTargetKey>): TChecklistItemDropTargetData {
+    return {
+        [checklistItemDropTargetKey]: true,
+        item,
+        checklistId,
+    };
+}

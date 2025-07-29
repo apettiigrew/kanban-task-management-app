@@ -22,7 +22,8 @@ import {
   useUpdateChecklistItem, 
   useDeleteChecklist, 
   useDeleteChecklistItem,
-  useReorderChecklists
+  useReorderChecklists,
+  useReorderChecklistItems
 } from '@/hooks/mutations/use-checklist-mutations'
 import { useChecklistsByCard, checklistKeys } from '@/hooks/queries/use-checklists'
 
@@ -31,8 +32,11 @@ import { updateTaskSchema } from '@/lib/validations/task'
 import { 
   TCard, 
   isChecklistData, 
-  isChecklistDropTargetData, 
-  isDraggingAChecklist 
+  isChecklistDropTargetData,
+  isChecklistItemData,
+  isChecklistItemDropTargetData,
+  isDraggingAChecklist,
+  isDraggingAChecklistItem
 } from '@/utils/data'
 import { monitorForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter'
 import { combine } from '@atlaskit/pragmatic-drag-and-drop/combine'
@@ -510,6 +514,11 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
       queryClient.invalidateQueries({ queryKey: checklistKeys.byCard(card.id) })
     }
   })
+  const reorderChecklistItemsMutation = useReorderChecklistItems({
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: checklistKeys.byCard(card.id) })
+    }
+  })
 
   // Add checklist drop monitoring
   useEffect(() => {
@@ -578,6 +587,200 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
       })
     );
   }, [checklists, card.id, reorderChecklistsMutation])
+
+  // Add checklist item drop monitoring
+  useEffect(() => {
+    return combine(
+      monitorForElements({
+        canMonitor: isDraggingAChecklistItem,
+        onDrop({ source, location }) {
+          const dragging = source.data;
+          if (!isChecklistItemData(dragging)) {
+            return;
+          }
+
+          const innerMost = location.current.dropTargets[0];
+          if (!innerMost) {
+            return;
+          }
+
+          const dropTargetData = innerMost.data;
+
+          // Handle dropping on another checklist item
+          if (isChecklistItemDropTargetData(dropTargetData)) {
+            const sourceItem = dragging.item as any;
+            const targetItem = dropTargetData.item as any;
+            const sourceChecklistId = dragging.checklistId as string;
+            const targetChecklistId = dropTargetData.checklistId as string;
+
+            if (sourceItem.id === targetItem.id) {
+              return;
+            }
+
+            const sourceChecklist = checklists.find(c => c.id === sourceChecklistId);
+            const targetChecklist = checklists.find(c => c.id === targetChecklistId);
+
+            if (!sourceChecklist || !targetChecklist) {
+              return;
+            }
+
+            const sourceItemIndex = sourceChecklist.items.findIndex(item => item.id === sourceItem.id);
+            const targetItemIndex = targetChecklist.items.findIndex(item => item.id === targetItem.id);
+
+            if (sourceItemIndex === -1 || targetItemIndex === -1) {
+              return;
+            }
+
+            const closestEdge = extractClosestEdge(dropTargetData);
+            const isMovingToSameChecklist = sourceChecklistId === targetChecklistId;
+
+            if (isMovingToSameChecklist) {
+              // Reordering within the same checklist
+              const reordered = reorderWithEdge({
+                axis: 'vertical',
+                list: sourceChecklist.items,
+                startIndex: sourceItemIndex,
+                indexOfTarget: targetItemIndex,
+                closestEdgeOfTarget: closestEdge,
+              });
+
+              // Optimistically update UI
+              setChecklists(prev => prev.map(checklist =>
+                checklist.id === sourceChecklistId
+                  ? { ...checklist, items: reordered }
+                  : checklist
+              ));
+
+              // Persist the reordering
+              const itemOrders = reordered.map((item, index) => ({
+                id: item.id,
+                order: index,
+                checklistId: sourceChecklistId
+              }));
+
+              reorderChecklistItemsMutation.mutate({
+                checklistId: sourceChecklistId,
+                itemOrders
+              }, {
+                onError: () => {
+                  // Revert on error
+                  setChecklists(checklists);
+                  toast.error('Failed to reorder checklist items');
+                }
+              });
+            } else {
+              // Moving item between checklists
+              const finalIndex = closestEdge === 'bottom' ? targetItemIndex + 1 : targetItemIndex;
+
+              // Remove from source checklist
+              const newSourceItems = sourceChecklist.items.filter(item => item.id !== sourceItem.id);
+              
+              // Add to target checklist
+              const newTargetItems = [...targetChecklist.items];
+              newTargetItems.splice(finalIndex, 0, sourceItem);
+
+              // Optimistically update UI
+              setChecklists(prev => prev.map(checklist => {
+                if (checklist.id === sourceChecklistId) {
+                  return { ...checklist, items: newSourceItems };
+                } else if (checklist.id === targetChecklistId) {
+                  return { ...checklist, items: newTargetItems };
+                }
+                return checklist;
+              }));
+
+              // Prepare item orders for both checklists
+              const sourceItemOrders = newSourceItems.map((item, index) => ({
+                id: item.id,
+                order: index,
+                checklistId: sourceChecklistId
+              }));
+
+              const targetItemOrders = newTargetItems.map((item, index) => ({
+                id: item.id,
+                order: index,
+                checklistId: targetChecklistId
+              }));
+
+              const allItemOrders = [...sourceItemOrders, ...targetItemOrders];
+
+              reorderChecklistItemsMutation.mutate({
+                checklistId: targetChecklistId, // Main checklist for the operation
+                itemOrders: allItemOrders
+              }, {
+                onError: () => {
+                  // Revert on error
+                  setChecklists(checklists);
+                  toast.error('Failed to move checklist item');
+                }
+              });
+            }
+            return;
+          }
+
+          // Handle dropping on a checklist (empty area)
+          if (isChecklistDropTargetData(dropTargetData)) {
+            const sourceItem = dragging.item as any;
+            const sourceChecklistId = dragging.checklistId as string;
+            const targetChecklistId = dropTargetData.checklist.id;
+
+            if (sourceChecklistId === targetChecklistId) {
+              return; // No change needed
+            }
+
+            const sourceChecklist = checklists.find(c => c.id === sourceChecklistId);
+            const targetChecklist = checklists.find(c => c.id === targetChecklistId);
+
+            if (!sourceChecklist || !targetChecklist) {
+              return;
+            }
+
+            // Remove from source checklist
+            const newSourceItems = sourceChecklist.items.filter(item => item.id !== sourceItem.id);
+            
+            // Add to end of target checklist
+            const newTargetItems = [...targetChecklist.items, sourceItem];
+
+            // Optimistically update UI
+            setChecklists(prev => prev.map(checklist => {
+              if (checklist.id === sourceChecklistId) {
+                return { ...checklist, items: newSourceItems };
+              } else if (checklist.id === targetChecklistId) {
+                return { ...checklist, items: newTargetItems };
+              }
+              return checklist;
+            }));
+
+            // Prepare item orders for both checklists
+            const sourceItemOrders = newSourceItems.map((item, index) => ({
+              id: item.id,
+              order: index,
+              checklistId: sourceChecklistId
+            }));
+
+            const targetItemOrders = newTargetItems.map((item, index) => ({
+              id: item.id,
+              order: index,
+              checklistId: targetChecklistId
+            }));
+
+            const allItemOrders = [...sourceItemOrders, ...targetItemOrders];
+
+            reorderChecklistItemsMutation.mutate({
+              checklistId: targetChecklistId,
+              itemOrders: allItemOrders
+            }, {
+              onError: () => {
+                // Revert on error
+                setChecklists(checklists);
+                toast.error('Failed to move checklist item');
+              }
+            });
+          }
+        }
+      })
+    );
+  }, [checklists, card.id, reorderChecklistItemsMutation])
 
   const addChecklist = useCallback((title: string) => {
     // Create optimistic checklist immediately
