@@ -837,6 +837,9 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
     // Only call API for real checklists (not optimistic ones)
     if (!optimisticChecklists.includes(checklistId)) {
       deleteChecklistMutation.mutate(checklistId, {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: projectKeys.detail(card.projectId) })
+        },
         onError: () => {
           // Restore checklist on error
           setChecklists(prev => [...prev, checklistToDelete])
@@ -883,6 +886,7 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
                 }
                 : checklist
             ))
+            queryClient.invalidateQueries({ queryKey: projectKeys.detail(card.projectId) })
           },
           onError: () => {
             // Remove optimistic item on error
@@ -914,6 +918,9 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
     // Only call API for real items (not optimistic ones)
     if (!itemId.startsWith('temp-')) {
       deleteChecklistItemMutation.mutate(itemId, {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: projectKeys.detail(card.projectId) })
+        },
         onError: () => {
           // Restore item on error
           setChecklists(prev => prev.map(checklist =>
