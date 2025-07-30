@@ -66,12 +66,10 @@ type CardState =
 const draggingState: CardState = { type: 'idle' };
 
 export function CardTask(props: CardProps) {
-  console.log("CardTask was called")
   const [cardState, setCardState] = useState<CardState>(draggingState);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const { card, columnId, columnTitle } = props;
-  console.log("card", card) 
   const outerRef = useRef<HTMLDivElement | null>(null);
   const innerRef = useRef<HTMLDivElement | null>(null);
 

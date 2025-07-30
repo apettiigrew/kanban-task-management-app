@@ -968,7 +968,7 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
                 : checklist
             ))
             
-            queryClient.invalidateQueries({ queryKey: [projectKeys.lists()] })
+            queryClient.invalidateQueries({ queryKey: projectKeys.detail(card.projectId) })
 
           },
           onError: () => {
