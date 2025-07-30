@@ -31,6 +31,23 @@ import { cc, classIf } from '@/utils/style-utils';
 import { TextIcon } from './icons/icons';
 import { TaskDeleteDialog } from './tasks/task-delete-dialog';
 import { TaskEditModal } from './tasks/task-edit-modal';
+import { ChecklistProgressIndicator } from './checklist-progress-indicator';
+
+interface DescriptionIndicatorProps {
+  description?: string | null;
+}
+
+export function DescriptionIndicator(props: DescriptionIndicatorProps) {
+  const { description } = props;
+
+  if (!description || !description.trim()) {
+    return null;
+  }
+
+  return (
+    <TextIcon className="h-4 w-4 text-gray-500" />
+  );
+}
 
 interface CardProps {
   card: TCard;
@@ -49,10 +66,12 @@ type CardState =
 const draggingState: CardState = { type: 'idle' };
 
 export function CardTask(props: CardProps) {
+  console.log("CardTask was called")
   const [cardState, setCardState] = useState<CardState>(draggingState);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const { card, columnId, columnTitle } = props;
+  console.log("card", card) 
   const outerRef = useRef<HTMLDivElement | null>(null);
   const innerRef = useRef<HTMLDivElement | null>(null);
 
@@ -168,7 +187,11 @@ interface CardDisplayProps {
   handleDeleteClick: () => void;
 }
 
-export function CardDisplay({ card, state, outerRef, innerRef, handleCardClick, handleDeleteClick }: CardDisplayProps) {
+export function CardDisplay(props: CardDisplayProps) {
+  const { card, state, outerRef, innerRef, handleCardClick, handleDeleteClick } = props;
+  console.log("CardDisplay was called")
+  console.log("card", card)
+
   return (
     <div
       ref={outerRef}
@@ -187,20 +210,20 @@ export function CardDisplay({ card, state, outerRef, innerRef, handleCardClick, 
           classIf(state.type === 'is-dragging', 'opacity-50 shadow-none')
         )}
       >
-                  <div className="flex flex-col">
-            <div className="flex items-start justify-between gap-2">
-              <div className="flex-1 break-all overflow-hidden" onClick={handleCardClick}>
-                {card.title}
-              </div>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
-                    onClick={(e) => e.stopPropagation()}
-                    aria-label="Card actions"
-                  >
+        <div className="flex flex-col">
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex-1 break-all overflow-hidden" onClick={handleCardClick}>
+              {card.title}
+            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+                  onClick={(e) => e.stopPropagation()}
+                  aria-label="Card actions"
+                >
                   <Pencil className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
@@ -227,11 +250,15 @@ export function CardDisplay({ card, state, outerRef, innerRef, handleCardClick, 
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
-          {card.description && card.description.trim() && (
-            <div className="flex justify-start mt-2">
-              <TextIcon className="h-4 w-4 text-gray-500" />
-            </div>
-          )}
+
+          <div className="flex justify-start gap-2 items-center">
+            <DescriptionIndicator description={card.description} />
+            <ChecklistProgressIndicator
+              completed={card.totalCompletedChecklistItems ?? 0}
+              total={card.totalChecklistItems ?? 0}
+              className="w-min"
+            />
+          </div>
         </div>
       </div>
     </div>

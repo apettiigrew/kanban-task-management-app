@@ -1,4 +1,3 @@
-import { TCard } from "./card";
 import { TColumn } from "./column";
 
 export interface CreateProjectDTO {
@@ -11,7 +10,6 @@ export interface TProject {
   title: string;
   description: string;
   columns: TColumn[];
-  cards: TCard[];
   createdAt: Date;
   updatedAt: Date;
 }

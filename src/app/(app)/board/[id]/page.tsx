@@ -65,6 +65,7 @@ function BoardContent({ projectId }: BoardContentProps) {
     )
   }
 
+  console.log("rerender")
   console.log(project);
   return (
     <div className="max-h-screen bg-background bg-gradient-to-br from-blue-100 via-sky-100 to-indigo-200">
@@ -75,7 +76,7 @@ function BoardContent({ projectId }: BoardContentProps) {
 
       <main className="flex-1 overflow-x-auto overflow-y-hidden">
         <Suspense fallback={<RouteLoading message="Loading board..." />}>
-          {project && <Board project={project as TProject} />}
+          {project && <Board project={project} />}
         </Suspense>
       </main>
     </div>

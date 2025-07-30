@@ -1,7 +1,28 @@
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger
+} from '@/components/ui/alert-dialog';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu';
+import { useDeleteColumn, useUpdateColumn } from '@/hooks/mutations/use-column-mutations';
+import { useCreateTask } from '@/hooks/mutations/use-task-mutations';
+import { useInvalidateProject } from '@/hooks/queries/use-projects';
+import { useOutsideClick } from '@/hooks/use-outside-click';
+import { FormError } from '@/lib/form-error-handler';
 import { SettingsContext } from '@/providers/settings-context';
-import { useUpdateColumn, useDeleteColumn } from '@/hooks/mutations/use-column-mutations';
-import { useInvalidateProject, useInvalidateProjects } from '@/hooks/queries/use-projects';
-import { getColumnData, isCardData, isCardDropTargetData, isColumnData, isDraggingACard, isDraggingAColumn, isShallowEqual, TCard, TCardData, TColumn } from '@/utils/data';
+import { getColumnData, isCardData, isCardDropTargetData, isColumnData, isDraggingACard, isDraggingAColumn, isShallowEqual, TCardData } from '@/utils/data';
 import { cc } from '@/utils/style-utils';
 import { autoScrollForElements } from '@atlaskit/pragmatic-drag-and-drop-auto-scroll/element';
 import { unsafeOverflowAutoScrollForElements } from '@atlaskit/pragmatic-drag-and-drop-auto-scroll/unsafe-overflow/element';
@@ -14,34 +35,15 @@ import {
     draggable,
     dropTargetForElements
 } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
-import { X, MoreHorizontal, Trash2 } from 'lucide-react';
+import { MoreHorizontal, Trash2, X } from 'lucide-react';
 import { useContext, useEffect, useRef, useState } from 'react';
-import { Input } from './ui/input';
+import { toast } from 'sonner';
+import { CardShadow, CardTask } from './card';
 import { ColumnWrapper } from './column-wrapper';
 import { Button } from './ui/button';
-import { CardShadow, CardTask } from './card';
-import { toast } from 'sonner';
-import { FormError } from '@/lib/form-error-handler';
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuSeparator,
-    DropdownMenuTrigger
-} from '@/components/ui/dropdown-menu';
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-    AlertDialogTrigger
-} from '@/components/ui/alert-dialog';
-import { useCreateTask } from '@/hooks/mutations/use-task-mutations';
-import { useOutsideClick } from '@/hooks/use-outside-click';
+import { Input } from './ui/input';
+import { TColumn } from '@/models/column';
+import { TCard } from '@/models/card';
 
 type TColumnState =
     | { type: 'is-card-over'; isOverChildCard: boolean; dragging: DOMRect }
@@ -63,8 +65,8 @@ interface ColumnProps {
     onDelete: () => void;
 }
 export function Column({ column, onDelete }: ColumnProps) {
-
-    // console.log("column", column);
+    console.log("Column was called")
+    const [columnData, setColumnData] = useState(column);
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [columnTitle, setColumnTitle] = useState(column.title);
     const [isAddingCard, setIsAddingCard] = useState(false);
@@ -87,8 +89,6 @@ export function Column({ column, onDelete }: ColumnProps) {
     };
 
     const addCardRef = useOutsideClick(handleOutsideClick);
-
-    const { invalidateByProject } = useInvalidateProject();
 
     const createTaskMutation = useCreateTask({
         onError: (error: FormError) => {
@@ -153,7 +153,7 @@ export function Column({ column, onDelete }: ColumnProps) {
 
     const handleDelete = () => {
         onDelete();
-   
+
     };
 
     useEffect(() => {
@@ -236,6 +236,7 @@ export function Column({ column, onDelete }: ColumnProps) {
             order: column.cards.length,
         });
     }
+    console.log("column", column)
 
     return (
         <ColumnWrapper

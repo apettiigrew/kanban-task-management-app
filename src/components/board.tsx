@@ -30,8 +30,8 @@ interface BoardProps {
 }
 
 export function Board({ project }: BoardProps) {
-    
-    const [projectState, setProjectState] = useState(project);
+    console.log("Board was called")
+    const [projectData, setProjectData] = useState(project);
     const [isAddingList, setIsAddingList] = useState(false);
     const [newListTitle, setNewListTitle] = useState('');
     const { settings } = useContext(SettingsContext);
@@ -42,7 +42,7 @@ export function Board({ project }: BoardProps) {
         onSuccess: (data) => {
             setNewListTitle('');
             setIsAddingList(false);
-            setProjectState(prev => ({
+            setProjectData(prev => ({
                 ...prev,
                 columns: prev.columns.map(col =>
                     col.id.startsWith('temp') ? data : col
@@ -51,7 +51,7 @@ export function Board({ project }: BoardProps) {
         },
         onError: (error: FormError) => {
             // Rollback optimistic update by removing the temporary column
-            setProjectState(prev => ({
+            setProjectData(prev => ({
                 ...prev,
                 columns: prev.columns.filter(col => !col.id.startsWith('temp-'))
             }));
@@ -59,7 +59,7 @@ export function Board({ project }: BoardProps) {
         },
         onFieldErrors: (errors) => {
             // Rollback optimistic update by removing the temporary column
-            setProjectState(prev => ({
+            setProjectData(prev => ({
                 ...prev,
                 columns: prev.columns.filter(col => !col.id.startsWith('temp-'))
             }));
@@ -76,7 +76,7 @@ export function Board({ project }: BoardProps) {
         },
         onError: (error: FormError) => {
             toast.error(error.message || 'Failed to move task');
-            setProjectState(project);
+            setProjectData(project);
         }
     });
 
@@ -86,7 +86,7 @@ export function Board({ project }: BoardProps) {
         },
         onError: (error: FormError) => {
             toast.error(error.message || 'Failed to reorder tasks');
-            setProjectState(project);
+            setProjectData(project);
         }
     });
 
@@ -102,14 +102,14 @@ export function Board({ project }: BoardProps) {
         },
         onError: (error: FormError) => {
             // Revert to previous state on error
-            setProjectState(project);
+            setProjectData(project);
             toast.error(error.message || 'Failed to delete column');
         }
     });
 
     const handleDeleteColumn = (columnId: string) => {
         // Optimistically update UI
-        setProjectState(prev => {
+        setProjectData(prev => {
             const filteredColumns = prev.columns.filter(col => col.id !== columnId);
             // Reorder remaining columns
             const reorderedColumns = filteredColumns.map((col, index) => ({
@@ -125,7 +125,7 @@ export function Board({ project }: BoardProps) {
         // Make the API call
         deleteColumnMutation.mutate({
             id: columnId,
-            projectId: projectState.id
+            projectId: projectData.id
         });
     };
 
@@ -139,17 +139,17 @@ export function Board({ project }: BoardProps) {
 
         // console.log("projectState.columns", projectState.columns);
         var order = 0;
-        if (projectState.columns.length === 0) {
+        if (projectData.columns.length === 0) {
             order = 0;
         } else {
-            const maxOrder = projectState.columns.length - 1;
+            const maxOrder = projectData.columns.length - 1;
             order = maxOrder + 1;
         }
         // Create optimistic column for immediate UI update
         const optimisticColumn: TColumn = {
             id: `temp`,
             title: trimmedTitle,
-            projectId: projectState.id,
+                    projectId: projectData.id,
             order: order,
             createdAt: new Date(),
             updatedAt: new Date(),
@@ -157,7 +157,7 @@ export function Board({ project }: BoardProps) {
         };
 
         // Optimistically update UI
-        setProjectState(prev => ({
+        setProjectData(prev => ({
             ...prev,
             columns: [...prev.columns, optimisticColumn]
         }));
@@ -165,7 +165,7 @@ export function Board({ project }: BoardProps) {
         // Make the API call
         createColumnMutation.mutate({
             title: trimmedTitle,
-            projectId: projectState.id,
+            projectId: projectData.id,
             order: order
         });
     };
@@ -190,10 +190,10 @@ export function Board({ project }: BoardProps) {
                         return;
                     }
                     const dropTargetData = innerMost.data;
-                    const homeColumnIndex = projectState.columns.findIndex(
+                    const homeColumnIndex = projectData.columns.findIndex(
                         (column) => column.id === dragging.columnId,
                     );
-                    const home: TColumn | undefined = projectState.columns[homeColumnIndex];
+                    const home: TColumn | undefined = projectData.columns[homeColumnIndex];
 
                     if (!home) {
                         return;
@@ -203,10 +203,10 @@ export function Board({ project }: BoardProps) {
                     // dropping on a card
                     if (isCardDropTargetData(dropTargetData)) {
                         // console.log("dropping on a card");
-                        const destinationColumnIndex = projectState.columns.findIndex(
+                        const destinationColumnIndex = projectData.columns.findIndex(
                             (column) => column.id === dropTargetData.columnId,
                         );
-                        const destination = projectState.columns[destinationColumnIndex];
+                        const destination = projectData.columns[destinationColumnIndex];
 
                         // reordering in home column
                         if (home === destination) {
@@ -241,18 +241,18 @@ export function Board({ project }: BoardProps) {
                                 ...home,
                                 cards: reorderedCards,
                             };
-                            const columns = Array.from(projectState.columns);
+                            const columns = Array.from(projectData.columns);
                             columns[homeColumnIndex] = updated;
 
                             // Optimistically update UI
-                            setProjectState(prev => ({
+                            setProjectData(prev => ({
                                 ...prev,
                                 columns
                             }));
 
                             reorderTasksMutation.mutate({
                                 columnId: home.id,
-                                projectId: projectState.id,
+                                projectId: projectData.id,
                                 taskOrders: reorderedCards,
                                 columns
                             });
@@ -288,7 +288,10 @@ export function Board({ project }: BoardProps) {
                             description: card.description,
                             columnId: card.columnId,
                             projectId: card.projectId,
-                            order: index
+                            order: index,
+                            checklists: card.checklists,
+                            totalChecklistItems: card.totalChecklistItems,
+                            totalCompletedChecklistItems: card.totalCompletedChecklistItems,
                         }));
 
                         const reorderedHomeCards = homeCards.map((card, index) => ({
@@ -297,10 +300,13 @@ export function Board({ project }: BoardProps) {
                             description: card.description,
                             columnId: card.columnId,
                             projectId: card.projectId,
-                            order: index
+                            order: index,
+                            checklists: card.checklists,
+                            totalChecklistItems: card.totalChecklistItems,
+                            totalCompletedChecklistItems: card.totalCompletedChecklistItems,
                         }));
 
-                        const columns = Array.from(projectState.columns);
+                        const columns = Array.from(projectData.columns);
                         columns[homeColumnIndex] = {
                             ...home,
                             cards: reorderedHomeCards,
@@ -312,7 +318,7 @@ export function Board({ project }: BoardProps) {
                         // console.log("columns", columns);
 
                         // Optimistically update UI
-                        setProjectState(prev => ({
+                        setProjectData(prev => ({
                             ...prev,
                             columns
                         }));
@@ -323,7 +329,7 @@ export function Board({ project }: BoardProps) {
                             sourceColumnId: home.id,
                             destinationColumnId: destination.id,
                             destinationOrder: finalIndex,
-                            projectId: projectState.id,
+                            projectId: projectData.id,
                             columns: columns
                         });
                         return;
@@ -331,10 +337,10 @@ export function Board({ project }: BoardProps) {
 
                     // dropping onto a column, but not onto a card
                     if (isColumnData(dropTargetData)) {
-                        const destinationColumnIndex = projectState.columns.findIndex(
+                            const destinationColumnIndex = projectData.columns.findIndex(
                             (column) => column.id === dropTargetData.column.id,
                         );
-                        const destination = projectState.columns[destinationColumnIndex];
+                        const destination = projectData.columns[destinationColumnIndex];
 
                         if (!destination) {
                             return;
@@ -352,11 +358,11 @@ export function Board({ project }: BoardProps) {
                                 ...home,
                                 cards: reordered,
                             };
-                            const columns = Array.from(projectState.columns);
+                            const columns = Array.from(projectData.columns);
                             columns[homeColumnIndex] = updated;
 
                             // Optimistically update UI
-                            setProjectState(prev => ({
+                            setProjectData(prev => ({
                                 ...prev,
                                 columns
                             }));
@@ -369,7 +375,7 @@ export function Board({ project }: BoardProps) {
 
                             reorderTasksMutation.mutate({
                                 columnId: home.id,
-                                projectId: projectState.id,
+                                projectId: projectData.id,
                                 taskOrders,
                                 columns
                             });
@@ -384,7 +390,7 @@ export function Board({ project }: BoardProps) {
                         const destinationCards = Array.from(destination.cards);
                         destinationCards.splice(destination.cards.length, 0, dragging.card);
 
-                        const columns = Array.from(projectState.columns);
+                        const columns = Array.from(projectData.columns);
                         columns[homeColumnIndex] = {
                             ...home,
                             cards: homeCards,
@@ -395,7 +401,7 @@ export function Board({ project }: BoardProps) {
                         };
 
                         // Optimistically update UI
-                        setProjectState(prev => ({
+                        setProjectData(prev => ({
                             ...prev,
                             columns
                         }));
@@ -406,7 +412,7 @@ export function Board({ project }: BoardProps) {
                             sourceColumnId: home.id,
                             destinationColumnId: destination.id,
                             destinationOrder: destination.cards.length,
-                            projectId: projectState.id,
+                            projectId: projectData.id,
                             columns
                         });
 
@@ -433,8 +439,8 @@ export function Board({ project }: BoardProps) {
                         return;
                     }
 
-                    const homeIndex = projectState.columns.findIndex((column) => column.id === dragging.column.id);
-                    const destinationIndex = projectState.columns.findIndex(
+                    const homeIndex = projectData.columns.findIndex((column) => column.id === dragging.column.id);
+                    const destinationIndex = projectData.columns.findIndex(
                         (column) => column.id === dropTargetData.column.id,
                     );
 
@@ -450,7 +456,7 @@ export function Board({ project }: BoardProps) {
 
                     const reordered = reorderWithEdge({
                         axis: 'horizontal',
-                        list: projectState.columns,
+                        list: projectData.columns,
                         startIndex: homeIndex,
                         indexOfTarget: destinationIndex,
                         closestEdgeOfTarget: closestEdge,
@@ -468,13 +474,13 @@ export function Board({ project }: BoardProps) {
                     }));
 
                     // Optimistically update UI
-                    setProjectState(prev => ({
+                    setProjectData(prev => ({
                         ...prev,
                         columns: columnOrders
                     }));
 
                     reorderColumnsMutation.mutate({
-                        projectId: projectState.id,
+                        projectId: projectData.id,
                         columnOrders
                     });
                 },
@@ -520,17 +526,17 @@ export function Board({ project }: BoardProps) {
                 },
             }),
         );
-    }, [projectState, settings.boardScrollSpeed, settings.isOverElementAutoScrollEnabled, settings.isOverflowScrollingEnabled]);
+            }, [projectData, settings.boardScrollSpeed, settings.isOverElementAutoScrollEnabled, settings.isOverflowScrollingEnabled]);
 
     return (
         <div ref={scrollableRef} className="h-screen flex flex-col">
             <div className="px-6 flex-1 flex flex-col">
                 <div className="flex items-center justify-between mb-6 mt-6">
-                    <h1 className="text-3xl font-bold">{projectState.title}</h1>
+                    <h1 className="text-3xl font-bold">{projectData.title}</h1>
                 </div>
 
                 <div className="flex items-start gap-4 overflow-x-auto pb-4 snap-x snap-mandatory flex-1">
-                    {projectState.columns.map((column) => (
+                        {projectData.columns.map((column) => (
                         <Column
                             key={column.id}
                             column={column}

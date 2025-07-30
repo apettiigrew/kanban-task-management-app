@@ -161,7 +161,6 @@ export const useCreateProject = (options: UseCreateProjectOptions = {}) => {
         createdAt: new Date(),
         updatedAt: new Date(),
         columns: [],
-        cards: [],
       }
 
       // Optimistically add the new project to the list

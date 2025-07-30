@@ -15,12 +15,12 @@ import {
 
 import { Separator } from '@/components/ui/separator'
 import { useUpdateTask } from '@/hooks/mutations/use-task-mutations'
-import { 
-  useCreateChecklist, 
-  useCreateChecklistItem, 
-  useUpdateChecklist, 
-  useUpdateChecklistItem, 
-  useDeleteChecklist, 
+import {
+  useCreateChecklist,
+  useCreateChecklistItem,
+  useUpdateChecklist,
+  useUpdateChecklistItem,
+  useDeleteChecklist,
   useDeleteChecklistItem,
   useReorderChecklists,
   useReorderChecklistItems
@@ -29,9 +29,8 @@ import { useChecklistsByCard, checklistKeys } from '@/hooks/queries/use-checklis
 
 import { FormError } from '@/lib/form-error-handler'
 import { updateTaskSchema } from '@/lib/validations/task'
-import { 
-  TCard, 
-  isChecklistData, 
+import {
+  isChecklistData,
   isChecklistDropTargetData,
   isChecklistItemData,
   isChecklistItemDropTargetData,
@@ -40,8 +39,8 @@ import {
 } from '@/utils/data'
 import { monitorForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter'
 import { combine } from '@atlaskit/pragmatic-drag-and-drop/combine'
-import { 
-  extractClosestEdge 
+import {
+  extractClosestEdge
 } from '@atlaskit/pragmatic-drag-and-drop-hitbox/closest-edge'
 import { reorderWithEdge } from '@atlaskit/pragmatic-drag-and-drop-hitbox/util/reorder-with-edge'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -78,7 +77,9 @@ import { TaskDeleteDialog } from './task-delete-dialog'
 import { Textarea } from '../ui/textarea'
 import { DeleteActionButton } from '../delete-action-button'
 import { AddChecklistButton } from '../add-checklist-button'
-import { Checklist } from '../checklist'  
+import { Checklist } from '../checklist'
+import { TCard } from '@/models/card'
+import { projectKeys } from '@/hooks/queries/use-projects'
 
 interface TaskEditModalProps {
   card: TCard
@@ -317,7 +318,7 @@ const MenuBar = memo(({ editor }: EditorToolbarProps) => {
       </Button>
     </div>
   )
-})    
+})
 
 export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditModalProps) {
   const [title, setTitle] = useState(card.title)
@@ -327,14 +328,14 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   // Fetch checklists for this card
-  const { 
-    data: fetchedChecklists = [], 
-    isLoading: isLoadingChecklists, 
-    error: checklistError 
+  const {
+    data: fetchedChecklists = [],
+    isLoading: isLoadingChecklists,
+    error: checklistError
   } = useChecklistsByCard(card.id)
 
-  
-  
+
+
   const [checklists, setChecklists] = useState<CheckList[]>([])
   const [optimisticChecklists, setOptimisticChecklists] = useState<string[]>([]) // Track optimistic checklist IDs
 
@@ -674,7 +675,7 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
 
               // Remove from source checklist
               const newSourceItems = sourceChecklist.items.filter(item => item.id !== sourceItem.id);
-              
+
               // Add to target checklist
               const newTargetItems = [...targetChecklist.items];
               newTargetItems.splice(finalIndex, 0, sourceItem);
@@ -737,7 +738,7 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
 
             // Remove from source checklist
             const newSourceItems = sourceChecklist.items.filter(item => item.id !== sourceItem.id);
-            
+
             // Add to end of target checklist
             const newTargetItems = [...targetChecklist.items, sourceItem];
 
@@ -790,28 +791,28 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
       title,
       items: []
     }
-    
+
     // Add to optimistic state immediately
     setChecklists(prev => [...prev, optimisticChecklist])
     setOptimisticChecklists(prev => [...prev, tempId])
-    
+
     // Call backend API
     createChecklistMutation.mutate(
       { title, cardId: card.id as string, order: checklists.length },
       {
         onSuccess: (realChecklist) => {
           // Replace optimistic checklist with real data
-          setChecklists(prev => prev.map(checklist => 
-            checklist.id === tempId 
-              ? { 
-                  id: realChecklist.id, 
-                  title: realChecklist.title, 
-                  items: realChecklist.items.map(item => ({
-                    id: item.id,
-                    text: item.text,
-                    isCompleted: item.isCompleted
-                  }))
-                }
+          setChecklists(prev => prev.map(checklist =>
+            checklist.id === tempId
+              ? {
+                id: realChecklist.id,
+                title: realChecklist.title,
+                items: realChecklist.items.map(item => ({
+                  id: item.id,
+                  text: item.text,
+                  isCompleted: item.isCompleted
+                }))
+              }
               : checklist
           ))
           setOptimisticChecklists(prev => prev.filter(id => id !== tempId))
@@ -830,9 +831,9 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
     // Optimistically remove checklist
     const checklistToDelete = checklists.find(c => c.id === checklistId)
     if (!checklistToDelete) return
-    
+
     setChecklists(prev => prev.filter(checklist => checklist.id !== checklistId))
-    
+
     // Only call API for real checklists (not optimistic ones)
     if (!optimisticChecklists.includes(checklistId)) {
       deleteChecklistMutation.mutate(checklistId, {
@@ -845,7 +846,7 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
     }
   }, [checklists, optimisticChecklists, deleteChecklistMutation])
 
-    const addChecklistItem = useCallback((checklistId: string, itemText: string) => {
+  const addChecklistItem = useCallback((checklistId: string, itemText: string) => {
     const tempId = `temp-item-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
     const newItem: CheckListItem = {
       id: tempId,
@@ -864,7 +865,7 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
     if (!optimisticChecklists.includes(checklistId)) {
       const checklist = checklists.find(c => c.id === checklistId)
       const itemOrder = checklist?.items.length || 0
-      
+
       createChecklistItemMutation.mutate(
         { text: itemText, checklistId, order: itemOrder, isCompleted: false },
         {
@@ -873,13 +874,13 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
             setChecklists(prev => prev.map(checklist =>
               checklist.id === checklistId
                 ? {
-                    ...checklist,
-                    items: checklist.items.map(item =>
-                      item.id === tempId
-                        ? { id: realItem.id, text: realItem.text, isCompleted: realItem.isCompleted }
-                        : item
-                    )
-                  }
+                  ...checklist,
+                  items: checklist.items.map(item =>
+                    item.id === tempId
+                      ? { id: realItem.id, text: realItem.text, isCompleted: realItem.isCompleted }
+                      : item
+                  )
+                }
                 : checklist
             ))
           },
@@ -897,7 +898,7 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
     }
   }, [checklists, optimisticChecklists, createChecklistItemMutation])
 
-    const deleteChecklistItem = useCallback((checklistId: string, itemId: string) => {
+  const deleteChecklistItem = useCallback((checklistId: string, itemId: string) => {
     // Find the item to delete for potential restoration
     const checklist = checklists.find(c => c.id === checklistId)
     const itemToDelete = checklist?.items.find(item => item.id === itemId)
@@ -926,7 +927,7 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
     }
   }, [checklists, deleteChecklistItemMutation])
 
-    const toggleChecklistItem = useCallback((checklistId: string, itemId: string) => {
+  const toggleChecklistItem = useCallback((checklistId: string, itemId: string) => {
     const checklist = checklists.find(c => c.id === checklistId)
     const item = checklist?.items.find(i => i.id === itemId)
     if (!item) return
@@ -952,6 +953,24 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
       updateChecklistItemMutation.mutate(
         { id: itemId, isCompleted: newCompletedState },
         {
+          onSuccess: (data) => {
+
+            // Update the checklist with new data returned
+            setChecklists(prev => prev.map(checklist =>
+              checklist.id === checklistId
+                ? {
+                  ...checklist, items: checklist.items.map(item =>
+                    item.id === itemId
+                      ? { ...item, isCompleted: data.isCompleted }
+                      : item
+                  )
+                }
+                : checklist
+            ))
+            
+            queryClient.invalidateQueries({ queryKey: [projectKeys.lists()] })
+
+          },
           onError: () => {
             // Revert optimistic update on error
             setChecklists(prev => prev.map(checklist =>
@@ -973,7 +992,7 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
     }
   }, [checklists, updateChecklistItemMutation])
 
-    const updateChecklistTitle = useCallback((checklistId: string, newTitle: string) => {
+  const updateChecklistTitle = useCallback((checklistId: string, newTitle: string) => {
     const originalTitle = checklists.find(c => c.id === checklistId)?.title
     if (!originalTitle || originalTitle === newTitle) return
 
@@ -1010,14 +1029,14 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
     // Optimistically update
     setChecklists(prev => prev.map(checklist =>
       checklist.id === checklistId
-        ? { 
-            ...checklist, 
-            items: checklist.items.map(item => 
-              item.id === itemId 
-                ? { ...item, text: newText } 
-                : item
-            )
-          }
+        ? {
+          ...checklist,
+          items: checklist.items.map(item =>
+            item.id === itemId
+              ? { ...item, text: newText }
+              : item
+          )
+        }
         : checklist
     ))
 
@@ -1030,14 +1049,14 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
             // Revert optimistic update on error
             setChecklists(prev => prev.map(checklist =>
               checklist.id === checklistId
-                ? { 
-                    ...checklist, 
-                    items: checklist.items.map(item => 
-                      item.id === itemId 
-                        ? { ...item, text: originalText } 
-                        : item
-                    )
-                  }
+                ? {
+                  ...checklist,
+                  items: checklist.items.map(item =>
+                    item.id === itemId
+                      ? { ...item, text: originalText }
+                      : item
+                  )
+                }
                 : checklist
             ))
             toast.error('Failed to update checklist item text')
@@ -1160,7 +1179,7 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
                       </div>
 
                     )}
-                    
+
                     {/* Loading state for checklists */}
                     {isLoadingChecklists && (
                       <div className="flex items-center justify-center py-4">
@@ -1168,7 +1187,7 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
                         <span className="ml-2 text-sm text-muted-foreground">Loading checklists...</span>
                       </div>
                     )}
-                    
+
                     {/* Error state for checklists */}
                     {checklistError && (
                       <div className="rounded-md border border-destructive/20 bg-destructive/10 p-3">
@@ -1177,7 +1196,7 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
                         </p>
                       </div>
                     )}
-                    
+
                     {/* Render all checklists */}
                     {checklists.map((checklist) => (
                       <Checklist
@@ -1195,7 +1214,7 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
                         className="mt-4"
                       />
                     ))}
-                   
+
                   </div>
                 </div>
               </div>
