@@ -20,7 +20,7 @@ import { reorder } from '@atlaskit/pragmatic-drag-and-drop/reorder';
 import { PlusCircle } from 'lucide-react';
 import { useContext, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { Column } from './column';
+import { Column } from '@/components/column/column'; 
 import { TProject } from '@/models/project';
 import { TColumn } from '@/models/column';
 import { TCard } from '@/models/card';
@@ -30,7 +30,6 @@ interface BoardProps {
 }
 
 export function Board({ project }: BoardProps) {
-    console.log("Board was called")
     const [optimisticUpdates, setOptimisticUpdates] = useState({});
 
     const currentProject = {
@@ -46,8 +45,7 @@ export function Board({ project }: BoardProps) {
     // Create column mutation with database persistence
     const createColumnMutation = useCreateColumn({
         onSuccess: (data) => {
-            setNewListTitle('');
-            setIsAddingList(false);
+            
             // Replace the temporary column with the real column data
             const realColumn: TColumn = {
                 id: data.id,
@@ -62,6 +60,7 @@ export function Board({ project }: BoardProps) {
                 col.id === "temp" ? realColumn : col
             );
             setOptimisticUpdates({ columns: updatedColumns });
+           
         },
         onError: (error: FormError) => {
             // Rollback optimistic update by removing the temporary column
@@ -140,13 +139,11 @@ export function Board({ project }: BoardProps) {
             return;
         }
 
-        // console.log("projectState.columns", projectState.columns);
         var order = 0;
         if (currentProject.columns.length === 0) {
             order = 0;
         } else {
-            const maxOrder = currentProject.columns.length - 1;
-            order = maxOrder + 1;
+            order = (currentProject.columns.length - 1) + 1;
         }
         // Create optimistic column for immediate UI update
         const optimisticColumn: TColumn = {
@@ -161,7 +158,8 @@ export function Board({ project }: BoardProps) {
 
         // Optimistically update UI
         setOptimisticUpdates({ columns: [...currentProject.columns, optimisticColumn] });
-
+        setIsAddingList(false);
+        setNewListTitle('');
         // Make the API call
         createColumnMutation.mutate({
             title: trimmedTitle,

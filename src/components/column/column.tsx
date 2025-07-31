@@ -1,15 +1,4 @@
 import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-    AlertDialogTrigger
-} from '@/components/ui/alert-dialog';
-import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
@@ -18,9 +7,10 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useDeleteColumn, useUpdateColumn } from '@/hooks/mutations/use-column-mutations';
 import { useCreateTask } from '@/hooks/mutations/use-task-mutations';
-import { useInvalidateProject } from '@/hooks/queries/use-projects';
 import { useOutsideClick } from '@/hooks/use-outside-click';
 import { FormError } from '@/lib/form-error-handler';
+import { TCard } from '@/models/card';
+import { TColumn } from '@/models/column';
 import { SettingsContext } from '@/providers/settings-context';
 import { getColumnData, isCardData, isCardDropTargetData, isColumnData, isDraggingACard, isDraggingAColumn, isShallowEqual, TCardData } from '@/utils/data';
 import { cc } from '@/utils/style-utils';
@@ -38,12 +28,10 @@ import {
 import { MoreHorizontal, Trash2, X } from 'lucide-react';
 import { useContext, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { CardShadow, CardTask } from './card';
-import { ColumnWrapper } from './column-wrapper';
-import { Button } from './ui/button';
-import { Input } from './ui/input';
-import { TColumn } from '@/models/column';
-import { TCard } from '@/models/card';
+import { CardShadow, CardTask } from '@/components/card';
+import { ColumnWrapper } from '@/components/column-wrapper';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
 type TColumnState =
     | { type: 'is-card-over'; isOverChildCard: boolean; dragging: DOMRect }

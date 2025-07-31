@@ -1,6 +1,6 @@
 "use client"
 
-import { Board } from "@/components/board"
+import { Board } from "@/components/board/board"
 import { ErrorBoundary } from "@/components/error-boundary"
 import { RouteLoading } from "@/components/route-loading"
 import { useProject } from "@/hooks/queries/use-projects"

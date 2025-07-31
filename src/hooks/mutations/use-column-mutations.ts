@@ -1,10 +1,10 @@
 'use client'
 
-import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiRequest, FormError } from '@/lib/form-error-handler'
-import { columnKeys } from '../queries/use-columns'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { projectKeys } from '../queries/use-projects'
-import { ProjectWithColumnsAndTasks, TColumn } from '@/utils/data'
+import { TColumn } from '@/models/column'
+import { TProject } from '@/models/project'
 
 // Types for mutation data
 interface CreateColumnData {
@@ -91,9 +91,7 @@ export const useCreateColumn = (options: UseCreateColumnOptions = {}) => {
         options.onError(error)
       }
     },
-    onSuccess: (data, variables) => {
-      // Invalidate and refetch project data to include the new column
-      queryClient.invalidateQueries({ queryKey: projectKeys.detail(variables.projectId) })
+    onSuccess: (data) => {
 
       if (options.onSuccess) {
         options.onSuccess(data)
@@ -116,7 +114,7 @@ export const useUpdateColumn = (options: UseUpdateColumnOptions = {}) => {
       const previousProject = queryClient.getQueryData(projectKeys.detail(projectId))
 
       // Optimistically update the column
-      queryClient.setQueryData(projectKeys.detail(projectId), (old: ProjectWithColumnsAndTasks) => {
+      queryClient.setQueryData(projectKeys.detail(projectId), (old: TProject) => {
         if (!old) return old
         return {
           ...old,
@@ -164,7 +162,6 @@ export const useDeleteColumn = (options: UseDeleteColumnOptions = {}) => {
       }
     },
     onSuccess: (data, variables) => {
-      queryClient.invalidateQueries({ queryKey: projectKeys.detail(variables.projectId) })
       if (options.onSuccess) {
         options.onSuccess()
       }
