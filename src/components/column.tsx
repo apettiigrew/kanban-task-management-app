@@ -288,46 +288,15 @@ export function Column({ column, onDelete }: ColumnProps) {
                             <DropdownMenuItem className="center">
                                 List actions
                             </DropdownMenuItem>
+                            <DropdownMenuItem
+                                className="text-red-600 focus:text-red-600"
+                                onSelect={(e) => e.preventDefault()}
+                                onClick={handleDelete}
+                                >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Delete column
+                            </DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-                                <AlertDialogTrigger asChild>
-                                    <DropdownMenuItem
-                                        className="text-red-600 focus:text-red-600"
-                                        onSelect={(e) => e.preventDefault()}
-                                    >
-                                        <Trash2 className="h-4 w-4 mr-2" />
-                                        Delete column
-                                    </DropdownMenuItem>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                    <AlertDialogHeader>
-                                        <AlertDialogTitle>Delete Column</AlertDialogTitle>
-                                        <AlertDialogDescription>
-                                            Are you sure you want to delete "{columnTitle}"?
-                                            {column.cards && column.cards.length > 0 ? (
-                                                <span className="block mt-2 text-red-600 font-medium">
-                                                    This column contains {column.cards.length} task{column.cards.length !== 1 ? 's' : ''}.
-                                                    Please move or delete all tasks before deleting the column.
-                                                </span>
-                                            ) : (
-                                                <span className="block mt-2">
-                                                    This action cannot be undone.
-                                                </span>
-                                            )}
-                                        </AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter>
-                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                        <AlertDialogAction
-                                            onClick={handleDelete}
-                                            disabled={column.cards && column.cards.length > 0 || deleteColumnMutation.isPending}
-                                            className="bg-red-600 hover:bg-red-700"
-                                        >
-                                            {deleteColumnMutation.isPending ? 'Deleting...' : 'Delete'}
-                                        </AlertDialogAction>
-                                    </AlertDialogFooter>
-                                </AlertDialogContent>
-                            </AlertDialog>
                         </DropdownMenuContent>
                     </DropdownMenu>
                 )}

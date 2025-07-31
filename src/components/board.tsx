@@ -26,18 +26,18 @@ import { TColumn } from '@/models/column';
 import { TCard } from '@/models/card';
 
 interface BoardProps {
-    project: TProject   
+    project: TProject
 }
 
 export function Board({ project }: BoardProps) {
     console.log("Board was called")
     const [optimisticUpdates, setOptimisticUpdates] = useState({});
-    
+
     const currentProject = {
         ...project,
         ...optimisticUpdates
     };
-    
+
     const [isAddingList, setIsAddingList] = useState(false);
     const [newListTitle, setNewListTitle] = useState('');
     const { settings } = useContext(SettingsContext);
@@ -58,7 +58,7 @@ export function Board({ project }: BoardProps) {
                 updatedAt: data.updatedAt,
                 cards: data.cards || [],
             };
-            const updatedColumns = currentProject.columns.map(col => 
+            const updatedColumns = currentProject.columns.map(col =>
                 col.id === "temp" ? realColumn : col
             );
             setOptimisticUpdates({ columns: updatedColumns });
@@ -80,7 +80,7 @@ export function Board({ project }: BoardProps) {
     // Task mutation hooks for drag and drop functionality
     const moveTaskMutation = useMoveTask({
         onSuccess: () => {
-          
+
         },
         onError: (error: FormError) => {
             toast.error(error.message || 'Failed to move task');
@@ -152,7 +152,7 @@ export function Board({ project }: BoardProps) {
         const optimisticColumn: TColumn = {
             id: `temp`,
             title: trimmedTitle,
-                    projectId: currentProject.id,
+            projectId: currentProject.id,
             order: order,
             createdAt: new Date(),
             updatedAt: new Date(),
@@ -331,7 +331,7 @@ export function Board({ project }: BoardProps) {
 
                     // dropping onto a column, but not onto a card
                     if (isColumnData(dropTargetData)) {
-                            const destinationColumnIndex = currentProject.columns.findIndex(
+                        const destinationColumnIndex = currentProject.columns.findIndex(
                             (column) => column.id === dropTargetData.column.id,
                         );
                         const destination = currentProject.columns[destinationColumnIndex];
@@ -511,7 +511,7 @@ export function Board({ project }: BoardProps) {
                 },
             }),
         );
-            }, [currentProject, settings.boardScrollSpeed, settings.isOverElementAutoScrollEnabled, settings.isOverflowScrollingEnabled]);
+    }, [currentProject, settings.boardScrollSpeed, settings.isOverElementAutoScrollEnabled, settings.isOverflowScrollingEnabled]);
 
     return (
         <div ref={scrollableRef} className="h-screen flex flex-col">
@@ -521,7 +521,7 @@ export function Board({ project }: BoardProps) {
                 </div>
 
                 <div className="flex items-start gap-4 overflow-x-auto pb-4 snap-x snap-mandatory flex-1">
-                        {currentProject.columns.map((column) => (
+                    {currentProject.columns.map((column) => (
                         <Column
                             key={column.id}
                             column={column}
@@ -586,7 +586,7 @@ export const NewListForm: React.FC<NewListFormProps> = ({
     isCreating = false,
 }) => {
     return (
-        <div className="w-[280px] min-w-[280px] flex-shrink-0 bg-muted/40 p-2 rounded-md">
+        <div className="w-[280px] min-w-[280px] flex-shrink-0  bg-gray-50 text-gray-900 rounded-2xl p-4 border border-gray-200">
             <Input
                 autoFocus
                 value={newListTitle}
