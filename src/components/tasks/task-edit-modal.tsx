@@ -872,7 +872,7 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
       createChecklistItemMutation.mutate(
         { text: itemText, checklistId, order: itemOrder, isCompleted: false },
         {
-          onSuccess: (realItem) => {
+          onSuccess: (realItem: CheckListItem) => {
             // Replace optimistic item with real data
             setChecklists(prev => prev.map(checklist =>
               checklist.id === checklistId

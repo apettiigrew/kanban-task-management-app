@@ -92,6 +92,9 @@ export const useCreateColumn = (options: UseCreateColumnOptions = {}) => {
       }
     },
     onSuccess: (data, variables) => {
+      // Invalidate and refetch project data to include the new column
+      queryClient.invalidateQueries({ queryKey: projectKeys.detail(variables.projectId) })
+
       if (options.onSuccess) {
         options.onSuccess(data)
       }
@@ -117,7 +120,7 @@ export const useUpdateColumn = (options: UseUpdateColumnOptions = {}) => {
         if (!old) return old
         return {
           ...old,
-          columns: old.columns.map(col => 
+          columns: old.columns.map((col: TColumn) => 
             col.id === id 
               ? { ...col, title } 
               : col

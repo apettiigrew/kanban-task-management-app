@@ -48,7 +48,20 @@ export function Board({ project }: BoardProps) {
         onSuccess: (data) => {
             setNewListTitle('');
             setIsAddingList(false);
-            setOptimisticUpdates({});
+            // Replace the temporary column with the real column data
+            const realColumn: TColumn = {
+                id: data.id,
+                title: data.title,
+                projectId: data.projectId,
+                order: data.order,
+                createdAt: data.createdAt,
+                updatedAt: data.updatedAt,
+                cards: data.cards || [],
+            };
+            const updatedColumns = currentProject.columns.map(col => 
+                col.id === "temp" ? realColumn : col
+            );
+            setOptimisticUpdates({ columns: updatedColumns });
         },
         onError: (error: FormError) => {
             // Rollback optimistic update by removing the temporary column
