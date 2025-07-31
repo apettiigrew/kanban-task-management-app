@@ -1,11 +1,8 @@
 'use client'
 
 import { apiRequest, FormError } from '@/lib/form-error-handler'
-import { CreateChecklist, CreateChecklistItem, UpdateChecklist, UpdateChecklistItem, Checklist, ChecklistItem } from '@/lib/validations/checklist'
+import { Checklist, ChecklistItem, CreateChecklist, CreateChecklistItem, UpdateChecklist, UpdateChecklistItem } from '@/lib/validations/checklist'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { projectKeys } from '../queries/use-projects'
-import { checklistKeys } from '../queries/use-checklists'
-import { ProjectWithColumnsAndTasks } from '@/utils/data'
 
 // API client functions for mutations
 const createChecklist = async (data: CreateChecklist): Promise<Checklist> => {
@@ -48,9 +45,9 @@ const deleteChecklistItem = async (id: string): Promise<void> => {
     })
 }
 
-const reorderChecklists = async (data: { 
+const reorderChecklists = async (data: {
     cardId: string;
-    checklistOrders: { id: string; order: number }[] 
+    checklistOrders: { id: string; order: number }[]
 }): Promise<void> => {
     return apiRequest<void>('/api/checklists/reorder', {
         method: 'PATCH',
@@ -58,9 +55,9 @@ const reorderChecklists = async (data: {
     })
 }
 
-const reorderChecklistItems = async (data: { 
+const reorderChecklistItems = async (data: {
     checklistId: string;
-    itemOrders: { id: string; order: number; checklistId: string }[] 
+    itemOrders: { id: string; order: number; checklistId: string }[]
 }): Promise<void> => {
     return apiRequest<void>('/api/checklist-items/reorder', {
         method: 'PATCH',
@@ -68,249 +65,68 @@ const reorderChecklistItems = async (data: {
     })
 }
 
-// Type definitions for mutation options
-interface UseCreateChecklistOptions {
-    onSuccess?: (data: Checklist) => void
-    onError?: (error: FormError) => void
-    onFieldErrors?: (errors: Record<string, string>) => void
-}
 
-interface UseUpdateChecklistOptions {
-    onSuccess?: (data: Checklist) => void
-    onError?: (error: FormError) => void
-    onFieldErrors?: (errors: Record<string, string>) => void
-}
-
-interface UseDeleteChecklistOptions {
-    onSuccess?: () => void
-    onError?: (error: FormError) => void
-}
-
-interface UseCreateChecklistItemOptions {
-    onSuccess?: (data: ChecklistItem) => void
-    onError?: (error: FormError) => void
-    onFieldErrors?: (errors: Record<string, string>) => void
-}
-
-interface UseUpdateChecklistItemOptions {
-    onSuccess?: (data: ChecklistItem) => void
-    onError?: (error: FormError) => void
-    onFieldErrors?: (errors: Record<string, string>) => void
-}
-
-interface UseDeleteChecklistItemOptions {
-    onSuccess?: () => void
-    onError?: (error: FormError) => void
-}
-
-interface UseReorderChecklistsOptions {
-    onSuccess?: () => void
-    onError?: (error: FormError) => void
-}
-
-interface UseReorderChecklistItemsOptions {
-    onSuccess?: () => void
-    onError?: (error: FormError) => void
-}
 
 // Create checklist mutation
-export const useCreateChecklist = (options: UseCreateChecklistOptions = {}) => {
-    const queryClient = useQueryClient()
-
+export const useCreateChecklist = () => {
     return useMutation({
         mutationKey: ['createChecklist'],
         mutationFn: createChecklist,
-        onSuccess: (data, variables) => {
-            // Find the card in the project data and get projectId
-            let projectId: string | null = null
-            
-            // Get all project queries and find the one containing this card
-            const queryCache = queryClient.getQueryCache()
-            queryCache.findAll({ queryKey: ['projects'] }).forEach(query => {
-                const projectData = query.state.data as ProjectWithColumnsAndTasks
-                if (projectData?.columns) {
-                    for (const column of projectData.columns) {
-                        if (column.cards?.some(card => card.id === variables.cardId)) {
-                            projectId = projectData.id
-                            break
-                        }
-                    }
-                }
-            })
-
-            if (projectId) {
-                queryClient.invalidateQueries({ queryKey: projectKeys.detail(projectId) })
-            }
-
-            if (options.onSuccess) {
-                options.onSuccess(data)
-            }
-        },
-        onError: (error: FormError) => {
-            if (error.fieldErrors && options.onFieldErrors) {
-                options.onFieldErrors(error.fieldErrors)
-            } else if (options.onError) {
-                options.onError(error)
-            }
-        },
     })
 }
 
 // Update checklist mutation
-export const useUpdateChecklist = (options: UseUpdateChecklistOptions = {}) => {
-    const queryClient = useQueryClient()
-
+export const useUpdateChecklist = () => {
     return useMutation({
         mutationKey: ['updateChecklist'],
-        mutationFn: updateChecklist,
-        onSuccess: (data) => {
-            // Invalidate all project queries since we don't know which project this belongs to
-            queryClient.invalidateQueries({ queryKey: ['projects'] })
-
-            if (options.onSuccess) {
-                options.onSuccess(data)
-            }
-        },
-        onError: (error: FormError) => {
-            if (error.fieldErrors && options.onFieldErrors) {
-                options.onFieldErrors(error.fieldErrors)
-            } else if (options.onError) {
-                options.onError(error)
-            }
-        },
+        mutationFn: updateChecklist
     })
 }
 
 // Delete checklist mutation
-export const useDeleteChecklist = (options: UseDeleteChecklistOptions = {}) => {
-    const queryClient = useQueryClient()
-
+export const useDeleteChecklist = () => {
     return useMutation({
         mutationKey: ['deleteChecklist'],
         mutationFn: deleteChecklist,
-        onSuccess: () => {
-            if (options.onSuccess) {
-                options.onSuccess()
-            }
-        },
-        onError: (error: FormError) => {
-            if (options.onError) {
-                options.onError(error)
-            }
-        },
-    })
-}
-
-// Create checklist item mutation
-export const useCreateChecklistItem = (options: UseCreateChecklistItemOptions = {}) => {
-    return useMutation({
-        mutationKey: ['createChecklistItem'],
-        mutationFn: createChecklistItem,
-        onSuccess: (data) => {
-            if (options.onSuccess) {
-                options.onSuccess(data)
-            }
-        },
-        onError: (error: FormError) => {
-            if (error.fieldErrors && options.onFieldErrors) {
-                options.onFieldErrors(error.fieldErrors)
-            } else if (options.onError) {
-                options.onError(error)
-            }
-        },
-    })
-}
-
-// Update checklist item mutation
-export const useUpdateChecklistItem = (options: UseUpdateChecklistItemOptions = {}) => {
-    const queryClient = useQueryClient()
-
-    return useMutation({
-        mutationKey: ['updateChecklistItem'],
-        mutationFn: updateChecklistItem,
-        onSuccess: (data) => {
-            // Invalidate all project queries
-            queryClient.invalidateQueries({ queryKey: ['projects'] })
-
-            if (options.onSuccess) {
-                options.onSuccess(data)
-            }
-        },
-        onError: (error: FormError) => {
-            if (error.fieldErrors && options.onFieldErrors) {
-                options.onFieldErrors(error.fieldErrors)
-            } else if (options.onError) {
-                options.onError(error)
-            }
-        },
-    })
-}
-
-// Delete checklist item mutation
-export const useDeleteChecklistItem = (options: UseDeleteChecklistItemOptions = {}) => {
-    const queryClient = useQueryClient()
-
-    return useMutation({
-        mutationKey: ['deleteChecklistItem'],
-        mutationFn: deleteChecklistItem,
-        onSuccess: () => {
-            // Invalidate all project queries
-            queryClient.invalidateQueries({ queryKey: ['projects'] })
-
-            if (options.onSuccess) {
-                options.onSuccess()
-            }
-        },
-        onError: (error: FormError) => {
-            if (options.onError) {
-                options.onError(error)
-            }
-        },
     })
 }
 
 // Reorder checklists mutation
-export const useReorderChecklists = (options: UseReorderChecklistsOptions = {}) => {
-    const queryClient = useQueryClient()
-
+export const useReorderChecklists = () => {
     return useMutation({
         mutationKey: ['reorderChecklists'],
-        mutationFn: reorderChecklists,
-        onSuccess: () => {
-            // Invalidate all project queries
-            queryClient.invalidateQueries({ queryKey: ['projects'] })
+        mutationFn: reorderChecklists
+    })
+}
 
-            if (options.onSuccess) {
-                options.onSuccess()
-            }
-        },
-        onError: (error: FormError) => {
-            if (options.onError) {
-                options.onError(error)
-            }
-        },
+// Create checklist item mutation
+export const useCreateChecklistItem = () => {
+    return useMutation({
+        mutationKey: ['createChecklistItem'],
+        mutationFn: createChecklistItem,
+    })
+}
+
+// Update checklist item mutation
+export const useUpdateChecklistItem = () => {
+    return useMutation({
+        mutationKey: ['updateChecklistItem'],
+        mutationFn: updateChecklistItem,
+    })
+}
+
+// Delete checklist item mutation
+export const useDeleteChecklistItem = () => {
+    return useMutation({
+        mutationKey: ['deleteChecklistItem'],
+        mutationFn: deleteChecklistItem,
     })
 }
 
 // Reorder checklist items mutation
-export const useReorderChecklistItems = (options: UseReorderChecklistItemsOptions = {}) => {
-    const queryClient = useQueryClient()
-
+export const useReorderChecklistItems = () => {
     return useMutation({
         mutationKey: ['reorderChecklistItems'],
         mutationFn: reorderChecklistItems,
-        onSuccess: () => {
-            // Invalidate all project queries
-            queryClient.invalidateQueries({ queryKey: ['projects'] })
-
-            if (options.onSuccess) {
-                options.onSuccess()
-            }
-        },
-        onError: (error: FormError) => {
-            if (options.onError) {
-                options.onError(error)
-            }
-        },
     })
 }

@@ -1,8 +1,8 @@
 'use client'
 
-import { useQuery } from '@tanstack/react-query'
 import { apiRequest, FormError } from '@/lib/form-error-handler'
-import { Checklist } from '@/lib/validations/checklist'
+import { TChecklist } from '@/models/checklist'
+import { useQuery } from '@tanstack/react-query'
 
 // Query key factory for checklists
 export const checklistKeys = {
@@ -15,9 +15,9 @@ export const checklistKeys = {
 }
 
 // Fetch checklists for a specific card
-const fetchChecklistsByCard = async (cardId: string): Promise<Checklist[]> => {
+const fetchChecklistsByCard = async (cardId: string): Promise<TChecklist[]> => {
   const params = new URLSearchParams({ cardId })
-  return apiRequest<Checklist[]>(`/api/checklists?${params.toString()}`)
+  return apiRequest<TChecklist[]>(`/api/checklists?${params.toString()}`)
 }
 
 // Options interface for the hook

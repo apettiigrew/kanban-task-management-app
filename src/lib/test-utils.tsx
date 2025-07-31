@@ -21,8 +21,11 @@ const createTestQueryClient = () =>
 const defaultSettings = {
   isOverElementAutoScrollEnabled: true,
   isOverflowScrollingEnabled: true,
-  boardScrollSpeed: 'normal' as const,
-  columnScrollSpeed: 'normal' as const,
+  boardScrollSpeed: 'fast' as const,
+  columnScrollSpeed: 'standard' as const,
+  isBoardMoreObvious: false,
+  isFPSPanelEnabled: false,
+  isCPUBurnEnabled: false,
 }
 
 interface AllTheProvidersProps {

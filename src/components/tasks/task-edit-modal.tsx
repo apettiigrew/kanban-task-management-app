@@ -14,21 +14,24 @@ import {
 } from '@/components/ui/dropdown-menu'
 
 import { Separator } from '@/components/ui/separator'
-import { useUpdateTask } from '@/hooks/mutations/use-task-mutations'
 import {
   useCreateChecklist,
   useCreateChecklistItem,
-  useUpdateChecklist,
-  useUpdateChecklistItem,
   useDeleteChecklist,
   useDeleteChecklistItem,
+  useReorderChecklistItems,
   useReorderChecklists,
-  useReorderChecklistItems
+  useUpdateChecklist,
+  useUpdateChecklistItem
 } from '@/hooks/mutations/use-checklist-mutations'
-import { useChecklistsByCard, checklistKeys } from '@/hooks/queries/use-checklists'
+import { useUpdateTask } from '@/hooks/mutations/use-task-mutations'
+import { checklistKeys, useChecklistsByCard } from '@/hooks/queries/use-checklists'
 
+import { projectKeys } from '@/hooks/queries/use-projects'
 import { FormError } from '@/lib/form-error-handler'
-import { updateTaskSchema } from '@/lib/validations/task'
+import { TCard } from '@/models/card'
+import { TChecklist } from '@/models/checklist'
+import { TChecklistItem } from '@/models/checklist-item'
 import {
   isChecklistData,
   isChecklistDropTargetData,
@@ -37,76 +40,55 @@ import {
   isDraggingAChecklist,
   isDraggingAChecklistItem
 } from '@/utils/data'
-import { monitorForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter'
-import { combine } from '@atlaskit/pragmatic-drag-and-drop/combine'
 import {
   extractClosestEdge
 } from '@atlaskit/pragmatic-drag-and-drop-hitbox/closest-edge'
 import { reorderWithEdge } from '@atlaskit/pragmatic-drag-and-drop-hitbox/util/reorder-with-edge'
-import { zodResolver } from '@hookform/resolvers/zod'
+import { combine } from '@atlaskit/pragmatic-drag-and-drop/combine'
+import { monitorForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter'
 import { useQueryClient } from '@tanstack/react-query'
 import { EditorContent, useEditor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
-import { useState, useRef, useEffect, useCallback, useMemo, memo } from 'react'
-import { useForm } from 'react-hook-form'
-import { toast } from 'sonner'
 import DOMPurify from 'dompurify'
 import {
-  TextIcon,
-  X,
   Bold,
-  Italic,
-  Strikethrough,
-  Code,
-  List,
-  ListOrdered,
-  Quote,
-  Minus,
-  Undo2,
-  Redo2,
   ChevronDown,
+  Code,
   Heading1,
   Heading2,
   Heading3,
   Heading4,
   Heading5,
   Heading6,
+  Italic,
+  List,
+  ListOrdered,
+  Minus,
+  Quote,
+  Redo2,
+  Strikethrough,
+  TextIcon,
   Type,
+  Undo2,
+  X,
 } from 'lucide-react'
-import { TaskDeleteDialog } from './task-delete-dialog'
-import { Textarea } from '../ui/textarea'
-import { DeleteActionButton } from '../delete-action-button'
+import { memo, useCallback, useEffect, useRef, useState } from 'react'
+import { toast } from 'sonner'
 import { AddChecklistButton } from '../add-checklist-button'
 import { Checklist } from '../checklist'
-import { TCard } from '@/models/card'
-import { projectKeys } from '@/hooks/queries/use-projects'
+import { DeleteActionButton } from '../delete-action-button'
+import { Textarea } from '../ui/textarea'
+import { TaskDeleteDialog } from './task-delete-dialog'
 
-interface TaskEditModalProps {
-  card: TCard
-  columnTitle: string
-  isOpen: boolean
-  onClose: () => void
-}
 
 // Use types from validations
-type CheckList = {
-  id: string
-  title: string
-  items: CheckListItem[]
-}
 
-type CheckListItem = {
-  id: string
-  text: string
-  isCompleted: boolean
-}
 
 
 interface EditorToolbarProps {
   editor: any
 }
 
-// MenuBar for Tiptap formatting - redesigned to match Simple Editor template
 const MenuBar = memo(({ editor }: EditorToolbarProps) => {
   if (!editor) return null
 
@@ -318,8 +300,16 @@ const MenuBar = memo(({ editor }: EditorToolbarProps) => {
       </Button>
     </div>
   )
-})
+});
 
+MenuBar.displayName = 'MenuBar'
+
+interface TaskEditModalProps {
+  card: TCard
+  columnTitle: string
+  isOpen: boolean
+  onClose: () => void
+}
 export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditModalProps) {
   const [title, setTitle] = useState(card.title)
   const [isEditingTitle, setIsEditingTitle] = useState(false)
@@ -327,54 +317,6 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
-  // Fetch checklists for this card
-  const {
-    data: fetchedChecklists = [],
-    isLoading: isLoadingChecklists,
-    error: checklistError
-  } = useChecklistsByCard(card.id)
-
-
-
-  const [checklists, setChecklists] = useState<CheckList[]>([])
-  const [optimisticChecklists, setOptimisticChecklists] = useState<string[]>([]) // Track optimistic checklist IDs
-
-  // Sync fetched checklists with local state
-  useEffect(() => {
-    if (fetchedChecklists) {
-      const transformedChecklists: CheckList[] = fetchedChecklists.map(checklist => ({
-        id: checklist.id,
-        title: checklist.title,
-        items: checklist.items.map(item => ({
-          id: item.id,
-          text: item.text,
-          isCompleted: item.isCompleted
-        }))
-      }))
-      setChecklists(transformedChecklists)
-    }
-  }, [fetchedChecklists])
-
-  const form = useForm({
-    resolver: zodResolver(updateTaskSchema),
-    defaultValues: {
-      title: card.title,
-      description: card.description || '',
-    },
-  })
-
-  const updateTaskMutation = useUpdateTask({
-    onSuccess: (updatedCard) => {
-      setIsEditingTitle(false)
-      setIsEditingDescription(false)
-      setTitle(updatedCard.title)
-    },
-    onError: (error: FormError) => {
-      setTitle(card.title)
-      form.setValue('title', card.title)
-      toast.error(error.message || 'Failed to update task')
-    },
-  })
 
   const editor = useEditor({
     extensions: [
@@ -392,12 +334,46 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
       },
     },
     onUpdate: ({ editor }) => {
-      form.setValue('description', editor.getHTML())
+      //  form.setValue('description', editor.getHTML())
     },
   })
 
-  const handleTitleBlur = async () => {
-    let newTitle = form.getValues('title')
+
+  const {
+    data: fetchedChecklists = [],
+    isLoading: isLoadingChecklists,
+    error: checklistError
+  } = useChecklistsByCard(card.id)
+
+
+  useEffect(() => {
+    if (fetchedChecklists) {
+      setChecklists((prev) => [...prev, ...fetchedChecklists])
+    }
+  }, [fetchedChecklists])
+
+
+  const [checklists, setChecklists] = useState<TChecklist[]>([])
+
+  const titleRef = useRef<HTMLTextAreaElement>(null)
+
+
+  const updateTaskMutation = useUpdateTask({
+    onSuccess: (updatedCard) => {
+      setIsEditingTitle(false)
+      setIsEditingDescription(false)
+      setTitle(updatedCard.title)
+    },
+    onError: (error: FormError) => {
+      setTitle(card.title)
+      // form.setValue('title', card.title)
+      toast.error(error.message || 'Failed to update task')
+    },
+  })
+
+
+  const handleTitleBlur = useCallback(async () => {
+    let newTitle = title
     newTitle = newTitle?.trim()
 
     if (newTitle === card.title) {
@@ -406,7 +382,7 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
     }
 
     if (!newTitle?.trim()) {
-      form.setValue('title', card.title)
+      // form.setValue('title', card.title)
       setTitle(card.title)
       setIsEditingTitle(false)
       return
@@ -424,10 +400,10 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
     })
 
     setIsEditingTitle(false)
-  }
+  }, [card.title, card.description, card.columnId, card.order, card.projectId, setTitle, setIsEditingTitle, updateTaskMutation])
 
-  const handleDescriptionSave = async () => {
-    const description = form.getValues('description')
+  const handleDescriptionSave = useCallback(async () => {
+    const description = editor?.getHTML()
     if (description !== card.description) {
       updateTaskMutation.mutate({
         id: card.id as string,
@@ -439,16 +415,16 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
       })
     }
     setIsEditingDescription(false)
-  }
+  }, [card.description, setIsEditingDescription, updateTaskMutation])
 
-  const handleDescriptionCancel = () => {
-    form.setValue('description', card.description || '')
+  const handleDescriptionCancel = useCallback(() => {
+    // form.setValue('description', card.description || '')
     editor?.commands.setContent(card.description || '')
     setIsEditingDescription(false)
-  }
+  }, [card.description, editor, setIsEditingDescription])
 
   // Sync textarea height with content
-  const syncTextareaHeight = () => {
+  const syncTextareaHeight = useCallback(() => {
     if (textareaRef.current) {
       // Reset height to get minimal height
       textareaRef.current.style.height = '0px'
@@ -470,126 +446,30 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
 
       textareaRef.current.style.height = `${finalHeight}px`
     }
-  }
+  }, [textareaRef])
 
   useEffect(() => {
     if (isEditingTitle && textareaRef.current) {
       syncTextareaHeight()
     }
-  }, [isEditingTitle, title])
+  }, [isEditingTitle, title, syncTextareaHeight])
 
   // Initialize mutation hooks with query invalidation
   const queryClient = useQueryClient()
-  const createChecklistMutation = useCreateChecklist({
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: checklistKeys.byCard(card.id) })
-    }
-  })
-  const createChecklistItemMutation = useCreateChecklistItem({
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: checklistKeys.byCard(card.id) })
-    }
-  })
-  const updateChecklistMutation = useUpdateChecklist({
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: checklistKeys.byCard(card.id) })
-    }
-  })
-  const updateChecklistItemMutation = useUpdateChecklistItem({
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: checklistKeys.byCard(card.id) })
-    }
-  })
-  const deleteChecklistMutation = useDeleteChecklist({
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: checklistKeys.byCard(card.id) })
-    }
-  })
-  const deleteChecklistItemMutation = useDeleteChecklistItem({
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: checklistKeys.byCard(card.id) })
-    }
-  })
-  const reorderChecklistsMutation = useReorderChecklists({
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: checklistKeys.byCard(card.id) })
-    }
-  })
-  const reorderChecklistItemsMutation = useReorderChecklistItems({
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: checklistKeys.byCard(card.id) })
-    }
-  })
+  const createChecklistMutation = useCreateChecklist()
+  const updateChecklistMutation = useUpdateChecklist()
 
-  // Add checklist drop monitoring
-  useEffect(() => {
-    return combine(
-      monitorForElements({
-        canMonitor: isDraggingAChecklist,
-        onDrop({ source, location }) {
-          const dragging = source.data;
-          if (!isChecklistData(dragging)) {
-            return;
-          }
+  const deleteChecklistMutation = useDeleteChecklist()
 
-          const innerMost = location.current.dropTargets[0];
-          if (!innerMost) {
-            return;
-          }
+  const createChecklistItemMutation = useCreateChecklistItem()
 
-          const dropTargetData = innerMost.data;
-          if (!isChecklistDropTargetData(dropTargetData)) {
-            return;
-          }
+  const updateChecklistItemMutation = useUpdateChecklistItem()
 
-          const sourceChecklistId = dragging.checklist.id;
-          const targetChecklistId = dropTargetData.checklist.id;
+  const deleteChecklistItemMutation = useDeleteChecklistItem()
+  const reorderChecklistsMutation = useReorderChecklists()
+  const reorderChecklistItemsMutation = useReorderChecklistItems()
 
-          if (sourceChecklistId === targetChecklistId) {
-            return;
-          }
 
-          const sourceIndex = checklists.findIndex(checklist => checklist.id === sourceChecklistId);
-          const targetIndex = checklists.findIndex(checklist => checklist.id === targetChecklistId);
-
-          if (sourceIndex === -1 || targetIndex === -1) {
-            return;
-          }
-
-          const closestEdge = extractClosestEdge(dropTargetData);
-          const reordered = reorderWithEdge({
-            axis: 'vertical',
-            list: checklists,
-            startIndex: sourceIndex,
-            indexOfTarget: targetIndex,
-            closestEdgeOfTarget: closestEdge,
-          });
-
-          // Optimistically update UI
-          setChecklists(reordered);
-
-          // Persist the reordering
-          const checklistOrders = reordered.map((checklist, index) => ({
-            id: checklist.id,
-            order: index
-          }));
-
-          reorderChecklistsMutation.mutate({
-            cardId: card.id,
-            checklistOrders
-          }, {
-            onError: () => {
-              // Revert on error
-              setChecklists(checklists);
-              toast.error('Failed to reorder checklists');
-            }
-          });
-        }
-      })
-    );
-  }, [checklists, card.id, reorderChecklistsMutation])
-
-  // Add checklist item drop monitoring
   useEffect(() => {
     return combine(
       monitorForElements({
@@ -609,8 +489,8 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
 
           // Handle dropping on another checklist item
           if (isChecklistItemDropTargetData(dropTargetData)) {
-            const sourceItem = dragging.item as any;
-            const targetItem = dropTargetData.item as any;
+            const sourceItem = dragging.item;
+            const targetItem = dropTargetData.item;
             const sourceChecklistId = dragging.checklistId as string;
             const targetChecklistId = dropTargetData.checklistId as string;
 
@@ -721,7 +601,7 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
 
           // Handle dropping on a checklist (empty area)
           if (isChecklistDropTargetData(dropTargetData)) {
-            const sourceItem = dragging.item as any;
+            const sourceItem = dragging.item;
             const sourceChecklistId = dragging.checklistId as string;
             const targetChecklistId = dropTargetData.checklist.id;
 
@@ -779,49 +659,111 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
             });
           }
         }
+      }),
+      monitorForElements({
+        canMonitor: isDraggingAChecklist,
+        onDrop({ source, location }) {
+          const dragging = source.data;
+          if (!isChecklistData(dragging)) {
+            return;
+          }
+
+          const innerMost = location.current.dropTargets[0];
+          if (!innerMost) {
+            return;
+          }
+
+          const dropTargetData = innerMost.data;
+          if (!isChecklistDropTargetData(dropTargetData)) {
+            return;
+          }
+
+          const sourceChecklistId = dragging.checklist.id;
+          const targetChecklistId = dropTargetData.checklist.id;
+
+          if (sourceChecklistId === targetChecklistId) {
+            return;
+          }
+
+          const sourceIndex = checklists.findIndex(checklist => checklist.id === sourceChecklistId);
+          const targetIndex = checklists.findIndex(checklist => checklist.id === targetChecklistId);
+
+          if (sourceIndex === -1 || targetIndex === -1) {
+            return;
+          }
+
+          const closestEdge = extractClosestEdge(dropTargetData);
+          const reordered = reorderWithEdge({
+            axis: 'vertical',
+            list: checklists,
+            startIndex: sourceIndex,
+            indexOfTarget: targetIndex,
+            closestEdgeOfTarget: closestEdge,
+          });
+
+          // Optimistically update UI
+          setChecklists(reordered);
+
+          // Persist the reordering
+          const checklistOrders = reordered.map((checklist, index) => ({
+            id: checklist.id,
+            order: index
+          }));
+
+          reorderChecklistsMutation.mutate({
+            cardId: card.id,
+            checklistOrders
+          }, {
+            onError: () => {
+              // Revert on error
+              setChecklists(checklists);
+              toast.error('Failed to reorder checklists');
+            }
+          });
+        }
       })
     );
-  }, [checklists, card.id, reorderChecklistItemsMutation])
+  }, [checklists, card.id, reorderChecklistsMutation])
+
 
   const addChecklist = useCallback((title: string) => {
+
+    let order = 0;
+    if (checklists.length > 0) {
+      order = (checklists.length - 1) + 1
+    }
+
     // Create optimistic checklist immediately
-    const tempId = `temp-checklist-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
-    const optimisticChecklist: CheckList = {
+    const tempId = `temp-checklist-${Math.floor(Math.random() * 5000) + 1}`
+    const optimisticChecklist: TChecklist = {
       id: tempId,
       title,
-      items: []
+      items: [],
+      cardId: card.id as string,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      order: order,
     }
 
     // Add to optimistic state immediately
     setChecklists(prev => [...prev, optimisticChecklist])
-    setOptimisticChecklists(prev => [...prev, tempId])
 
     // Call backend API
     createChecklistMutation.mutate(
-      { title, cardId: card.id as string, order: checklists.length },
+      { title, cardId: card.id, order: order },
       {
-        onSuccess: (realChecklist) => {
-          // Replace optimistic checklist with real data
+        onSuccess: (data: TChecklist) => {
+          // replace the optimisitc checklist with the real data checklist
           setChecklists(prev => prev.map(checklist =>
             checklist.id === tempId
-              ? {
-                id: realChecklist.id,
-                title: realChecklist.title,
-                items: realChecklist.items.map(item => ({
-                  id: item.id,
-                  text: item.text,
-                  isCompleted: item.isCompleted
-                }))
-              }
+              ? { ...checklist, ...data }
               : checklist
           ))
-          setOptimisticChecklists(prev => prev.filter(id => id !== tempId))
+
+          queryClient.invalidateQueries({ queryKey: projectKeys.detail(card.projectId) })
         },
-        onError: () => {
-          // Remove optimistic checklist on error
+        onError: (error) => {
           setChecklists(prev => prev.filter(checklist => checklist.id !== tempId))
-          setOptimisticChecklists(prev => prev.filter(id => id !== tempId))
-          toast.error('Failed to create checklist')
         }
       }
     )
@@ -834,27 +776,58 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
 
     setChecklists(prev => prev.filter(checklist => checklist.id !== checklistId))
 
-    // Only call API for real checklists (not optimistic ones)
-    if (!optimisticChecklists.includes(checklistId)) {
-      deleteChecklistMutation.mutate(checklistId, {
-        onSuccess: () => {
-          queryClient.invalidateQueries({ queryKey: projectKeys.detail(card.projectId) })
-        },
+
+    deleteChecklistMutation.mutate(checklistId, {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: projectKeys.detail(card.projectId) })
+      },
+      onError: () => {
+        setChecklists(prev => [...prev, checklistToDelete])
+        queryClient.invalidateQueries({ queryKey: projectKeys.detail(card.projectId) })
+      }
+    })
+
+  }, [checklists, checklists, deleteChecklistMutation])
+
+
+  const updateChecklistTitle = useCallback((checklistId: string, newTitle: string) => {
+    const originalTitle = checklists.find(c => c.id === checklistId)?.title
+    if (!originalTitle || originalTitle === newTitle) return
+
+    // Optimistically update
+    setChecklists(prev => prev.map(checklist =>
+      checklist.id === checklistId
+        ? { ...checklist, title: newTitle }
+        : checklist
+    ))
+
+    updateChecklistMutation.mutate(
+      { id: checklistId, title: newTitle, oldTitle: originalTitle },
+      {
         onError: () => {
-          // Restore checklist on error
-          setChecklists(prev => [...prev, checklistToDelete])
-          toast.error('Failed to delete checklist')
+          setChecklists(prev =>
+            prev.map(checklist =>
+              checklist.id === checklistId
+                ? { ...checklist, title: originalTitle }
+                : checklist
+            )
+          );
         }
-      })
-    }
-  }, [checklists, optimisticChecklists, deleteChecklistMutation])
+      }
+    )
+
+  }, [checklists, checklists, updateChecklistMutation])
 
   const addChecklistItem = useCallback((checklistId: string, itemText: string) => {
     const tempId = `temp-item-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
-    const newItem: CheckListItem = {
+    const newItem: TChecklistItem = {
       id: tempId,
       text: itemText,
-      isCompleted: false
+      isCompleted: false,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      checklistId: checklistId,
+      order: 0
     }
 
     // Optimistically add item
@@ -865,42 +838,50 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
     ))
 
     // Only call API for real checklists (not optimistic ones)
-    if (!optimisticChecklists.includes(checklistId)) {
-      const checklist = checklists.find(c => c.id === checklistId)
-      const itemOrder = checklist?.items.length || 0
+    // if (!optimisticChecklists.includes(checklistId)) {
+    const checklist = checklists.find(c => c.id === checklistId)
+    const itemOrder = checklist?.items.length || 0
 
-      createChecklistItemMutation.mutate(
-        { text: itemText, checklistId, order: itemOrder, isCompleted: false },
-        {
-          onSuccess: (realItem: CheckListItem) => {
-            // Replace optimistic item with real data
-            setChecklists(prev => prev.map(checklist =>
-              checklist.id === checklistId
-                ? {
-                  ...checklist,
-                  items: checklist.items.map(item =>
-                    item.id === tempId
-                      ? { id: realItem.id, text: realItem.text, isCompleted: realItem.isCompleted }
-                      : item
-                  )
-                }
-                : checklist
-            ))
-            queryClient.invalidateQueries({ queryKey: projectKeys.detail(card.projectId) })
-          },
-          onError: () => {
-            // Remove optimistic item on error
-            setChecklists(prev => prev.map(checklist =>
-              checklist.id === checklistId
-                ? { ...checklist, items: checklist.items.filter(item => item.id !== tempId) }
-                : checklist
-            ))
-            toast.error('Failed to add checklist item')
-          }
+    createChecklistItemMutation.mutate(
+      { text: itemText, checklistId, order: itemOrder, isCompleted: false },
+      {
+        onSuccess: (realItem: TChecklistItem) => {
+          // Replace optimistic item with real data
+          setChecklists(prev => prev.map(checklist =>
+            checklist.id === checklistId
+              ? {
+                ...checklist,
+                items: checklist.items.map(item =>
+                  item.id === tempId
+                    ? {
+                      id: realItem.id,
+                      text: realItem.text,
+                      isCompleted: realItem.isCompleted,
+                      createdAt: realItem.createdAt,
+                      updatedAt: realItem.updatedAt,
+                      checklistId: realItem.checklistId,
+                      order: realItem.order
+                    }
+                    : item
+                )
+              }
+              : checklist
+          ))
+          queryClient.invalidateQueries({ queryKey: projectKeys.detail(card.projectId) })
+        },
+        onError: () => {
+          // Remove optimistic item on error
+          setChecklists(prev => prev.map(checklist =>
+            checklist.id === checklistId
+              ? { ...checklist, items: checklist.items.filter(item => item.id !== tempId) }
+              : checklist
+          ))
+          toast.error('Failed to add checklist item')
         }
-      )
-    }
-  }, [checklists, optimisticChecklists, createChecklistItemMutation])
+      }
+    )
+    // }
+  }, [checklists, checklists, createChecklistItemMutation])
 
   const deleteChecklistItem = useCallback((checklistId: string, itemId: string) => {
     // Find the item to delete for potential restoration
@@ -916,23 +897,11 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
     ))
 
     // Only call API for real items (not optimistic ones)
-    if (!itemId.startsWith('temp-')) {
-      deleteChecklistItemMutation.mutate(itemId, {
-        onSuccess: () => {
-          queryClient.invalidateQueries({ queryKey: projectKeys.detail(card.projectId) })
-        },
-        onError: () => {
-          // Restore item on error
-          setChecklists(prev => prev.map(checklist =>
-            checklist.id === checklistId
-              ? { ...checklist, items: [...checklist.items, itemToDelete] }
-              : checklist
-          ))
-          toast.error('Failed to delete checklist item')
-        }
-      })
-    }
-  }, [checklists, deleteChecklistItemMutation])
+
+    deleteChecklistItemMutation.mutate(itemId);
+
+  }, [checklists, deleteChecklistItemMutation, card.projectId]);
+
 
   const toggleChecklistItem = useCallback((checklistId: string, itemId: string) => {
     const checklist = checklists.find(c => c.id === checklistId)
@@ -956,77 +925,49 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
     ))
 
     // Only call API for real items (not optimistic ones)
-    if (!itemId.startsWith('temp-')) {
-      updateChecklistItemMutation.mutate(
-        { id: itemId, isCompleted: newCompletedState },
-        {
-          onSuccess: (data) => {
+    // if (!itemId.startsWith('temp-')) {
+    updateChecklistItemMutation.mutate(
+      { id: itemId, isCompleted: newCompletedState },
+      {
+        onSuccess: (data) => {
 
-            // Update the checklist with new data returned
-            setChecklists(prev => prev.map(checklist =>
-              checklist.id === checklistId
-                ? {
-                  ...checklist, items: checklist.items.map(item =>
-                    item.id === itemId
-                      ? { ...item, isCompleted: data.isCompleted }
-                      : item
-                  )
-                }
-                : checklist
-            ))
-            
-            queryClient.invalidateQueries({ queryKey: projectKeys.detail(card.projectId) })
+          // Update the checklist with new data returned
+          setChecklists(prev => prev.map(checklist =>
+            checklist.id === checklistId
+              ? {
+                ...checklist, items: checklist.items.map(item =>
+                  item.id === itemId
+                    ? { ...item, isCompleted: data.isCompleted }
+                    : item
+                )
+              }
+              : checklist
+          ))
 
-          },
-          onError: () => {
-            // Revert optimistic update on error
-            setChecklists(prev => prev.map(checklist =>
-              checklist.id === checklistId
-                ? {
-                  ...checklist,
-                  items: checklist.items.map(item =>
-                    item.id === itemId
-                      ? { ...item, isCompleted: !newCompletedState }
-                      : item
-                  )
-                }
-                : checklist
-            ))
-            toast.error('Failed to update checklist item')
-          }
+          queryClient.invalidateQueries({ queryKey: projectKeys.detail(card.projectId) })
+
+        },
+        onError: () => {
+          // Revert optimistic update on error
+          setChecklists(prev => prev.map(checklist =>
+            checklist.id === checklistId
+              ? {
+                ...checklist,
+                items: checklist.items.map(item =>
+                  item.id === itemId
+                    ? { ...item, isCompleted: !newCompletedState }
+                    : item
+                )
+              }
+              : checklist
+          ))
+          toast.error('Failed to update checklist item')
         }
-      )
-    }
+      }
+    )
+    // }
   }, [checklists, updateChecklistItemMutation])
 
-  const updateChecklistTitle = useCallback((checklistId: string, newTitle: string) => {
-    const originalTitle = checklists.find(c => c.id === checklistId)?.title
-    if (!originalTitle || originalTitle === newTitle) return
-
-    // Optimistically update
-    setChecklists(prev => prev.map(checklist =>
-      checklist.id === checklistId
-        ? { ...checklist, title: newTitle }
-        : checklist
-    ))
-
-    // Only call API for real checklists (not optimistic ones)
-    if (!optimisticChecklists.includes(checklistId)) {
-      updateChecklistMutation.mutate(
-        { id: checklistId, title: newTitle },
-        {
-          onError: () => {
-            setChecklists(prev => prev.map(checklist =>
-              checklist.id === checklistId
-                ? { ...checklist, title: originalTitle }
-                : checklist
-            ))
-            toast.error('Failed to update checklist title')
-          }
-        }
-      )
-    }
-  }, [checklists, optimisticChecklists, updateChecklistMutation])
 
   const updateChecklistItemText = useCallback((checklistId: string, itemId: string, newText: string) => {
     const checklist = checklists.find(c => c.id === checklistId)
@@ -1048,29 +989,29 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
     ))
 
     // Only call API for real items (not optimistic ones)
-    if (!itemId.startsWith('temp-')) {
-      updateChecklistItemMutation.mutate(
-        { id: itemId, text: newText },
-        {
-          onError: () => {
-            // Revert optimistic update on error
-            setChecklists(prev => prev.map(checklist =>
-              checklist.id === checklistId
-                ? {
-                  ...checklist,
-                  items: checklist.items.map(item =>
-                    item.id === itemId
-                      ? { ...item, text: originalText }
-                      : item
-                  )
-                }
-                : checklist
-            ))
-            toast.error('Failed to update checklist item text')
-          }
+    // if (!itemId.startsWith('temp-')) {
+    updateChecklistItemMutation.mutate(
+      { id: itemId, text: newText },
+      {
+        onError: () => {
+          // Revert optimistic update on error
+          setChecklists(prev => prev.map(checklist =>
+            checklist.id === checklistId
+              ? {
+                ...checklist,
+                items: checklist.items.map(item =>
+                  item.id === itemId
+                    ? { ...item, text: originalText }
+                    : item
+                )
+              }
+              : checklist
+          ))
+          toast.error('Failed to update checklist item text')
         }
-      )
-    }
+      }
+    )
+    //  }
   }, [checklists, updateChecklistItemMutation])
 
   return (
@@ -1083,11 +1024,10 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
               {isEditingTitle ? (
                 <Textarea
                   className="w-full max-w-full break-all whitespace-break-spaces resize-none p-2 overflow-hidden"
-                  {...form.register('title')}
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
                   ref={(el) => {
-                    const { ref } = form.register('title');
-                    if (typeof ref === 'function') ref(el);
-                    textareaRef.current = el;
+                    titleRef.current = el;
                     // Sync height when element is first set
                     if (el) {
                       setTimeout(() => syncTextareaHeight(), 0);

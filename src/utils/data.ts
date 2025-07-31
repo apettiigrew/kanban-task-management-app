@@ -1,6 +1,7 @@
 import { TCard } from "@/models/card";
 import { TColumn } from "@/models/column";
 import { TChecklist } from "@/models/checklist";
+import { TChecklistItem } from "@/models/checklist-item";
 
 const cardKey = Symbol('card');
 export type TCardData = {
@@ -156,14 +157,6 @@ export function getChecklistDropTargetData({
     };
 }
 
-// Checklist item drag and drop data structures
-export type TChecklistItem = {
-    id: string;
-    text: string;
-    isCompleted: boolean;
-    checklistId: string;
-    order: number;
-}
 
 const checklistItemKey = Symbol('checklist-item');
 export type TChecklistItemData = {

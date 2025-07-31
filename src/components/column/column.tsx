@@ -53,13 +53,16 @@ interface ColumnProps {
     onDelete: () => void;
 }
 export function Column({ column, onDelete }: ColumnProps) {
-    console.log("Column was called")
-    const [columnData, setColumnData] = useState(column);
+    const currentColumn = {
+        ...column,
+    };
+
+    
     const [isEditingTitle, setIsEditingTitle] = useState(false);
-    const [columnTitle, setColumnTitle] = useState(column.title);
+    const [columnTitle, setColumnTitle] = useState(currentColumn.title);
     const [isAddingCard, setIsAddingCard] = useState(false);
     const [newCardTitle, setNewCardTitle] = useState('');
-    const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+
     const outerFullHeightRef = useRef<HTMLDivElement>(null);
     const titleInputRef = useRef<HTMLInputElement>(null);
     const newCardInputRef = useRef<HTMLInputElement>(null);
@@ -95,19 +98,6 @@ export function Column({ column, onDelete }: ColumnProps) {
         }
     });
 
-    // Delete column mutation
-    const deleteColumnMutation = useDeleteColumn({
-        onSuccess: () => {
-            setShowDeleteDialog(false);
-        },
-        onError: (error: FormError) => {
-            toast.error(error.message || 'Failed to delete column');
-        }
-    });
-
-    useEffect(() => {
-        setColumnTitle(column.title);
-    }, [column.title]);
 
     const handleTitleSave = () => {
         const trimmedTitle = columnTitle.trim();
@@ -224,7 +214,6 @@ export function Column({ column, onDelete }: ColumnProps) {
             order: column.cards.length,
         });
     }
-    console.log("column", column)
 
     return (
         <ColumnWrapper

@@ -89,7 +89,6 @@ export function Checklist(props: ChecklistProps) {
   const completedItems = items.filter(item => item.isCompleted).length;
   const progress = items.length > 0 ? Math.round((completedItems / items.length) * 100) : 0;
 
-  // Create checklist object for drag and drop (memoized to prevent useEffect re-runs)
   const checklist: TChecklist = useMemo(() => ({
     id,
     title,

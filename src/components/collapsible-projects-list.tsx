@@ -79,7 +79,7 @@ export function CollapsibleProjectsList({
                       <span>{project.title}</span>
                     </div>
                     <span className="text-muted-foreground">
-                      {project.cards?.length || 0}
+                      {project.columns?.length || 0}
                     </span>
                   </Link>
                 </SidebarMenuButton>

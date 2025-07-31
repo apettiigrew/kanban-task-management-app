@@ -50,7 +50,6 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       throw new NotFoundError('Project')
     }
 
-    console.log(JSON.stringify(project, null, 2))
     // get all items in all checklists
     const transformedProject = {
       ...project, 
@@ -79,8 +78,6 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         };
       }),
     };
-
-    // console.log(transformedProject.flat());
 
     return createSuccessResponse(transformedProject, 'Project fetched successfully')
   } catch (error) {

@@ -187,9 +187,6 @@ interface CardDisplayProps {
 
 export function CardDisplay(props: CardDisplayProps) {
   const { card, state, outerRef, innerRef, handleCardClick, handleDeleteClick } = props;
-  console.log("CardDisplay was called")
-  console.log("card", card)
-
   return (
     <div
       ref={outerRef}

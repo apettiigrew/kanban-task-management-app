@@ -6,12 +6,14 @@ import {
   createSuccessResponse, 
   validateRequestBody 
 } from '@/lib/api-error-handler'
+import { TChecklist } from '@/models/checklist'
 
 // GET /api/checklists - Get checklists (optionally filtered by card)
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const cardId = searchParams.get('cardId')
+    
 
     const whereClause = cardId ? { cardId } : {}
 
@@ -29,7 +31,9 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    return createSuccessResponse(checklists, 'Checklists fetched successfully')
+    const response:TChecklist[] = checklists
+
+    return createSuccessResponse(response, 'Checklists fetched successfully')
   } catch (error) {
     return handleAPIError(error, '/api/checklists')
   }
@@ -37,9 +41,11 @@ export async function GET(request: NextRequest) {
 
 // POST /api/checklists - Create a new checklist
 export async function POST(request: NextRequest) {
+  
+
   try {
+    // throw new Error("adas")
     const body = await request.json()
-    
     // Validate the request body using our validation helper
     const validatedData = validateRequestBody(createChecklistSchema, body)
 
