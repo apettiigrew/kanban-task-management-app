@@ -5,14 +5,14 @@ import { Button } from '@/components/ui/button';
 import { ChecklistShadow } from '@/components/ui/checklist-shadow';
 import { Input } from '@/components/ui/input';
 import { TChecklist } from '@/models/checklist';
+import { SettingsContext } from '@/providers/settings-context';
 import {
   getChecklistData,
   getChecklistDropTargetData,
-  isCardData,
   isChecklistData,
   isChecklistItemData,
   isChecklistItemDropTargetData,
-  isColumnData,
+  isDraggingACard,
   isDraggingAChecklist,
   isDraggingAChecklistItem,
   isShallowEqual,
@@ -20,6 +20,8 @@ import {
 } from '@/utils/data';
 import { RenderIf } from '@/utils/render-if';
 import { cc, classIf } from '@/utils/style-utils';
+import { autoScrollForElements } from '@atlaskit/pragmatic-drag-and-drop-auto-scroll/element';
+import { unsafeOverflowAutoScrollForElements } from '@atlaskit/pragmatic-drag-and-drop-auto-scroll/unsafe-overflow/element';
 import {
   attachClosestEdge,
   extractClosestEdge,
@@ -32,7 +34,7 @@ import {
   dropTargetForElements,
 } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
 import { Plus, SquareCheck, Trash2 } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useContext, useEffect, useRef, useState } from 'react';
 
 export type ChecklistState =
   | { type: 'is-checklist-item-over'; isOverChildCard: boolean; dragging: DOMRect }
@@ -95,15 +97,16 @@ export function Checklist(props: ChecklistProps) {
   const [editedItemTexts, setEditedItemTexts] = useState<Record<string, string>>({});
   const outerRef = useRef<HTMLDivElement | null>(null);
   const innerRef = useRef<HTMLDivElement | null>(null);
-
+  const { settings } = useContext(SettingsContext);
   const completedItems = checklist.items.filter(item => item.isCompleted).length;
   const progress = checklist.items.length > 0 ? Math.round((completedItems / checklist.items.length) * 100) : 0;
-
+  const scrollableRef = useRef<HTMLDivElement | null>(null);
 
 
   useEffect(() => {
     const outer = outerRef.current;
     const inner = innerRef.current;
+    const scrollable = scrollableRef.current;
     if (!inner || !outer) return;
 
 
@@ -163,7 +166,23 @@ export function Checklist(props: ChecklistProps) {
           setChecklistState((current) => (isShallowEqual(proposed, current) ? current : proposed));
         },
         onDrop: () => setChecklistState({ type: 'idle' }),
-      })
+        
+      }),
+      autoScrollForElements({
+        canScroll: ({ source }) => settings.isOverElementAutoScrollEnabled && isDraggingACard({ source }),
+        getConfiguration: () => ({ maxScrollSpeed: settings.columnScrollSpeed }),
+        element: scrollable,
+    }),
+    unsafeOverflowAutoScrollForElements({
+        element: scrollable,
+        getConfiguration: () => ({ maxScrollSpeed: settings.columnScrollSpeed }),
+        canScroll: ({ source }) =>
+            settings.isOverElementAutoScrollEnabled &&
+            settings.isOverflowScrollingEnabled &&
+            isDraggingACard({ source }),
+        getOverflow: () => ({ forTopEdge: { top: 1000 }, forBottomEdge: { bottom: 1000 } }),
+    })
+
     );
   }, [checklist, cardId]);
 
@@ -324,7 +343,7 @@ export function Checklist(props: ChecklistProps) {
             </div>
           </div>
 
-          <div className="flex flex-col gap-2 w-full">
+          <div ref={scrollableRef} className="flex flex-col gap-2 w-full">
             {/* Render existing items */}
             <ChecklistItemList
               state={checklistState}
