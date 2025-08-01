@@ -107,7 +107,7 @@ export function Checklist(props: ChecklistProps) {
     const outer = outerRef.current;
     const inner = innerRef.current;
     const scrollable = scrollableRef.current;
-    if (!inner || !outer) return;
+    if (!inner || !outer || !scrollable) return;
 
 
     function setIsChecklistItemOver({ data, location }: { data: TChecklistItemData; location: DragLocationHistory }) {
