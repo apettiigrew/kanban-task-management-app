@@ -22,6 +22,7 @@ import {
 } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
 import { Square, SquareCheck, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { ChecklistState } from '../checklist/checklist';
 
 const innerStyles: { [Key in ChecklistItemState['type']]?: string } = {
     idle: 'hover:cursor-grab',
@@ -213,6 +214,7 @@ export function ChecklistListItem(props: ChecklistListItemProps) {
 }
 
 interface ChecklistItemListProps {
+    state: ChecklistState;
     items: TChecklistItem[];
     checklistId: string;
     editingItemId: string | null;
@@ -227,6 +229,7 @@ interface ChecklistItemListProps {
 
 export function ChecklistItemList(props: ChecklistItemListProps) {
     const {
+        state,
         items,
         checklistId,
         editingItemId,
@@ -239,6 +242,9 @@ export function ChecklistItemList(props: ChecklistItemListProps) {
         setEditedItemTexts
     } = props;
 
+    if (!items || items.length === 0) {
+        return state.type === 'is-checklist-item-over' ? <ChecklistItemShadow dragging={state.dragging} /> : null;
+    }
 
     return (
         <>

@@ -8,10 +8,15 @@ import { TChecklist } from '@/models/checklist';
 import {
   getChecklistData,
   getChecklistDropTargetData,
+  isCardData,
   isChecklistData,
+  isChecklistItemData,
+  isChecklistItemDropTargetData,
+  isColumnData,
   isDraggingAChecklist,
   isDraggingAChecklistItem,
-  isShallowEqual
+  isShallowEqual,
+  TChecklistItemData
 } from '@/utils/data';
 import { RenderIf } from '@/utils/render-if';
 import { cc, classIf } from '@/utils/style-utils';
@@ -21,6 +26,7 @@ import {
   type Edge,
 } from '@atlaskit/pragmatic-drag-and-drop-hitbox/closest-edge';
 import { combine } from '@atlaskit/pragmatic-drag-and-drop/combine';
+import { DragLocationHistory } from '@atlaskit/pragmatic-drag-and-drop/dist/types/internal-types';
 import {
   draggable,
   dropTargetForElements,
@@ -29,6 +35,7 @@ import { Plus, SquareCheck, Trash2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 export type ChecklistState =
+  | { type: 'is-checklist-item-over'; isOverChildCard: boolean; dragging: DOMRect }
   | { type: 'idle' }
   | { type: 'preview'; container: HTMLElement; rect: DOMRect }
   | { type: 'dragging' }
@@ -48,6 +55,11 @@ const outerStyles: { [Key in ChecklistState['type']]?: string } = {
   'is-dragging-and-left-self': 'hidden',
 };
 
+// const stateStyles: { [Key in ChecklistState['type']]: string } = {
+//   idle: '',
+//   'is-checklist-item-over': 'border-2 border-emerald-500 bg-emerald-50 shadow-lg scale-[1.02] transition-all',
+//   'is-dragging': 'opacity-60 rotate-2 shadow-2xl transition-all',
+// };
 
 export interface ChecklistProps {
   checklist: TChecklist;
@@ -94,6 +106,19 @@ export function Checklist(props: ChecklistProps) {
     const inner = innerRef.current;
     if (!inner || !outer) return;
 
+
+    function setIsChecklistItemOver({ data, location }: { data: TChecklistItemData; location: DragLocationHistory }) {
+      const innerMost = location.current.dropTargets[0];
+      const isOverChildCard = Boolean(innerMost && isChecklistItemDropTargetData(innerMost.data));
+
+      const proposed: ChecklistState = {
+        type: 'is-checklist-item-over',
+        dragging: data.rect,
+        isOverChildCard,
+      };
+      setChecklistState((current) => (isShallowEqual(proposed, current) ? current : proposed));
+    }
+
     return combine(
       draggable({
         element: inner,
@@ -104,34 +129,38 @@ export function Checklist(props: ChecklistProps) {
       }),
       dropTargetForElements({
         element: outer,
-        getIsSticky: () => true,
-        canDrop: ({ source }) => isDraggingAChecklist({ source }) || isDraggingAChecklistItem({ source }),
         getData: ({ element, input }) =>
           attachClosestEdge(getChecklistDropTargetData({ checklist }), {
             element,
             input,
             allowedEdges: ['top', 'bottom'],
           }),
-        onDragEnter({ source, self }) {
+        canDrop: ({ source }) => isDraggingAChecklist({ source }) || isDraggingAChecklistItem({ source }),
+        getIsSticky: () => true,
+        onDragStart: ({ source, location }) => isChecklistItemData(source.data) && setIsChecklistItemOver({ data: source.data, location }),
+        onDragEnter({ source, self, location }) {
+          if (isChecklistItemData(source.data)) return setIsChecklistItemOver({ data: source.data, location });
           if (!isChecklistData(source.data) || source.data.checklist.id === checklist.id) return;
           const closestEdge = extractClosestEdge(self.data);
           if (!closestEdge) return;
           setChecklistState({ type: 'is-over', dragging: source.data.rect, closestEdge });
         },
+        onDropTargetChange: ({ source, location }) => isChecklistItemData(source.data) && setIsChecklistItemOver({ data: source.data, location }),
+        onDragLeave: ({ source }) => !isChecklistData(source.data) || source.data.checklist.id !== checklist.id ? setChecklistState({ type: 'idle' }) : undefined,
+        // onDragLeave({ source }) {
+        //   if (!isChecklistData(source.data)) return;
+        //   setChecklistState(
+        //     source.data.checklist.id === checklist.id
+        //       ? { type: 'is-dragging-and-left-self' }
+        //       : { type: 'idle' }
+        //   );
+        // },
         onDrag({ source, self }) {
           if (!isChecklistData(source.data) || source.data.checklist.id === checklist.id) return;
           const closestEdge = extractClosestEdge(self.data);
           if (!closestEdge) return;
           const proposed: ChecklistState = { type: 'is-over', dragging: source.data.rect, closestEdge };
           setChecklistState((current) => (isShallowEqual(proposed, current) ? current : proposed));
-        },
-        onDragLeave({ source }) {
-          if (!isChecklistData(source.data)) return;
-          setChecklistState(
-            source.data.checklist.id === checklist.id
-              ? { type: 'is-dragging-and-left-self' }
-              : { type: 'idle' }
-          );
         },
         onDrop: () => setChecklistState({ type: 'idle' }),
       })
@@ -298,6 +327,7 @@ export function Checklist(props: ChecklistProps) {
           <div className="flex flex-col gap-2 w-full">
             {/* Render existing items */}
             <ChecklistItemList
+              state={checklistState}
               items={checklist.items}
               checklistId={checklist.id}
               editingItemId={editingItemId}
