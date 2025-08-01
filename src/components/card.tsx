@@ -32,6 +32,7 @@ import { TextIcon } from './icons/icons';
 import { TaskDeleteDialog } from './tasks/task-delete-dialog';
 import { TaskEditModal } from './tasks/task-edit-modal';
 import { ChecklistProgressIndicator } from './checklist-progress-indicator';
+import { RenderIf } from '@/utils/render-if';
 
 interface DescriptionIndicatorProps {
   description?: string | null;
@@ -49,11 +50,7 @@ export function DescriptionIndicator(props: DescriptionIndicatorProps) {
   );
 }
 
-interface CardProps {
-  card: TCard;
-  columnId: string;
-  columnTitle: string;
-}
+
 
 type CardState =
   | { type: 'idle' }
@@ -65,6 +62,11 @@ type CardState =
 
 const draggingState: CardState = { type: 'idle' };
 
+interface CardProps {
+  card: TCard;
+  columnId: string;
+  columnTitle: string;
+}
 export function CardTask(props: CardProps) {
   const [cardState, setCardState] = useState<CardState>(draggingState);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -128,6 +130,7 @@ export function CardTask(props: CardProps) {
     );
   }, [card, columnId]);
 
+  console.log('cardState', cardState);
   return (
     <>
       {cardState.type === 'is-over' && cardState.closestEdge === 'top' && (
@@ -154,11 +157,14 @@ export function CardTask(props: CardProps) {
         onClose={() => setIsModalOpen(false)}
       />
 
-      <TaskDeleteDialog
-        card={card}
-        isOpen={isDeleteDialogOpen}
-        onClose={() => setIsDeleteDialogOpen(false)}
-      />
+
+      <RenderIf condition={isDeleteDialogOpen}>
+        <TaskDeleteDialog
+          card={card}
+          isOpen={isDeleteDialogOpen}
+          onClose={() => setIsDeleteDialogOpen(false)}
+        />
+      </RenderIf>
     </>
   );
 }

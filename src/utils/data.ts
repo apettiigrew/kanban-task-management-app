@@ -16,6 +16,12 @@ export function getCardData({
     rect,
     columnId,
 }: Omit<TCardData, typeof cardKey> & { columnId: string }): TCardData {
+    console.log('getCardData', {
+        [cardKey]: true,
+        rect,
+        card,
+        columnId,
+    });
     return {
         [cardKey]: true,
         rect,
@@ -117,9 +123,15 @@ export type TChecklistData = {
 
 export function getChecklistData({
     checklist,
-    rect,
     cardId,
+    rect
 }: Omit<TChecklistData, typeof checklistKey>): TChecklistData {
+    console.log('getChecklistData', {
+        [checklistKey]: true,
+        rect,
+        checklist,
+        cardId,
+    });
     return {
         [checklistKey]: true,
         rect,

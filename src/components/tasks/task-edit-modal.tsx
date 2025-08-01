@@ -6,14 +6,7 @@ import {
   DialogContentWithoutClose,
   DialogTitle,
 } from '@/components/ui/dialog'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
 
-import { Separator } from '@/components/ui/separator'
 import {
   useCreateChecklist,
   useCreateChecklistItem,
@@ -25,7 +18,7 @@ import {
   useUpdateChecklistItem
 } from '@/hooks/mutations/use-checklist-mutations'
 import { useUpdateTask } from '@/hooks/mutations/use-task-mutations'
-import { checklistKeys, useChecklistsByCard } from '@/hooks/queries/use-checklists'
+import { useChecklistsByCard } from '@/hooks/queries/use-checklists'
 
 import { projectKeys } from '@/hooks/queries/use-projects'
 import { FormError } from '@/lib/form-error-handler'
@@ -51,258 +44,19 @@ import { EditorContent, useEditor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import DOMPurify from 'dompurify'
 import {
-  Bold,
-  ChevronDown,
-  Code,
-  Heading1,
-  Heading2,
-  Heading3,
-  Heading4,
-  Heading5,
-  Heading6,
-  Italic,
-  List,
-  ListOrdered,
-  Minus,
-  Quote,
-  Redo2,
-  Strikethrough,
   TextIcon,
-  Type,
-  Undo2,
-  X,
+  X
 } from 'lucide-react'
-import { memo, useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { AddChecklistButton } from '../add-checklist-button'
-import { Checklist } from '../checklist'
+
 import { DeleteActionButton } from '../delete-action-button'
+import { MenuBar } from '../editor/menubar'
 import { Textarea } from '../ui/textarea'
 import { TaskDeleteDialog } from './task-delete-dialog'
-
-
-// Use types from validations
-
-
-
-interface EditorToolbarProps {
-  editor: any
-}
-
-const MenuBar = memo(({ editor }: EditorToolbarProps) => {
-  if (!editor) return null
-
-  const getHeadingIcon = () => {
-    if (editor.isActive('heading', { level: 1 })) return <Heading1 className="h-4 w-4" />
-    if (editor.isActive('heading', { level: 2 })) return <Heading2 className="h-4 w-4" />
-    if (editor.isActive('heading', { level: 3 })) return <Heading3 className="h-4 w-4" />
-    if (editor.isActive('heading', { level: 4 })) return <Heading4 className="h-4 w-4" />
-    if (editor.isActive('heading', { level: 5 })) return <Heading5 className="h-4 w-4" />
-    if (editor.isActive('heading', { level: 6 })) return <Heading6 className="h-4 w-4" />
-    return <Type className="h-4 w-4" />
-  }
-
-  return (
-    <div className="flex items-center gap-1 p-2 border-b bg-background">
-      {/* Undo/Redo Group */}
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        onClick={() => editor.chain().focus().undo().run()}
-        disabled={!editor.can().undo()}
-        className="h-8 w-8 p-0"
-        aria-label="Undo"
-      >
-        <Undo2 className="h-4 w-4" />
-      </Button>
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        onClick={() => editor.chain().focus().redo().run()}
-        disabled={!editor.can().redo()}
-        className="h-8 w-8 p-0"
-        aria-label="Redo"
-      >
-        <Redo2 className="h-4 w-4" />
-      </Button>
-
-      <Separator orientation="vertical" className="mx-1 h-6" />
-
-      {/* Headings Dropdown */}
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="h-8 px-2 gap-1"
-            aria-label="Text formatting"
-          >
-            {getHeadingIcon()}
-            <ChevronDown className="h-3 w-3" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="w-48">
-          <DropdownMenuItem
-            onClick={() => editor.chain().focus().setParagraph().run()}
-            className={editor.isActive('paragraph') ? 'bg-accent' : ''}
-          >
-            <Type className="h-4 w-4 mr-2" />
-            Paragraph
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
-            className={editor.isActive('heading', { level: 1 }) ? 'bg-accent' : ''}
-          >
-            <Heading1 className="h-4 w-4 mr-2" />
-            Heading 1
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
-            className={editor.isActive('heading', { level: 2 }) ? 'bg-accent' : ''}
-          >
-            <Heading2 className="h-4 w-4 mr-2" />
-            Heading 2
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
-            className={editor.isActive('heading', { level: 3 }) ? 'bg-accent' : ''}
-          >
-            <Heading3 className="h-4 w-4 mr-2" />
-            Heading 3
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            onClick={() => editor.chain().focus().toggleHeading({ level: 4 }).run()}
-            className={editor.isActive('heading', { level: 4 }) ? 'bg-accent' : ''}
-          >
-            <Heading4 className="h-4 w-4 mr-2" />
-            Heading 4
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            onClick={() => editor.chain().focus().toggleHeading({ level: 5 }).run()}
-            className={editor.isActive('heading', { level: 5 }) ? 'bg-accent' : ''}
-          >
-            <Heading5 className="h-4 w-4 mr-2" />
-            Heading 5
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            onClick={() => editor.chain().focus().toggleHeading({ level: 6 }).run()}
-            className={editor.isActive('heading', { level: 6 }) ? 'bg-accent' : ''}
-          >
-            <Heading6 className="h-4 w-4 mr-2" />
-            Heading 6
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-
-      <Separator orientation="vertical" className="mx-1 h-6" />
-
-      {/* Text Formatting Group */}
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        onClick={() => editor.chain().focus().toggleBold().run()}
-        className={`h-8 w-8 p-0 ${editor.isActive('bold') ? 'bg-accent' : ''}`}
-        aria-label="Bold"
-      >
-        <Bold className="h-4 w-4" />
-      </Button>
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        onClick={() => editor.chain().focus().toggleItalic().run()}
-        className={`h-8 w-8 p-0 ${editor.isActive('italic') ? 'bg-accent' : ''}`}
-        aria-label="Italic"
-      >
-        <Italic className="h-4 w-4" />
-      </Button>
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        onClick={() => editor.chain().focus().toggleStrike().run()}
-        className={`h-8 w-8 p-0 ${editor.isActive('strike') ? 'bg-accent' : ''}`}
-        aria-label="Strikethrough"
-      >
-        <Strikethrough className="h-4 w-4" />
-      </Button>
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        onClick={() => editor.chain().focus().toggleCode().run()}
-        className={`h-8 w-8 p-0 ${editor.isActive('code') ? 'bg-accent' : ''}`}
-        aria-label="Code"
-      >
-        <Code className="h-4 w-4" />
-      </Button>
-
-      <Separator orientation="vertical" className="mx-1 h-6" />
-
-      {/* Lists Group */}
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        onClick={() => editor.chain().focus().toggleBulletList().run()}
-        className={`h-8 w-8 p-0 ${editor.isActive('bulletList') ? 'bg-accent' : ''}`}
-        aria-label="Bullet list"
-      >
-        <List className="h-4 w-4" />
-      </Button>
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        onClick={() => editor.chain().focus().toggleOrderedList().run()}
-        className={`h-8 w-8 p-0 ${editor.isActive('orderedList') ? 'bg-accent' : ''}`}
-        aria-label="Ordered list"
-      >
-        <ListOrdered className="h-4 w-4" />
-      </Button>
-
-      <Separator orientation="vertical" className="mx-1 h-6" />
-
-      {/* Block Elements Group */}
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        onClick={() => editor.chain().focus().toggleCodeBlock().run()}
-        className={`h-8 w-8 p-0 ${editor.isActive('codeBlock') ? 'bg-accent' : ''}`}
-        aria-label="Code block"
-      >
-        <Code className="h-4 w-4" />
-      </Button>
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        onClick={() => editor.chain().focus().toggleBlockquote().run()}
-        className={`h-8 w-8 p-0 ${editor.isActive('blockquote') ? 'bg-accent' : ''}`}
-        aria-label="Blockquote"
-      >
-        <Quote className="h-4 w-4" />
-      </Button>
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        onClick={() => editor.chain().focus().setHorizontalRule().run()}
-        className="h-8 w-8 p-0"
-        aria-label="Horizontal rule"
-      >
-        <Minus className="h-4 w-4" />
-      </Button>
-    </div>
-  )
-});
-
-MenuBar.displayName = 'MenuBar'
+import { RenderIf } from '@/utils/render-if'
+import { Checklist } from '../checklist/checklist'
 
 interface TaskEditModalProps {
   card: TCard
@@ -316,7 +70,8 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
   const [isEditingDescription, setIsEditingDescription] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
-
+  const [checklists, setChecklists] = useState<TChecklist[]>([])
+  const titleRef = useRef<HTMLTextAreaElement>(null)
 
   const editor = useEditor({
     extensions: [
@@ -341,8 +96,6 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
 
   const {
     data: fetchedChecklists = [],
-    isLoading: isLoadingChecklists,
-    error: checklistError
   } = useChecklistsByCard(card.id)
 
 
@@ -351,12 +104,6 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
       setChecklists((prev) => [...prev, ...fetchedChecklists])
     }
   }, [fetchedChecklists])
-
-
-  const [checklists, setChecklists] = useState<TChecklist[]>([])
-
-  const titleRef = useRef<HTMLTextAreaElement>(null)
-
 
   const updateTaskMutation = useUpdateTask({
     onSuccess: (updatedCard) => {
@@ -370,7 +117,6 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
       toast.error(error.message || 'Failed to update task')
     },
   })
-
 
   const handleTitleBlur = useCallback(async () => {
     let newTitle = title
@@ -458,13 +204,9 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
   const queryClient = useQueryClient()
   const createChecklistMutation = useCreateChecklist()
   const updateChecklistMutation = useUpdateChecklist()
-
   const deleteChecklistMutation = useDeleteChecklist()
-
   const createChecklistItemMutation = useCreateChecklistItem()
-
   const updateChecklistItemMutation = useUpdateChecklistItem()
-
   const deleteChecklistItemMutation = useDeleteChecklistItem()
   const reorderChecklistsMutation = useReorderChecklists()
   const reorderChecklistItemsMutation = useReorderChecklistItems()
@@ -1070,8 +812,6 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
             </button>
           </div>
 
-
-
           <div className="flex flex-col gap-4">
             <div className="flex flex-1 gap-4">
               <div className="flex-[2_0_80%]">
@@ -1124,43 +864,19 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
                           <p className="text-muted-foreground">Add a description...</p>
                         )}
                       </div>
-
                     )}
 
-                    {/* Loading state for checklists */}
-                    {isLoadingChecklists && (
-                      <div className="flex items-center justify-center py-4">
-                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
-                        <span className="ml-2 text-sm text-muted-foreground">Loading checklists...</span>
-                      </div>
-                    )}
-
-                    {/* Error state for checklists */}
-                    {checklistError && (
-                      <div className="rounded-md border border-destructive/20 bg-destructive/10 p-3">
-                        <p className="text-sm text-destructive">
-                          Failed to load checklists. Please try refreshing the page.
-                        </p>
-                      </div>
-                    )}
-
-                    {/* Render all checklists */}
-                    {checklists.map((checklist) => (
-                      <Checklist
-                        key={checklist.id}
-                        id={checklist.id}
-                        cardId={card.id}
-                        title={checklist.title}
-                        items={checklist.items}
-                        onAddItem={(itemText) => addChecklistItem(checklist.id, itemText)}
-                        onDeleteItem={(itemId) => deleteChecklistItem(checklist.id, itemId)}
-                        onToggleItem={(itemId) => toggleChecklistItem(checklist.id, itemId)}
-                        onDelete={() => deleteChecklist(checklist.id)}
-                        onUpdateTitle={(newTitle) => updateChecklistTitle(checklist.id, newTitle)}
-                        onUpdateItemText={(itemId, newText) => updateChecklistItemText(checklist.id, itemId, newText)}
-                        className="mt-4"
-                      />
-                    ))}
+                    <DisplayChecklist
+                      checklists={checklists}
+                      cardId={card.id}
+                      onAddItem={addChecklistItem}
+                      onDeleteItem={deleteChecklistItem}
+                      onToggleItem={toggleChecklistItem}
+                      onDelete={deleteChecklist}
+                      onUpdateTitle={updateChecklistTitle}
+                      onUpdateItemText={updateChecklistItemText}
+                      className="mt-4"
+                    />
 
                   </div>
                 </div>
@@ -1180,12 +896,62 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
         </div>
       </DialogContentWithoutClose>
 
-      <TaskDeleteDialog
-        card={card}
-        isOpen={isDeleteDialogOpen}
-        onClose={() => setIsDeleteDialogOpen(false)}
-        onDeleted={onClose}
-      />
+      <RenderIf condition={isDeleteDialogOpen}>
+        <TaskDeleteDialog
+          card={card}
+          isOpen={isDeleteDialogOpen}
+          onClose={() => setIsDeleteDialogOpen(false)}
+          onDeleted={onClose}
+        />
+      </RenderIf>
     </Dialog>
   )
-} 
+}
+
+
+interface DisplayChecklistProps {
+  checklists: TChecklist[]
+  cardId: string
+  onAddItem: (checklistId: string, itemText: string) => void
+  onDeleteItem: (checklistId: string, itemId: string) => void
+  onToggleItem: (checklistId: string, itemId: string) => void
+  onDelete: (checklistId: string) => void
+  onUpdateTitle: (checklistId: string, newTitle: string) => void
+  onUpdateItemText: (checklistId: string, itemId: string, newText: string) => void
+  className?: string
+}
+
+export function DisplayChecklist(props: DisplayChecklistProps) {
+  const {
+    checklists,
+    cardId,
+    onAddItem,
+    onDeleteItem,
+    onToggleItem,
+    onDelete,
+    onUpdateTitle,
+    onUpdateItemText,
+    className
+  } = props;
+
+  // TODO: Drop checklist items on empty checklist
+  return (
+    <>
+      {checklists.map((checklist) => (
+        <Checklist
+          key={checklist.id}
+          cardId={cardId}
+          
+          checklist={checklist}
+          onAddItem={(itemText) => onAddItem(checklist.id, itemText)}
+          onDeleteItem={(itemId) => onDeleteItem(checklist.id, itemId)}
+          onToggleItem={(itemId) => onToggleItem(checklist.id, itemId)}
+          onDelete={() => onDelete(checklist.id)}
+          onUpdateTitle={(newTitle) => onUpdateTitle(checklist.id, newTitle)}
+          onUpdateItemText={(itemId, newText) => onUpdateItemText(checklist.id, itemId, newText)}
+          className={className}
+        />
+      ))}
+    </>
+  )
+}
