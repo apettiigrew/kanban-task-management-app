@@ -4,11 +4,12 @@ import { TChecklistItem } from '@/models/checklist-item';
 import {
     getChecklistItemData,
     getChecklistItemDropTargetData,
+    isCardData,
     isChecklistItemData,
     isDraggingAChecklistItem,
     isShallowEqual
 } from '@/utils/data';
-import { cc } from '@/utils/style-utils';
+import { cc, classIf } from '@/utils/style-utils';
 import {
     attachClosestEdge,
     extractClosestEdge,
@@ -22,14 +23,25 @@ import {
 import { Square, SquareCheck, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
+const innerStyles: { [Key in ChecklistItemState['type']]?: string } = {
+    idle: 'hover:cursor-grab',
+    'is-dragging': 'opacity-50',
+  };
+  
+  const outerStyles: { [Key in ChecklistItemState['type']]?: string } = {
+    'is-dragging-and-left-self': 'hidden',
+  };
+
+
 type ChecklistItemState =
     | { type: 'idle' }
     | { type: 'preview'; container: HTMLElement; rect: DOMRect }
     | { type: 'dragging' }
     | { type: 'is-dragging' }
+    | { type: 'is-dragging-and-left-self' }
     | { type: 'is-over'; dragging: DOMRect; closestEdge: Edge };
 
-interface ChecklistItemDisplayProps {
+interface ChecklistListItemProps {
     item: TChecklistItem;
     checklistId: string;
     isEditing: boolean;
@@ -42,7 +54,7 @@ interface ChecklistItemDisplayProps {
     onEditedTextChange: (text: string) => void;
 }
 
-export function ChecklistItemDisplay(props: ChecklistItemDisplayProps) {
+export function ChecklistListItem(props: ChecklistListItemProps) {
     const {
         item,
         checklistId,
@@ -100,7 +112,7 @@ export function ChecklistItemDisplay(props: ChecklistItemDisplayProps) {
                         element,
                         input,
                         allowedEdges: ['top', 'bottom'],
-                    }),
+                      }),
                 onDragEnter({ source, self }) {
                     if (!isChecklistItemData(source.data) || source.data.item.id === checklistItem.id) return;
                     const closestEdge = extractClosestEdge(self.data);
@@ -116,17 +128,18 @@ export function ChecklistItemDisplay(props: ChecklistItemDisplayProps) {
                 },
                 onDragLeave({ source }) {
                     if (!isChecklistItemData(source.data)) return;
-                    setItemState({ type: 'idle' });
-                },
+                    setItemState(
+                      source.data.item.id === checklistItem.id
+                        ? { type: 'is-dragging-and-left-self' }
+                        : { type: 'idle' }
+                    );
+                    },
                 onDrop: () => setItemState({ type: 'idle' }),
             })
         );
     }, [checklistItem, checklistId]);
 
-    const itemInnerStyles: { [Key in ChecklistItemState['type']]?: string } = {
-        idle: 'hover:cursor-grab',
-        'is-dragging': 'opacity-50',
-    };
+  
 
     return (
         <>
@@ -137,22 +150,22 @@ export function ChecklistItemDisplay(props: ChecklistItemDisplayProps) {
             <div
                 ref={outerRef}
                 className={cc(
-                    itemState.type === 'is-dragging' ? 'opacity-50' : ''
-                )}
-            >
+                    outerStyles[itemState.type],
+                    classIf(itemState.type === 'is-dragging', 'opacity-50')
+                  )}
+                >
                 <div
                     ref={innerRef}
                     className={cc(
                         "flex items-center gap-2 hover:bg-muted/50 p-2 rounded-md group transition-colors",
                         'active:cursor-grabbing',
-                        itemInnerStyles[itemState.type],
+                        innerStyles[itemState.type],
                         itemState.type === 'is-dragging' ? 'opacity-50 shadow-none' : ''
                     )}
                 >
                     <button
                         onClick={onToggle}
-                        className="flex-shrink-0 transition-colors"
-                    >
+                        className="flex-shrink-0 transition-colors">
                         {item.isCompleted ? (
                             <SquareCheck className="h-4 w-4 text-primary" />
                         ) : (
@@ -199,10 +212,9 @@ export function ChecklistItemDisplay(props: ChecklistItemDisplayProps) {
     );
 }
 
-interface DisplayChecklistItemsProps {
+interface ChecklistItemListProps {
     items: TChecklistItem[];
     checklistId: string;
-    // state: ChecklistItemState;
     editingItemId: string | null;
     editedItemTexts: Record<string, string>;
     onToggleItem: (itemId: string) => void;
@@ -213,7 +225,7 @@ interface DisplayChecklistItemsProps {
     setEditedItemTexts: (value: Record<string, string> | ((prev: Record<string, string>) => Record<string, string>)) => void;
 }
 
-export function DisplayChecklistItems(props: DisplayChecklistItemsProps) {
+export function ChecklistItemList(props: ChecklistItemListProps) {
     const {
         items,
         checklistId,
@@ -231,7 +243,7 @@ export function DisplayChecklistItems(props: DisplayChecklistItemsProps) {
     return (
         <>
             {items.map((item) => (
-                <ChecklistItemDisplay
+                <ChecklistListItem
                     key={item.id}
                     item={item}
                     checklistId={checklistId}

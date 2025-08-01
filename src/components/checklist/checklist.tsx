@@ -1,17 +1,14 @@
 'use client'
 
-import { DisplayChecklistItems } from '@/components/checklist-item/checklist-item';
+import { ChecklistItemList } from '@/components/checklist-item/checklist-item';
 import { Button } from '@/components/ui/button';
 import { ChecklistShadow } from '@/components/ui/checklist-shadow';
 import { Input } from '@/components/ui/input';
 import { TChecklist } from '@/models/checklist';
-import { TChecklistItem } from '@/models/checklist-item';
 import {
   getChecklistData,
   getChecklistDropTargetData,
-  isCardData,
   isChecklistData,
-  isChecklistItemData,
   isDraggingAChecklist,
   isDraggingAChecklistItem,
   isShallowEqual
@@ -29,14 +26,7 @@ import {
   dropTargetForElements,
 } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
 import { Plus, SquareCheck, Trash2 } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
-
-interface ChecklistItem {
-  id: string
-  text: string
-  isCompleted: boolean
-}
-
+import { useEffect, useRef, useState } from 'react';
 
 export type ChecklistState =
   | { type: 'idle' }
@@ -48,7 +38,6 @@ export type ChecklistState =
   | { type: 'is-item-over'; dragging: DOMRect };
 
 const draggingState: ChecklistState = { type: 'idle' };
-
 
 const innerStyles: { [Key in ChecklistState['type']]?: string } = {
   idle: 'hover:cursor-grab',
@@ -308,10 +297,9 @@ export function Checklist(props: ChecklistProps) {
 
           <div className="flex flex-col gap-2 w-full">
             {/* Render existing items */}
-            <DisplayChecklistItems
+            <ChecklistItemList
               items={checklist.items}
               checklistId={checklist.id}
-              // state={checklistState}
               editingItemId={editingItemId}
               editedItemTexts={editedItemTexts}
               onToggleItem={handleToggleItem}
@@ -367,7 +355,7 @@ export function Checklist(props: ChecklistProps) {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={handleAddItem}
+                onClick={() => setIsAddingItem(true)}
                 className="justify-start gap-2 w-fit"
               >
                 <Plus className="h-4 w-4" />
