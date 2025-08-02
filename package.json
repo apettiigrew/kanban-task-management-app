@@ -13,7 +13,8 @@
     "db:generate": "prisma generate --schema=./src/prisma/schema.prisma",
     "db:migrate": "prisma migrate dev --schema=./src/prisma/schema.prisma",
     "db:seed": "tsx src/prisma/seed.ts",
-    "db:reset": "prisma migrate reset --schema=./src/prisma/schema.prisma && npm run db:seed"
+    "db:reset": "prisma migrate reset --schema=./src/prisma/schema.prisma && npm run db:seed",
+    "prepare": "husky"
   },
   "prisma": {
     "seed": "tsx src/prisma/seed.ts"
@@ -77,6 +78,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "15.3.2",
+    "husky": "^9.1.7",
     "jest": "^30.0.5",
     "jest-environment-jsdom": "^30.0.5",
     "tailwindcss": "^4",
