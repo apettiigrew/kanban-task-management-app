@@ -88,15 +88,7 @@ export function Column({ column, onDelete }: ColumnProps) {
     });
 
     // Update column mutation with optimistic updates
-    const updateColumnMutation = useUpdateColumn({
-        onSuccess: (data) => {
-            // console.log("updateColumnMutation onSuccess", data);
-        },
-        onError: (error: FormError) => {
-            toast.error(error.message || 'Failed to update column title');
-            setColumnTitle(column.title);
-        }
-    });
+    const updateColumnMutation = useUpdateColumn();
 
 
     const handleTitleSave = () => {

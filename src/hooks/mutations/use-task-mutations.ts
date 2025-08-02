@@ -2,7 +2,9 @@
 
 import { apiRequest, FormError } from '@/lib/form-error-handler'
 import { CreateTask, DeleteTask, MoveTask, ReorderTasks, Task, UpdateTask } from '@/lib/validations/task'
-import { ProjectWithColumnsAndTasks } from '@/utils/data'
+import { TCard } from '@/models/card'
+import { TColumn } from '@/models/column'
+import { TProject } from '@/models/project'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { projectKeys } from '../queries/use-projects'
 
@@ -93,12 +95,12 @@ export const useCreateTask = (options: UseCreateTaskOptions = {}) => {
             }
 
             // Optimistically add the new task to various query caches
-            queryClient.setQueryData(projectKeys.detail(newTask.projectId), (oldData: ProjectWithColumnsAndTasks) => {
-                const column = oldData.columns.find(column => column.id === newTask.columnId)
+            queryClient.setQueryData(projectKeys.detail(newTask.projectId), (oldData: TProject) => {
+                const column = oldData.columns.find((column: TColumn) => column.id === newTask.columnId)
                 if (column) {
                     const newCards = [...column.cards, optimisticTask]
                     const newColumn = { ...column, cards: newCards }
-                    const newColumns = oldData.columns.map(column => column.id === newTask.columnId ? newColumn : column)
+                    const newColumns = oldData.columns.map((column: TColumn) => column.id === newTask.columnId ? newColumn : column)
                     return { ...oldData, columns: newColumns }
                 }
 
@@ -121,12 +123,12 @@ export const useCreateTask = (options: UseCreateTaskOptions = {}) => {
         },
         onSuccess: (data, variables, context) => {
             //Replace optimistic task with real data in all caches
-            queryClient.setQueryData(projectKeys.detail(variables.projectId), (oldData: ProjectWithColumnsAndTasks) => {
-                const column = oldData.columns.find(column => column.id === variables.columnId)
+            queryClient.setQueryData(projectKeys.detail(variables.projectId), (oldData: TProject) => {
+                const column = oldData.columns.find((column: TColumn) => column.id === variables.columnId)
                 if (column) {
-                    const newCards = column.cards.map(card => card.id === "temp" ? data : card)
+                    const newCards = column.cards.map((card: TCard) => card.id === "temp" ? data : card)
                     const newColumn = { ...column, cards: newCards }
-                    const newColumns = oldData.columns.map(column => column.id === variables.columnId ? newColumn : column)
+                    const newColumns = oldData.columns.map((column: TColumn) => column.id === variables.columnId ? newColumn : column)
                     return { ...oldData, columns: newColumns }
                 }
                 return oldData
@@ -150,10 +152,10 @@ export const useUpdateTask = (options: UseUpdateTaskOptions = {}) => {
             const previousProject = queryClient.getQueryData(projectKeys.detail(updatedTask.projectId))
 
             // Optimistically update the task
-            queryClient.setQueryData(projectKeys.detail(updatedTask.projectId), (oldData: ProjectWithColumnsAndTasks) => {
-                const column = oldData.columns.find(column => column.id === updatedTask.columnId)
+            queryClient.setQueryData(projectKeys.detail(updatedTask.projectId), (oldData: TProject) => {
+                const column = oldData.columns.find((column: TColumn) => column.id === updatedTask.columnId)
                 if (column) {
-                    const newCards = column.cards.map(card =>
+                    const newCards = column.cards.map((card: TCard) =>
                         card.id === updatedTask.id ? { ...card, ...updatedTask } : card
                     )
                     const newColumn = { ...column, cards: newCards }
@@ -181,7 +183,7 @@ export const useUpdateTask = (options: UseUpdateTaskOptions = {}) => {
         },
         onSuccess: (data, variables) => {
             // Replace optimistic update with real data
-            queryClient.setQueryData(projectKeys.detail(variables.projectId), (oldData: ProjectWithColumnsAndTasks) => {
+            queryClient.setQueryData(projectKeys.detail(variables.projectId), (oldData: TProject) => {
                 const column = oldData.columns.find(column => column.id === variables.columnId)
                 if (column) {
                     const newCards = column.cards.map(card =>
@@ -214,7 +216,7 @@ export const useDeleteTask = (options: UseDeleteTaskOptions = {}) => {
             const previousProject = queryClient.getQueryData(projectKeys.detail(projectId))
 
             // Optimistically remove the task
-            queryClient.setQueryData(projectKeys.detail(projectId), (oldData: ProjectWithColumnsAndTasks) => {
+            queryClient.setQueryData(projectKeys.detail(projectId), (oldData: TProject) => {
                 const column = oldData.columns.find(column => column.id === columnId)
                 if (column) {
                     const newCards = column.cards.filter(card => card.id !== id)
@@ -267,7 +269,7 @@ export const useMoveTask = (options: UseMoveTaskOptions = {}) => {
             const previousProject = queryClient.getQueryData(projectKeys.detail(moveData.projectId))
 
             // Optimistically update the cache
-            queryClient.setQueryData(projectKeys.detail(moveData.projectId), (oldData: ProjectWithColumnsAndTasks) => {
+            queryClient.setQueryData(projectKeys.detail(moveData.projectId), (oldData: TProject) => {
                 if (!oldData) return oldData
                 return {
                     ...oldData,
@@ -289,7 +291,7 @@ export const useMoveTask = (options: UseMoveTaskOptions = {}) => {
         },
         onSuccess: (data, moveData, context) => {
             // Update with server response
-            queryClient.setQueryData(projectKeys.detail(moveData.projectId), (oldData: ProjectWithColumnsAndTasks) => {
+            queryClient.setQueryData(projectKeys.detail(moveData.projectId), (oldData: TProject) => {
                 if (!oldData) return oldData
                 return {
                     ...oldData,
@@ -317,7 +319,7 @@ export const useReorderTasks = (options: UseReorderTasksOptions = {}) => {
             const previousProject = queryClient.getQueryData(projectKeys.detail(reorderData.projectId))
 
             // Optimistically reorder tasks within the column
-            queryClient.setQueryData(projectKeys.detail(reorderData.projectId), (oldData: ProjectWithColumnsAndTasks) => {
+            queryClient.setQueryData(projectKeys.detail(reorderData.projectId), (oldData: TProject) => {
                 return { ...oldData, columns: reorderData.columns }
             })
 

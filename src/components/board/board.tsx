@@ -18,9 +18,9 @@ import { combine } from '@atlaskit/pragmatic-drag-and-drop/combine';
 import { monitorForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
 import { reorder } from '@atlaskit/pragmatic-drag-and-drop/reorder';
 import { PlusCircle } from 'lucide-react';
-import { useContext, useEffect, useRef, useState } from 'react';
+import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { Column } from '@/components/column/column'; 
+import { Column } from '@/components/column/column';
 import { TProject } from '@/models/project';
 import { TColumn } from '@/models/column';
 import { TCard } from '@/models/card';
@@ -28,110 +28,65 @@ import { TCard } from '@/models/card';
 interface BoardProps {
     project: TProject
 }
-
+var renderCount = 0;
 export function Board({ project }: BoardProps) {
-    const [optimisticUpdates, setOptimisticUpdates] = useState({});
+    console.log("Board render", project, renderCount++);
+    const [optimisticUpdates, setOptimisticUpdates] = useState<TProject>();
 
     const currentProject = {
         ...project,
         ...optimisticUpdates
     };
+    console.log("currentProject", currentProject);
+    console.log("optimisticUpdates", optimisticUpdates);
 
     const [isAddingList, setIsAddingList] = useState(false);
     const [newListTitle, setNewListTitle] = useState('');
     const { settings } = useContext(SettingsContext);
     const scrollableRef = useRef<HTMLDivElement | null>(null);
 
-    // Create column mutation with database persistence
-    const createColumnMutation = useCreateColumn({
-        onSuccess: (data) => {
-            
-            // Replace the temporary column with the real column data
-            const realColumn: TColumn = {
-                id: data.id,
-                title: data.title,
-                projectId: data.projectId,
-                order: data.order,
-                createdAt: data.createdAt,
-                updatedAt: data.updatedAt,
-                cards: data.cards || [],
-            };
-            const updatedColumns = currentProject.columns.map(col =>
-                col.id === "temp" ? realColumn : col
-            );
-            setOptimisticUpdates({ columns: updatedColumns });
-           
-        },
-        onError: (error: FormError) => {
-            // Rollback optimistic update by removing the temporary column
-            setOptimisticUpdates({});
-            toast.error(error.message || 'Failed to create column');
-        },
-        onFieldErrors: (errors) => {
-            // Rollback optimistic update by removing the temporary column
-            setOptimisticUpdates({});
-            if (errors.title) {
-                toast.error(errors.title);
-            }
-        }
-    });
+    const createColumnMutation = useCreateColumn();
+    const moveTaskMutation = useMoveTask();
+    const reorderTasksMutation = useReorderTasks();
+    const reorderColumnsMutation = useReorderColumns();
+    const deleteColumnMutation = useDeleteColumn();
 
-    // Task mutation hooks for drag and drop functionality
-    const moveTaskMutation = useMoveTask({
-        onSuccess: () => {
+    const handleDeleteColumn = useCallback((columnId: string) => {
 
-        },
-        onError: (error: FormError) => {
-            toast.error(error.message || 'Failed to move task');
-            setOptimisticUpdates({});
-        }
-    });
-
-    const reorderTasksMutation = useReorderTasks({
-        onSuccess: () => {
-
-        },
-        onError: (error: FormError) => {
-            toast.error(error.message || 'Failed to reorder tasks');
-            setOptimisticUpdates({});
-        }
-    });
-
-    const reorderColumnsMutation = useReorderColumns({
-        onError: (error: FormError) => {
-            toast.error(error.message || 'Failed to reorder columns');
-        }
-    });
-
-    const deleteColumnMutation = useDeleteColumn({
-        onSuccess: () => {
-            // The optimistic update is already applied, just need to handle success
-        },
-        onError: (error: FormError) => {
-            // Revert to previous state on error
-            setOptimisticUpdates({});
-            toast.error(error.message || 'Failed to delete column');
-        }
-    });
-
-    const handleDeleteColumn = (columnId: string) => {
-        // Optimistically update UI
+        const optimisticColumn = currentProject.columns.find(col => col.id === columnId);
         const filteredColumns = currentProject.columns.filter(col => col.id !== columnId);
-        // Reorder remaining columns
+
         const reorderedColumns = filteredColumns.map((col, index) => ({
             ...col,
             order: index
         }));
-        setOptimisticUpdates({ columns: reorderedColumns });
+        setOptimisticUpdates((prev) => {
+            return {
+                ...prev,
+                columns: reorderedColumns
+            } as TProject;
+        });
 
         // Make the API call
         deleteColumnMutation.mutate({
             id: columnId,
             projectId: currentProject.id
+        },{
+            onError:()=>{
+               // On re add the column that was deleted optimistically
+               const oldColumns = [...currentProject.columns]
+               console.log("handleDeleteColumn onError", oldColumns);
+               setOptimisticUpdates((prev)=>{
+                return {
+                    ...prev,
+                    columns: oldColumns
+                } as TProject;
+               })
+            }
         });
-    };
+    }, [optimisticUpdates, deleteColumnMutation, currentProject]);
 
-    const handleAddList = () => {
+    const handleAddList = useCallback(() => {
         const trimmedTitle = newListTitle.trim();
 
         if (!trimmedTitle) {
@@ -147,7 +102,7 @@ export function Board({ project }: BoardProps) {
         }
         // Create optimistic column for immediate UI update
         const optimisticColumn: TColumn = {
-            id: `temp`,
+            id: `temp-${Math.floor(Math.random() * 1000000)}`,
             title: trimmedTitle,
             projectId: currentProject.id,
             order: order,
@@ -157,7 +112,7 @@ export function Board({ project }: BoardProps) {
         };
 
         // Optimistically update UI
-        setOptimisticUpdates({ columns: [...currentProject.columns, optimisticColumn] });
+        setOptimisticUpdates({ ...currentProject, columns: [...currentProject.columns, optimisticColumn] });
         setIsAddingList(false);
         setNewListTitle('');
         // Make the API call
@@ -165,8 +120,34 @@ export function Board({ project }: BoardProps) {
             title: trimmedTitle,
             projectId: currentProject.id,
             order: order
+        }, {
+            onSuccess: (data) => {
+
+                setOptimisticUpdates((prev) => ({
+                    ...prev,
+                    columns: prev!.columns.map((column: TColumn) =>
+                        column.id === optimisticColumn.id ? {
+                            id: data.id,
+                            title: data.title,
+                            projectId: data.projectId,
+                            order: data.order,
+                            createdAt: data.createdAt,
+                            updatedAt: data.updatedAt,
+                            cards: data.cards
+                        } : column
+                    ) as TColumn[]
+                }) as TProject);
+            },
+            onError: () => {
+                setOptimisticUpdates((prev) => ({
+                    ...prev,
+                    columns: prev!.columns.filter(column =>
+                        column.id !== optimisticColumn.id
+                    ) as TColumn[]
+                }) as TProject);
+            }
         });
-    };
+    }, [currentProject, createColumnMutation, newListTitle, optimisticUpdates, project]);
 
     useEffect(() => {
         const element = scrollableRef.current;
@@ -243,7 +224,12 @@ export function Board({ project }: BoardProps) {
                             columns[homeColumnIndex] = updated;
 
                             // Optimistically update UI
-                            setOptimisticUpdates({ columns });
+                            setOptimisticUpdates((prev) => {
+                                return {
+                                    ...prev,
+                                    columns: columns
+                                } as TProject;
+                            });
 
                             reorderTasksMutation.mutate({
                                 columnId: home.id,
@@ -313,7 +299,12 @@ export function Board({ project }: BoardProps) {
                         // console.log("columns", columns);
 
                         // Optimistically update UI
-                        setOptimisticUpdates({ columns });
+                        setOptimisticUpdates((prev) => {
+                            return {
+                                ...prev,
+                                columns: columns
+                            } as TProject;
+                        });
 
                         // Move the task between columns
                         moveTaskMutation.mutate({
@@ -354,7 +345,12 @@ export function Board({ project }: BoardProps) {
                             columns[homeColumnIndex] = updated;
 
                             // Optimistically update UI
-                            setOptimisticUpdates({ columns });
+                            setOptimisticUpdates((prev) => {
+                                return {
+                                    ...prev,
+                                    columns: columns
+                                } as TProject;
+                            });
 
                             // Update the order in the database
                             const taskOrders = reordered.map((card, index) => ({
@@ -390,7 +386,12 @@ export function Board({ project }: BoardProps) {
                         };
 
                         // Optimistically update UI
-                        setOptimisticUpdates({ columns });
+                        setOptimisticUpdates((prev) => {
+                            return {
+                                ...prev,
+                                columns: columns
+                            } as TProject;
+                        });
 
                         // Move the task to another column
                         moveTaskMutation.mutate({
@@ -460,7 +461,12 @@ export function Board({ project }: BoardProps) {
                     }));
 
                     // Optimistically update UI
-                    setOptimisticUpdates({ columns: columnOrders });
+                    setOptimisticUpdates((prev) => {
+                        return {
+                            ...prev,
+                            columns: columnOrders
+                        } as TProject;
+                    });
 
                     reorderColumnsMutation.mutate({
                         projectId: currentProject.id,
@@ -552,7 +558,7 @@ interface AddListButtonProps {
     disabled?: boolean;
 }
 
-export const AddListButton: React.FC<AddListButtonProps> = ({ onClick, disabled = false }) => {
+const AddListButton: React.FC<AddListButtonProps> = ({ onClick, disabled = false }) => {
     return (
         <div className="w-[280px] min-w-[280px] flex-shrink-0">
             <Button
@@ -576,7 +582,7 @@ interface NewListFormProps {
     isCreating?: boolean;
 }
 
-export const NewListForm: React.FC<NewListFormProps> = ({
+const NewListForm: React.FC<NewListFormProps> = ({
     newListTitle,
     setNewListTitle,
     handleAddList,

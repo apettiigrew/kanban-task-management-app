@@ -130,7 +130,7 @@ export function CardTask(props: CardProps) {
     );
   }, [card, columnId]);
 
-  console.log('cardState', cardState);
+  // console.log('cardState', cardState);
   return (
     <>
       {cardState.type === 'is-over' && cardState.closestEdge === 'top' && (

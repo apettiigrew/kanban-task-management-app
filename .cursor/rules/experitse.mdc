@@ -43,6 +43,11 @@ alwaysApply: true
 # React Component Structure
 - Use the following as eg how to define react component
 
+
+# Context Prompt
+- Do only one thing 
+- Do not change anything else ever.
+
 interface Prop {
     name: string;
     type: string;

@@ -78,8 +78,6 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 // DELETE /api/columns/[id] - Delete a specific column
 export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
   try {
-
-    // Check if column exists
     const existingColumn = await prisma.column.findUnique({
       where: { id: params.id },
       include: {

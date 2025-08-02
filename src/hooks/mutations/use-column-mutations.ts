@@ -1,10 +1,8 @@
-'use client'
+"use client"
 
-import { apiRequest, FormError } from '@/lib/form-error-handler'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { projectKeys } from '../queries/use-projects'
+import { apiRequest } from '@/lib/form-error-handler'
 import { TColumn } from '@/models/column'
-import { TProject } from '@/models/project'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 
 // Types for mutation data
 interface CreateColumnData {
@@ -55,137 +53,32 @@ const reorderColumns = async (data: ReorderColumnsData): Promise<void> => {
   })
 }
 
-// Enhanced mutation hooks with form error handling and optimistic updates
-interface UseCreateColumnOptions {
-  onSuccess?: (data: TColumn & { taskCount: number }) => void
-  onError?: (error: FormError) => void
-  onFieldErrors?: (errors: Record<string, string>) => void
-}
 
-interface UseUpdateColumnOptions {
-  onSuccess?: (data: TColumn & { taskCount: number }) => void
-  onError?: (error: FormError) => void
-  onFieldErrors?: (errors: Record<string, string>) => void
-}
-
-interface UseDeleteColumnOptions {
-  onSuccess?: () => void
-  onError?: (error: FormError) => void
-}
-
-interface UseReorderColumnsOptions {
-  onSuccess?: () => void
-  onError?: (error: FormError) => void
-}
-
-export const useCreateColumn = (options: UseCreateColumnOptions = {}) => {
-  const queryClient = useQueryClient()
-
+export const useCreateColumn = () => {
   return useMutation({
     mutationKey: ['createColumn'],
     mutationFn: createColumn,
-    onError: (error: FormError) => {
-      if (error.fieldErrors && options.onFieldErrors) {
-        options.onFieldErrors(error.fieldErrors)
-      } else if (options.onError) {
-        options.onError(error)
-      }
-    },
-    onSuccess: (data) => {
-
-      if (options.onSuccess) {
-        options.onSuccess(data)
-      }
-    },
   })
 }
 
-export const useUpdateColumn = (options: UseUpdateColumnOptions = {}) => {
-  const queryClient = useQueryClient()
-
+export const useUpdateColumn = () => {
   return useMutation({
     mutationKey: ['updateColumn'],
-    mutationFn: updateColumn,
-    onMutate: async ({ id, title, projectId }) => {
-      // Cancel any outgoing refetches
-      await queryClient.cancelQueries({ queryKey: projectKeys.detail(projectId) })
-
-      // Snapshot the previous value
-      const previousProject = queryClient.getQueryData(projectKeys.detail(projectId))
-
-      // Optimistically update the column
-      queryClient.setQueryData(projectKeys.detail(projectId), (old: TProject) => {
-        if (!old) return old
-        return {
-          ...old,
-          columns: old.columns.map((col: TColumn) => 
-            col.id === id 
-              ? { ...col, title } 
-              : col
-          )
-        }
-      })
-
-      return { previousProject }
-    },
-    onError: (error: FormError, { id, title, projectId }, context) => {
-      // If the mutation fails, use the context to roll back
-      if (context?.previousProject) {
-        queryClient.setQueryData(projectKeys.detail(projectId), context.previousProject)
-      }
-
-      if (error.fieldErrors && options.onFieldErrors) {
-        options.onFieldErrors(error.fieldErrors)
-      } else if (options.onError) {
-        options.onError(error)
-      }
-    },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: projectKeys.detail(data.projectId) })
-
-      if (options.onSuccess) {
-        options.onSuccess(data)
-      }
-    },
+    mutationFn: updateColumn
   })
 }
 
-export const useDeleteColumn = (options: UseDeleteColumnOptions = {}) => {
-  const queryClient = useQueryClient()
-
+export const useDeleteColumn = () => {
   return useMutation({
     mutationKey: ['deleteColumn'],
     mutationFn: deleteColumn,
-    onError: (error: FormError, data) => {
-      if (options.onError) {
-        options.onError(error)
-      }
-    },
-    onSuccess: (data, variables) => {
-      if (options.onSuccess) {
-        options.onSuccess()
-      }
-    },
   })
 }
 
-export const useReorderColumns = (options: UseReorderColumnsOptions = {}) => {
-  const queryClient = useQueryClient()
-
+export const useReorderColumns = () => {
   return useMutation({
     mutationKey: ['reorderColumns'],
     mutationFn: reorderColumns,
-    onError: (error: FormError, data) => {
-      if (options.onError) {
-        options.onError(error)
-      }
-    },
-    onSuccess: (result, data) => {
-      queryClient.refetchQueries({ queryKey: projectKeys.detail(data.projectId) })
-      if (options.onSuccess) {
-        options.onSuccess()
-      }
-    },
   })
 }
 
