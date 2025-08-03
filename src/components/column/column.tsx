@@ -15,6 +15,7 @@ import { useOutsideClick } from '@/hooks/use-outside-click';
 import { FormError } from '@/lib/form-error-handler';
 import { TCard } from '@/models/card';
 import { TColumn } from '@/models/column';
+import { TProject } from '@/models/project';
 import { SettingsContext } from '@/providers/settings-context';
 import { getColumnData, isCardData, isCardDropTargetData, isColumnData, isDraggingACard, isDraggingAColumn, isShallowEqual, TCardData } from '@/utils/data';
 import { cc } from '@/utils/style-utils';
@@ -30,7 +31,7 @@ import {
     dropTargetForElements
 } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
 import { MoreHorizontal, Trash2, X } from 'lucide-react';
-import { useContext, useEffect, useRef, useState } from 'react';
+import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 type TColumnState =
@@ -53,11 +54,15 @@ interface ColumnProps {
     onDelete: () => void;
 }
 export function Column({ column, onDelete }: ColumnProps) {
+    // Optimistic updates state for cards
+    const [optimisticCards, setOptimisticCards] = useState<TCard[]>([]);
+
     const currentColumn = {
         ...column,
+        cards: [...column.cards, ...optimisticCards]
     };
 
-    
+
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [columnTitle, setColumnTitle] = useState(currentColumn.title);
     const [isAddingCard, setIsAddingCard] = useState(false);
@@ -72,59 +77,20 @@ export function Column({ column, onDelete }: ColumnProps) {
     const { settings } = useContext(SettingsContext);
 
     // Handle outside click for card creation cancellation
-    const handleOutsideClick = () => {
+    const handleOutsideClick = useCallback(() => {
         if (isAddingCard && !newCardTitle.trim()) {
             setIsAddingCard(false);
             setNewCardTitle('');
         }
-    };
+    }, [isAddingCard, newCardTitle]);
 
     const addCardRef = useOutsideClick(handleOutsideClick);
 
-    const createTaskMutation = useCreateTask({
-        onError: (error: FormError) => {
-            toast.error(error.message || 'Failed to create task');
-        }
-    });
-
-    // Update column mutation with optimistic updates
+    const createTaskMutation = useCreateTask();
     const updateColumnMutation = useUpdateColumn();
 
 
-    const handleTitleSave = () => {
-        const trimmedTitle = columnTitle.trim();
-
-        if (!trimmedTitle) {
-            toast.error('Column title cannot be empty');
-            setColumnTitle(column.title);
-            setIsEditingTitle(false);
-            return;
-        }
-
-        if (trimmedTitle === column.title) {
-            setIsEditingTitle(false);
-            return;
-        }
-
-        setColumnTitle(trimmedTitle);
-        updateColumnMutation.mutate({
-            id: column.id,
-            title: trimmedTitle,
-            projectId: column.projectId,
-        });
-
-        setIsEditingTitle(false);
-    };
-
-    const handleTitleCancel = () => {
-        setColumnTitle(column.title);
-        setIsEditingTitle(false);
-    };
-
-    const handleDelete = () => {
-        onDelete();
-
-    };
+    
 
     useEffect(() => {
         if (isEditingTitle && titleInputRef.current) {
@@ -194,18 +160,95 @@ export function Column({ column, onDelete }: ColumnProps) {
                 getOverflow: () => ({ forTopEdge: { top: 1000 }, forBottomEdge: { bottom: 1000 } }),
             })
         );
-    }, [column, column.cards, settings]);
+    }, [column, currentColumn.cards, optimisticCards, settings]);
 
-    const addCard = (columnId: string, title: string) => {
+    const handleTitleSave = useCallback(() => {
+        const trimmedTitle = columnTitle.trim();
+
+        if (!trimmedTitle) {
+            toast.error('Column title cannot be empty');
+            setColumnTitle(column.title);
+            setIsEditingTitle(false);
+            return;
+        }
+
+        if (trimmedTitle === column.title) {
+            setIsEditingTitle(false);
+            return;
+        }
+
+        setColumnTitle(trimmedTitle);
+        updateColumnMutation.mutate({
+            id: column.id,
+            title: trimmedTitle,
+            projectId: column.projectId,
+        });
+
+        setIsEditingTitle(false);
+    }, [columnTitle, column.title, updateColumnMutation, column.id, column.projectId]);
+
+    const handleTitleCancel = useCallback(() => {
+        setColumnTitle(column.title);
+        setIsEditingTitle(false);
+    }, [column.title]);
+
+    const handleDelete = useCallback(() => {
+        onDelete();
+
+    }, [onDelete]);
+
+    const addCard = useCallback((columnId: string, title: string) => {
         setIsAddingCard(false);
         setNewCardTitle('');
+
+        // Create optimistic card for immediate UI update
+        const optimisticCard: TCard = {
+            id: `temp-${Math.floor(Math.random() * 1000000)}`,
+            title: title,
+            description: '',
+            columnId: columnId,
+            projectId: column.projectId,
+            order: currentColumn.cards.length,
+            checklists: [],
+            totalChecklistItems: 0,
+            totalCompletedChecklistItems: 0,
+        };
+
+        // Optimistically update UI
+        setOptimisticCards((prev) => [...prev, optimisticCard]);
+
         createTaskMutation.mutate({
             projectId: column.projectId,
             columnId: columnId,
             title: title,
-            order: column.cards.length,
+            order: currentColumn.cards.length,
+        }, {
+            onSuccess: (data) => {
+                console.log("addCard onSuccess", data);
+                // Replace optimistic card with real data
+                setOptimisticCards((prev) =>
+                    prev.map((card) =>
+                        card.id === optimisticCard.id ? {
+                            id: data.id,
+                            title: data.title,
+                            description: data.description || '',
+                            columnId: data.columnId,
+                            projectId: data.projectId,
+                            order: data.order,
+                            checklists: [],
+                            totalChecklistItems: 0,
+                            totalCompletedChecklistItems: 0,
+                        } : card
+                    )
+                );
+            },
+            onError: () => {
+                setOptimisticCards((prev) =>
+                    prev.filter((card) => card.id !== optimisticCard.id)
+                );
+            }
         });
-    }
+    }, [column.projectId, currentColumn.cards.length, createTaskMutation, setOptimisticCards]);
 
     return (
         <ColumnWrapper
@@ -261,7 +304,7 @@ export function Column({ column, onDelete }: ColumnProps) {
                                 className="text-red-600 focus:text-red-600"
                                 onSelect={(e) => e.preventDefault()}
                                 onClick={handleDelete}
-                                >
+                            >
                                 <Trash2 className="h-4 w-4 mr-2" />
                                 Delete column
                             </DropdownMenuItem>
@@ -272,7 +315,7 @@ export function Column({ column, onDelete }: ColumnProps) {
             </div>
 
             <div className="flex flex-col gap-3 overflow-y-auto scrollbar-thin [&:not(:hover)]:scrollbar-transparent hover:scrollbar-gray-300 flex-grow max-h-screen min-h-0" ref={scrollableRef}>
-                <DisplayCard columnId={column.id} cards={column.cards} state={state} columnTitle={columnTitle} />
+                <DisplayCard columnId={column.id} cards={currentColumn.cards} state={state} columnTitle={columnTitle} />
             </div>
             <div>
                 {isAddingCard ? (

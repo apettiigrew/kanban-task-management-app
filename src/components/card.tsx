@@ -34,6 +34,7 @@ import { TaskEditModal } from './tasks/task-edit-modal';
 import { ChecklistProgressIndicator } from './checklist-progress-indicator';
 import { RenderIf } from '@/utils/render-if';
 
+
 interface DescriptionIndicatorProps {
   description?: string | null;
 }
@@ -163,6 +164,7 @@ export function CardTask(props: CardProps) {
           card={card}
           isOpen={isDeleteDialogOpen}
           onClose={() => setIsDeleteDialogOpen(false)}
+          onDeleted={() => setIsDeleteDialogOpen(false)}
         />
       </RenderIf>
     </>

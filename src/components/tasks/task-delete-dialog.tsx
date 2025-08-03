@@ -10,36 +10,33 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { useDeleteTask } from '@/hooks/mutations/use-task-mutations'
-import { FormError } from '@/lib/form-error-handler'
-import { TCard } from '@/utils/data'
-import { toast } from 'sonner'
+import { TCard } from '@/models/card'
+import { useCallback } from 'react'
 
 interface TaskDeleteDialogProps {
   card: TCard
   isOpen: boolean
   onClose: () => void
   onDeleted?: () => void
+  
 }
 
-export function TaskDeleteDialog({ card, isOpen, onClose, onDeleted }: TaskDeleteDialogProps) {
-  const deleteTaskMutation = useDeleteTask({
-    onSuccess: () => {
-      toast.success('Card deleted successfully')
-      onClose()
-      onDeleted?.()
-    },
-    onError: (error: FormError) => {
-      toast.error(error.message || 'Failed to delete card')
-    },
-  })
+export function TaskDeleteDialog(props: TaskDeleteDialogProps) {
+  const { card, isOpen, onClose, onDeleted } = props
+  const deleteTaskMutation = useDeleteTask()
 
-  const handleDelete = () => {
+  const handleDelete = useCallback(() => {
     deleteTaskMutation.mutate({
       id: card.id as string,
       projectId: card.projectId,
       columnId: card.columnId,
+    }, {
+      onSuccess: () => {
+        onClose()
+        onDeleted?.()
+      },
     })
-  }
+  }, [card.id, card.projectId, card.columnId, deleteTaskMutation, onClose, onDeleted])
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>

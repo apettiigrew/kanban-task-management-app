@@ -66,6 +66,7 @@ interface TaskEditModalProps {
 }
 export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditModalProps) {
   const [title, setTitle] = useState(card.title)
+  const [description, setDescription] = useState(card.description)
   const [isEditingTitle, setIsEditingTitle] = useState(false)
   const [isEditingDescription, setIsEditingDescription] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
@@ -73,6 +74,18 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
   const [checklists, setChecklists] = useState<TChecklist[]>([])
   const titleRef = useRef<HTMLTextAreaElement>(null)
 
+    // Initialize mutation hooks with query invalidation
+    const queryClient = useQueryClient()
+    const createChecklistMutation = useCreateChecklist()
+    const updateChecklistMutation = useUpdateChecklist()
+    const deleteChecklistMutation = useDeleteChecklist()
+    const createChecklistItemMutation = useCreateChecklistItem()
+    const updateChecklistItemMutation = useUpdateChecklistItem()
+    const deleteChecklistItemMutation = useDeleteChecklistItem()
+    const reorderChecklistsMutation = useReorderChecklists()
+    const reorderChecklistItemsMutation = useReorderChecklistItems()
+    const updateTaskMutation = useUpdateTask()
+    
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -89,7 +102,7 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
       },
     },
     onUpdate: ({ editor }) => {
-      //  form.setValue('description', editor.getHTML())
+      setDescription(editor.getHTML())
     },
   })
 
@@ -105,18 +118,7 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
     }
   }, [fetchedChecklists])
 
-  const updateTaskMutation = useUpdateTask({
-    onSuccess: (updatedCard) => {
-      setIsEditingTitle(false)
-      setIsEditingDescription(false)
-      setTitle(updatedCard.title)
-    },
-    onError: (error: FormError) => {
-      setTitle(card.title)
-      // form.setValue('title', card.title)
-      toast.error(error.message || 'Failed to update task')
-    },
-  })
+  
 
   const handleTitleBlur = useCallback(async () => {
     let newTitle = title
@@ -128,7 +130,6 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
     }
 
     if (!newTitle?.trim()) {
-      // form.setValue('title', card.title)
       setTitle(card.title)
       setIsEditingTitle(false)
       return
@@ -158,7 +159,17 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
         columnId: card.columnId,
         order: card.order,
         projectId: card.projectId,
-      })
+      },
+        {
+          onSuccess: (updatedCard) => {
+            setIsEditingTitle(false)
+            setIsEditingDescription(false)
+            setTitle(updatedCard.title)
+          },
+          onError: () => {
+            setTitle(card.title)
+          },
+        })
     }
     setIsEditingDescription(false)
   }, [card.description, setIsEditingDescription, updateTaskMutation])
@@ -200,16 +211,6 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
     }
   }, [isEditingTitle, title, syncTextareaHeight])
 
-  // Initialize mutation hooks with query invalidation
-  const queryClient = useQueryClient()
-  const createChecklistMutation = useCreateChecklist()
-  const updateChecklistMutation = useUpdateChecklist()
-  const deleteChecklistMutation = useDeleteChecklist()
-  const createChecklistItemMutation = useCreateChecklistItem()
-  const updateChecklistItemMutation = useUpdateChecklistItem()
-  const deleteChecklistItemMutation = useDeleteChecklistItem()
-  const reorderChecklistsMutation = useReorderChecklists()
-  const reorderChecklistItemsMutation = useReorderChecklistItems()
 
 
   useEffect(() => {
@@ -941,7 +942,7 @@ export function DisplayChecklist(props: DisplayChecklistProps) {
         <Checklist
           key={checklist.id}
           cardId={cardId}
-          
+
           checklist={checklist}
           onAddItem={(itemText) => onAddItem(checklist.id, itemText)}
           onDeleteItem={(itemId) => onDeleteItem(checklist.id, itemId)}
