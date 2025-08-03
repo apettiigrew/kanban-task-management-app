@@ -1,48 +1,7 @@
-export interface ProjectWithColumnsAndTasks extends TProject {
-    columns: TColumn[]
-}
-export type TChecklist = {
-    id: string;
-    title: string;
-    cardId: string
-    createdAt: string;
-    updatedAt: string;
-    deletedAt: string;
-}
-export type TCard = {
-    id: string;
-    title: string;
-    description: string;
-    columnId: string;
-    order: number;
-    projectId: string;
-};
-
-export interface TProject {
-    id: string;
-    title: string;
-    description: string;
-    createdAt: Date;
-    updatedAt: Date;
-    columns: TColumn[];
-    cards: TCard[];
-}
-
-export type TColumn = {
-    id: string;
-    title: string;
-    cards: TCard[];
-    createdAt: Date;
-    updatedAt: Date;
-    order: number;
-    projectId: string;
-};
-
-export type TBoard = {
-    id: string;
-    title: string;
-    columns: TColumn[];
-};
+import { TCard } from "@/models/card";
+import { TColumn } from "@/models/column";
+import { TChecklist } from "@/models/checklist";
+import { TChecklistItem } from "@/models/checklist-item";
 
 const cardKey = Symbol('card');
 export type TCardData = {
@@ -145,4 +104,109 @@ export function isShallowEqual(
         return false;
     }
     return keys1.every((key1) => Object.is(obj1[key1], obj2[key1]));
+}
+
+// Checklist drag and drop data structures
+const checklistKey = Symbol('checklist');
+export type TChecklistData = {
+    [checklistKey]: true;
+    checklist: TChecklist;
+    cardId: string;
+    rect: DOMRect;
+};
+
+export function getChecklistData({
+    checklist,
+    cardId,
+    rect
+}: Omit<TChecklistData, typeof checklistKey>): TChecklistData {
+    return {
+        [checklistKey]: true,
+        rect,
+        checklist,
+        cardId,
+    };
+}
+
+export function isChecklistData(value: Record<string | symbol, unknown>): value is TChecklistData {
+    return Boolean(value[checklistKey]);
+}
+
+export function isDraggingAChecklist({ source }: TDragSource): boolean {
+    return isChecklistData(source.data);
+}
+
+const checklistDropTargetKey = Symbol('checklist-drop-target');
+export type TChecklistDropTargetData = {
+    [checklistDropTargetKey]: true;
+    checklist: TChecklist;
+};
+
+export function isChecklistDropTargetData(
+    value: Record<string | symbol, unknown>,
+): value is TChecklistDropTargetData {
+    return Boolean(value[checklistDropTargetKey]);
+}
+
+export function getChecklistDropTargetData({
+    checklist,
+}: Omit<TChecklistDropTargetData, typeof checklistDropTargetKey>): TChecklistDropTargetData {
+    return {
+        [checklistDropTargetKey]: true,
+        checklist,
+    };
+}
+
+
+const checklistItemKey = Symbol('checklist-item');
+export type TChecklistItemData = {
+    [checklistItemKey]: true;
+    item: TChecklistItem;
+    checklistId: string;
+    rect: DOMRect;
+};
+
+export function getChecklistItemData({
+    item,
+    rect,
+    checklistId,
+}: Omit<TChecklistItemData, typeof checklistItemKey>): TChecklistItemData {
+    return {
+        [checklistItemKey]: true,
+        rect,
+        item,
+        checklistId,
+    };
+}
+
+export function isChecklistItemData(value: Record<string | symbol, unknown>): value is TChecklistItemData {
+    return Boolean(value[checklistItemKey]);
+}
+
+export function isDraggingAChecklistItem({ source }: TDragSource): boolean {
+    return isChecklistItemData(source.data);
+}
+
+const checklistItemDropTargetKey = Symbol('checklist-item-drop-target');
+export type TChecklistItemDropTargetData = {
+    [checklistItemDropTargetKey]: true;
+    item: TChecklistItem;
+    checklistId: string;
+};
+
+export function isChecklistItemDropTargetData(
+    value: Record<string | symbol, unknown>,
+): value is TChecklistItemDropTargetData {
+    return Boolean(value[checklistItemDropTargetKey]);
+}
+
+export function getChecklistItemDropTargetData({
+    item,
+    checklistId,
+}: Omit<TChecklistItemDropTargetData, typeof checklistItemDropTargetKey>): TChecklistItemDropTargetData {
+    return {
+        [checklistItemDropTargetKey]: true,
+        item,
+        checklistId,
+    };
 }

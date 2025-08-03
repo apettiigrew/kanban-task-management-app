@@ -1,17 +1,15 @@
 "use client"
 
+import { CollapsibleProjectsList } from "@/components/collapsible-projects-list"
+import { ProjectSearch } from "@/components/project-search"
 import {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
   SidebarHeader,
-  SidebarRail,
+  SidebarRail
 } from "@/components/ui/sidebar"
 import { UserProfileHeader } from "@/components/user-profile-header"
-import { ProjectSearch } from "@/components/project-search"
-import { CollapsibleProjectsList } from "@/components/collapsible-projects-list"
-import { SidebarHelpButton } from "@/components/sidebar-help-button"
-import { TProject } from "@/utils/data"
+import { TProject } from "@/models/project"
 
 
 interface DashboardSidebarProps {

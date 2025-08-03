@@ -1,8 +1,12 @@
-export interface Checklist {
+import { TChecklistItem } from "./checklist-item";
+
+export type TChecklist = {
   id: string;
   title: string;
-  description: string;
-  createdAt?: Date;
-  updatedAt?: Date;
-  deletedAt?: Date | null;
+  cardId: string
+  createdAt: Date;
+  updatedAt: Date | null;
+  items: TChecklistItem[];
+  order: number;
 }
+

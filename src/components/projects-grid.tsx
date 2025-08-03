@@ -1,7 +1,7 @@
 "use client"
 
 import { ProjectCard } from "@/components/project-card"
-import { TProject } from '@/utils/data'
+import { TProject } from '@/models/project'
 
 interface ProjectsGridProps {
   projects: TProject[]

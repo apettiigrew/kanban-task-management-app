@@ -2,8 +2,8 @@
 
 import React from 'react'
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query'
-import { apiRequest, FormError, parseApiError } from '@/lib/form-error-handler'
-import { ProjectWithColumnsAndTasks, TProject } from '@/utils/data'
+import { apiRequest, FormError } from '@/lib/form-error-handler'
+import { TProject } from '@/models/project'
 
 // Query key factory for projects
 export const projectKeys = {
@@ -21,7 +21,7 @@ const fetchProjects = async (): Promise<TProject[]> => {
 }
 
 const fetchProject = async (id: string): Promise<TProject> => {
-  return apiRequest<ProjectWithColumnsAndTasks>(`/api/projects/${id}?includeRelations=true`)
+  return apiRequest<TProject>(`/api/projects/${id}?includeRelations=true`)
 }
 
 const fetchProjectsWithStats = async (): Promise<TProject[]> => {
@@ -141,7 +141,7 @@ interface UseDeleteProjectOptions {
 
 export const useCreateProject = (options: UseCreateProjectOptions = {}) => {
   const queryClient = useQueryClient()
-  
+
   return useMutation({
     mutationFn: createProject,
     onMutate: async (newProject) => {
@@ -161,7 +161,6 @@ export const useCreateProject = (options: UseCreateProjectOptions = {}) => {
         createdAt: new Date(),
         updatedAt: new Date(),
         columns: [],
-        cards: [],
       }
 
       // Optimistically add the new project to the list
@@ -194,21 +193,21 @@ export const useCreateProject = (options: UseCreateProjectOptions = {}) => {
       if (context?.previousProjectsWithStats) {
         queryClient.setQueryData(projectKeys.stats(), context.previousProjectsWithStats)
       }
-      
+
       console.error('Error in useCreateProject:', error)
-      
+
       // Handle field errors separately if callback provided
       if (options.onFieldErrors && error instanceof FormError && Object.keys(error.fieldErrors).length > 0) {
         options.onFieldErrors(error.fieldErrors)
       }
-      
+
       options.onError?.(error)
     },
     onSuccess: (data, newProject, context) => {
       // Replace optimistic project with real data
       queryClient.setQueryData(projectKeys.lists(), (oldData: TProject[] | undefined) => {
         if (oldData && context?.optimisticProject) {
-          return oldData.map(project => 
+          return oldData.map(project =>
             project.id === context.optimisticProject.id ? data : project
           )
         }
@@ -221,7 +220,7 @@ export const useCreateProject = (options: UseCreateProjectOptions = {}) => {
           const projectWithStats: TProject = {
             ...data,
           }
-          return oldData.map(project => 
+          return oldData.map(project =>
             project.id === context.optimisticProject.id ? projectWithStats : project
           )
         }
@@ -231,7 +230,7 @@ export const useCreateProject = (options: UseCreateProjectOptions = {}) => {
       // Invalidate and refetch to ensure data consistency
       queryClient.invalidateQueries({ queryKey: projectKeys.lists() })
       queryClient.invalidateQueries({ queryKey: projectKeys.stats() })
-      
+
       // Call custom onSuccess callback if provided
       options.onSuccess?.(data)
     },
@@ -247,7 +246,7 @@ export const useCreateProject = (options: UseCreateProjectOptions = {}) => {
 
 export const useUpdateProject = (options: UseUpdateProjectOptions = {}) => {
   const queryClient = useQueryClient()
-  
+
   return useMutation({
     mutationFn: updateProject,
     onMutate: async ({ id, data }) => {
@@ -262,14 +261,14 @@ export const useUpdateProject = (options: UseUpdateProjectOptions = {}) => {
       const previousProjectsWithStats = queryClient.getQueryData(projectKeys.stats())
 
       // Optimistically update to the new value
-        queryClient.setQueryData(projectKeys.detail(id), (old: TProject | undefined) => {
+      queryClient.setQueryData(projectKeys.detail(id), (old: TProject | undefined) => {
         if (!old) return old
         return { ...old, ...data, updatedAt: new Date() }
       })
 
       queryClient.setQueryData(projectKeys.lists(), (old: TProject[] | undefined) => {
         if (!old) return old
-        return old.map(project => 
+        return old.map(project =>
           project.id === id ? { ...project, ...data, updatedAt: new Date() } : project
         )
       })
@@ -277,7 +276,7 @@ export const useUpdateProject = (options: UseUpdateProjectOptions = {}) => {
       // Optimistically update stats queries if they exist
       queryClient.setQueryData(projectKeys.stats(), (old: TProject[] | undefined) => {
         if (!old) return old
-        return old.map(project => 
+        return old.map(project =>
           project.id === id ? { ...project, ...data, updatedAt: new Date() } : project
         )
       })
@@ -296,14 +295,14 @@ export const useUpdateProject = (options: UseUpdateProjectOptions = {}) => {
       if (context?.previousProjectsWithStats) {
         queryClient.setQueryData(projectKeys.stats(), context.previousProjectsWithStats)
       }
-      
+
       console.error('Error in useUpdateProject:', error)
-      
+
       // Handle field errors separately if callback provided
       if (options.onFieldErrors && error instanceof FormError && Object.keys(error.fieldErrors).length > 0) {
         options.onFieldErrors(error.fieldErrors)
       }
-      
+
       options.onError?.(error)
     },
     onSuccess: (data, { id }) => {
@@ -311,7 +310,7 @@ export const useUpdateProject = (options: UseUpdateProjectOptions = {}) => {
       queryClient.invalidateQueries({ queryKey: projectKeys.detail(id) })
       queryClient.invalidateQueries({ queryKey: projectKeys.lists() })
       queryClient.invalidateQueries({ queryKey: projectKeys.stats() })
-      
+
       options.onSuccess?.(data)
     },
     retry: (failureCount, error) => {
@@ -326,7 +325,7 @@ export const useUpdateProject = (options: UseUpdateProjectOptions = {}) => {
 
 export const useDeleteProject = (options: UseDeleteProjectOptions = {}) => {
   const queryClient = useQueryClient()
-  
+
   return useMutation({
     mutationFn: deleteProject,
     onMutate: async (id) => {
@@ -347,7 +346,7 @@ export const useDeleteProject = (options: UseDeleteProjectOptions = {}) => {
       })
 
       // Optimistically remove from stats queries if they exist
-                queryClient.setQueryData(projectKeys.stats(), (old: TProject[] | undefined) => {
+      queryClient.setQueryData(projectKeys.stats(), (old: TProject[] | undefined) => {
         if (!old) return old
         return old.filter(project => project.id !== id)
       })
@@ -369,7 +368,7 @@ export const useDeleteProject = (options: UseDeleteProjectOptions = {}) => {
       if (context?.previousProject) {
         queryClient.setQueryData(projectKeys.detail(id), context.previousProject)
       }
-      
+
       console.error('Error in useDeleteProject:', error)
       options.onError?.(error)
     },
@@ -377,7 +376,7 @@ export const useDeleteProject = (options: UseDeleteProjectOptions = {}) => {
       // Invalidate and refetch all project-related queries to ensure data consistency
       queryClient.invalidateQueries({ queryKey: projectKeys.lists() })
       queryClient.invalidateQueries({ queryKey: projectKeys.stats() })
-      
+
       options.onSuccess?.()
     },
     retry: (failureCount, error) => {
@@ -393,7 +392,7 @@ export const useDeleteProject = (options: UseDeleteProjectOptions = {}) => {
 // Utility hook for checking if any projects are being modified
 export const useInvalidateProjects = () => {
   const queryClient = useQueryClient()
-  
+
   return React.useCallback(() => {
     queryClient.invalidateQueries({ queryKey: projectKeys.all })
   }, [queryClient])
@@ -402,20 +401,20 @@ export const useInvalidateProjects = () => {
 // Utility hook for centralized mutation state management
 export const useProjectMutationStates = () => {
   const queryClient = useQueryClient()
-  
+
   return {
     // Check if any project mutations are currently pending
     isAnyMutationPending: () => {
       const mutations = queryClient.getMutationCache().getAll()
-      return mutations.some(mutation => 
+      return mutations.some(mutation =>
         mutation.state.status === 'pending' &&
-        (mutation.options.mutationKey?.includes('projects') || 
-         mutation.options.mutationFn === createProject ||
-         mutation.options.mutationFn === updateProject ||
-         mutation.options.mutationFn === deleteProject)
+        (mutation.options.mutationKey?.includes('projects') ||
+          mutation.options.mutationFn === createProject ||
+          mutation.options.mutationFn === updateProject ||
+          mutation.options.mutationFn === deleteProject)
       )
     },
-    
+
     // Get current mutation states
     getMutationStates: () => {
       const mutations = queryClient.getMutationCache().getAll()
@@ -431,15 +430,15 @@ export const useProjectMutationStates = () => {
 // Utility hook for invalidating column queries
 export const useInvalidateProject = () => {
   const queryClient = useQueryClient()
-  
+
   return {
     invalidateAll: () => queryClient.invalidateQueries({ queryKey: projectKeys.all }),
     invalidateByProject: (projectId: string) => {
       queryClient.invalidateQueries({ queryKey: projectKeys.detail(projectId), refetchType: 'all' })
-    
+
     }
   }
-} 
+}
 
 // Re-export the key types for convenience
 export type { CreateProjectData, UpdateProjectData }

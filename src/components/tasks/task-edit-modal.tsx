@@ -1,4 +1,4 @@
-'use client'
+"use client"
 
 import { Button } from '@/components/ui/button'
 import {
@@ -6,53 +6,57 @@ import {
   DialogContentWithoutClose,
   DialogTitle,
 } from '@/components/ui/dialog'
+
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { Input } from '@/components/ui/input'
-import { Separator } from '@/components/ui/separator'
+  useCreateChecklist,
+  useCreateChecklistItem,
+  useDeleteChecklist,
+  useDeleteChecklistItem,
+  useReorderChecklistItems,
+  useReorderChecklists,
+  useUpdateChecklist,
+  useUpdateChecklistItem
+} from '@/hooks/mutations/use-checklist-mutations'
 import { useUpdateTask } from '@/hooks/mutations/use-task-mutations'
-import { useColumn } from '@/hooks/queries/use-columns'
+import { useChecklistsByCard } from '@/hooks/queries/use-checklists'
+
+import { projectKeys } from '@/hooks/queries/use-projects'
 import { FormError } from '@/lib/form-error-handler'
-import { updateTaskSchema } from '@/lib/validations/task'
-import { TCard } from '@/utils/data'
-import { zodResolver } from '@hookform/resolvers/zod'
+import { TCard } from '@/models/card'
+import { TChecklist } from '@/models/checklist'
+import { TChecklistItem } from '@/models/checklist-item'
+import {
+  isChecklistData,
+  isChecklistDropTargetData,
+  isChecklistItemData,
+  isChecklistItemDropTargetData,
+  isDraggingAChecklist,
+  isDraggingAChecklistItem
+} from '@/utils/data'
+import {
+  extractClosestEdge
+} from '@atlaskit/pragmatic-drag-and-drop-hitbox/closest-edge'
+import { reorderWithEdge } from '@atlaskit/pragmatic-drag-and-drop-hitbox/util/reorder-with-edge'
+import { combine } from '@atlaskit/pragmatic-drag-and-drop/combine'
+import { monitorForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter'
 import { useQueryClient } from '@tanstack/react-query'
 import { EditorContent, useEditor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
-import { useState, useRef, useEffect } from 'react'
-import { useForm } from 'react-hook-form'
-import { toast } from 'sonner'
 import DOMPurify from 'dompurify'
 import {
   TextIcon,
-  Trash2,
-  X,
-  Bold,
-  Italic,
-  Strikethrough,
-  Code,
-  List,
-  ListOrdered,
-  Quote,
-  Minus,
-  Undo2,
-  Redo2,
-  ChevronDown,
-  Heading1,
-  Heading2,
-  Heading3,
-  Heading4,
-  Heading5,
-  Heading6,
-  Type
+  X
 } from 'lucide-react'
-import { TaskDeleteDialog } from './task-delete-dialog'
-import { Textarea } from '../ui/textarea'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { toast } from 'sonner'
+import { AddChecklistButton } from '../add-checklist-button'
+
 import { DeleteActionButton } from '../delete-action-button'
+import { MenuBar } from '../editor/menubar'
+import { Textarea } from '../ui/textarea'
+import { TaskDeleteDialog } from './task-delete-dialog'
+import { RenderIf } from '@/utils/render-if'
+import { Checklist } from '../checklist/checklist'
 
 interface TaskEditModalProps {
   card: TCard
@@ -60,255 +64,28 @@ interface TaskEditModalProps {
   isOpen: boolean
   onClose: () => void
 }
-
-interface EditorToolbarProps {
-  editor: any
-}
-
-// MenuBar for Tiptap formatting - redesigned to match Simple Editor template
-const MenuBar = ({ editor }: EditorToolbarProps) => {
-  if (!editor) return null
-
-  const getHeadingIcon = () => {
-    if (editor.isActive('heading', { level: 1 })) return <Heading1 className="h-4 w-4" />
-    if (editor.isActive('heading', { level: 2 })) return <Heading2 className="h-4 w-4" />
-    if (editor.isActive('heading', { level: 3 })) return <Heading3 className="h-4 w-4" />
-    if (editor.isActive('heading', { level: 4 })) return <Heading4 className="h-4 w-4" />
-    if (editor.isActive('heading', { level: 5 })) return <Heading5 className="h-4 w-4" />
-    if (editor.isActive('heading', { level: 6 })) return <Heading6 className="h-4 w-4" />
-    return <Type className="h-4 w-4" />
-  }
-
-  return (
-    <div className="flex items-center gap-1 p-2 border-b bg-background">
-      {/* Undo/Redo Group */}
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        onClick={() => editor.chain().focus().undo().run()}
-        disabled={!editor.can().undo()}
-        className="h-8 w-8 p-0"
-        aria-label="Undo"
-      >
-        <Undo2 className="h-4 w-4" />
-      </Button>
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        onClick={() => editor.chain().focus().redo().run()}
-        disabled={!editor.can().redo()}
-        className="h-8 w-8 p-0"
-        aria-label="Redo"
-      >
-        <Redo2 className="h-4 w-4" />
-      </Button>
-
-      <Separator orientation="vertical" className="mx-1 h-6" />
-
-      {/* Headings Dropdown */}
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="h-8 px-2 gap-1"
-            aria-label="Text formatting"
-          >
-            {getHeadingIcon()}
-            <ChevronDown className="h-3 w-3" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="w-48">
-          <DropdownMenuItem
-            onClick={() => editor.chain().focus().setParagraph().run()}
-            className={editor.isActive('paragraph') ? 'bg-accent' : ''}
-          >
-            <Type className="h-4 w-4 mr-2" />
-            Paragraph
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
-            className={editor.isActive('heading', { level: 1 }) ? 'bg-accent' : ''}
-          >
-            <Heading1 className="h-4 w-4 mr-2" />
-            Heading 1
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
-            className={editor.isActive('heading', { level: 2 }) ? 'bg-accent' : ''}
-          >
-            <Heading2 className="h-4 w-4 mr-2" />
-            Heading 2
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
-            className={editor.isActive('heading', { level: 3 }) ? 'bg-accent' : ''}
-          >
-            <Heading3 className="h-4 w-4 mr-2" />
-            Heading 3
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            onClick={() => editor.chain().focus().toggleHeading({ level: 4 }).run()}
-            className={editor.isActive('heading', { level: 4 }) ? 'bg-accent' : ''}
-          >
-            <Heading4 className="h-4 w-4 mr-2" />
-            Heading 4
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            onClick={() => editor.chain().focus().toggleHeading({ level: 5 }).run()}
-            className={editor.isActive('heading', { level: 5 }) ? 'bg-accent' : ''}
-          >
-            <Heading5 className="h-4 w-4 mr-2" />
-            Heading 5
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            onClick={() => editor.chain().focus().toggleHeading({ level: 6 }).run()}
-            className={editor.isActive('heading', { level: 6 }) ? 'bg-accent' : ''}
-          >
-            <Heading6 className="h-4 w-4 mr-2" />
-            Heading 6
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-
-      <Separator orientation="vertical" className="mx-1 h-6" />
-
-      {/* Text Formatting Group */}
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        onClick={() => editor.chain().focus().toggleBold().run()}
-        className={`h-8 w-8 p-0 ${editor.isActive('bold') ? 'bg-accent' : ''}`}
-        aria-label="Bold"
-      >
-        <Bold className="h-4 w-4" />
-      </Button>
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        onClick={() => editor.chain().focus().toggleItalic().run()}
-        className={`h-8 w-8 p-0 ${editor.isActive('italic') ? 'bg-accent' : ''}`}
-        aria-label="Italic"
-      >
-        <Italic className="h-4 w-4" />
-      </Button>
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        onClick={() => editor.chain().focus().toggleStrike().run()}
-        className={`h-8 w-8 p-0 ${editor.isActive('strike') ? 'bg-accent' : ''}`}
-        aria-label="Strikethrough"
-      >
-        <Strikethrough className="h-4 w-4" />
-      </Button>
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        onClick={() => editor.chain().focus().toggleCode().run()}
-        className={`h-8 w-8 p-0 ${editor.isActive('code') ? 'bg-accent' : ''}`}
-        aria-label="Code"
-      >
-        <Code className="h-4 w-4" />
-      </Button>
-
-      <Separator orientation="vertical" className="mx-1 h-6" />
-
-      {/* Lists Group */}
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        onClick={() => editor.chain().focus().toggleBulletList().run()}
-        className={`h-8 w-8 p-0 ${editor.isActive('bulletList') ? 'bg-accent' : ''}`}
-        aria-label="Bullet list"
-      >
-        <List className="h-4 w-4" />
-      </Button>
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        onClick={() => editor.chain().focus().toggleOrderedList().run()}
-        className={`h-8 w-8 p-0 ${editor.isActive('orderedList') ? 'bg-accent' : ''}`}
-        aria-label="Ordered list"
-      >
-        <ListOrdered className="h-4 w-4" />
-      </Button>
-
-      <Separator orientation="vertical" className="mx-1 h-6" />
-
-      {/* Block Elements Group */}
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        onClick={() => editor.chain().focus().toggleCodeBlock().run()}
-        className={`h-8 w-8 p-0 ${editor.isActive('codeBlock') ? 'bg-accent' : ''}`}
-        aria-label="Code block"
-      >
-        <Code className="h-4 w-4" />
-      </Button>
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        onClick={() => editor.chain().focus().toggleBlockquote().run()}
-        className={`h-8 w-8 p-0 ${editor.isActive('blockquote') ? 'bg-accent' : ''}`}
-        aria-label="Blockquote"
-      >
-        <Quote className="h-4 w-4" />
-      </Button>
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        onClick={() => editor.chain().focus().setHorizontalRule().run()}
-        className="h-8 w-8 p-0"
-        aria-label="Horizontal rule"
-      >
-        <Minus className="h-4 w-4" />
-      </Button>
-    </div>
-  )
-}
-
 export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditModalProps) {
   const [title, setTitle] = useState(card.title)
   const [description, setDescription] = useState(card.description)
   const [isEditingTitle, setIsEditingTitle] = useState(false)
   const [isEditingDescription, setIsEditingDescription] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
-  const queryClient = useQueryClient()
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const [checklists, setChecklists] = useState<TChecklist[]>([])
+  const titleRef = useRef<HTMLTextAreaElement>(null)
 
-  const form = useForm({
-    resolver: zodResolver(updateTaskSchema),
-    defaultValues: {
-      title: card.title,
-      description: card.description || '',
-    },
-  })
-
-  const updateTaskMutation = useUpdateTask({
-    onSuccess: (updatedCard) => {
-      setIsEditingTitle(false)
-      setIsEditingDescription(false)
-      setTitle(updatedCard.title)
-    },
-    onError: (error: FormError) => {
-      setTitle(card.title)
-      form.setValue('title', card.title)
-      toast.error(error.message || 'Failed to update task')
-    },
-  })
-
+    // Initialize mutation hooks with query invalidation
+    const queryClient = useQueryClient()
+    const createChecklistMutation = useCreateChecklist()
+    const updateChecklistMutation = useUpdateChecklist()
+    const deleteChecklistMutation = useDeleteChecklist()
+    const createChecklistItemMutation = useCreateChecklistItem()
+    const updateChecklistItemMutation = useUpdateChecklistItem()
+    const deleteChecklistItemMutation = useDeleteChecklistItem()
+    const reorderChecklistsMutation = useReorderChecklists()
+    const reorderChecklistItemsMutation = useReorderChecklistItems()
+    const updateTaskMutation = useUpdateTask()
+    
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -325,12 +102,26 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
       },
     },
     onUpdate: ({ editor }) => {
-      form.setValue('description', editor.getHTML())
+      setDescription(editor.getHTML())
     },
   })
 
-  const handleTitleBlur = async () => {
-    let newTitle = form.getValues('title')
+
+  const {
+    data: fetchedChecklists = [],
+  } = useChecklistsByCard(card.id)
+
+
+  useEffect(() => {
+    if (fetchedChecklists) {
+      setChecklists((prev) => [...prev, ...fetchedChecklists])
+    }
+  }, [fetchedChecklists])
+
+  
+
+  const handleTitleBlur = useCallback(async () => {
+    let newTitle = title
     newTitle = newTitle?.trim()
 
     if (newTitle === card.title) {
@@ -339,7 +130,6 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
     }
 
     if (!newTitle?.trim()) {
-      form.setValue('title', card.title)
       setTitle(card.title)
       setIsEditingTitle(false)
       return
@@ -357,10 +147,10 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
     })
 
     setIsEditingTitle(false)
-  }
+  }, [card.title, card.description, card.columnId, card.order, card.projectId, setTitle, setIsEditingTitle, updateTaskMutation])
 
-  const handleDescriptionSave = async () => {
-    const description = form.getValues('description')
+  const handleDescriptionSave = useCallback(async () => {
+    const description = editor?.getHTML()
     if (description !== card.description) {
       updateTaskMutation.mutate({
         id: card.id as string,
@@ -369,19 +159,29 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
         columnId: card.columnId,
         order: card.order,
         projectId: card.projectId,
-      })
+      },
+        {
+          onSuccess: (updatedCard) => {
+            setIsEditingTitle(false)
+            setIsEditingDescription(false)
+            setTitle(updatedCard.title)
+          },
+          onError: () => {
+            setTitle(card.title)
+          },
+        })
     }
     setIsEditingDescription(false)
-  }
+  }, [card.description, setIsEditingDescription, updateTaskMutation])
 
-  const handleDescriptionCancel = () => {
-    form.setValue('description', card.description || '')
+  const handleDescriptionCancel = useCallback(() => {
+    // form.setValue('description', card.description || '')
     editor?.commands.setContent(card.description || '')
     setIsEditingDescription(false)
-  }
+  }, [card.description, editor, setIsEditingDescription])
 
   // Sync textarea height with content
-  const syncTextareaHeight = () => {
+  const syncTextareaHeight = useCallback(() => {
     if (textareaRef.current) {
       // Reset height to get minimal height
       textareaRef.current.style.height = '0px'
@@ -403,13 +203,559 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
 
       textareaRef.current.style.height = `${finalHeight}px`
     }
-  }
+  }, [textareaRef])
 
   useEffect(() => {
     if (isEditingTitle && textareaRef.current) {
       syncTextareaHeight()
     }
-  }, [isEditingTitle, title])
+  }, [isEditingTitle, title, syncTextareaHeight])
+
+
+
+  useEffect(() => {
+    return combine(
+      monitorForElements({
+        canMonitor: isDraggingAChecklistItem,
+        onDrop({ source, location }) {
+          const dragging = source.data;
+          if (!isChecklistItemData(dragging)) {
+            return;
+          }
+
+          const innerMost = location.current.dropTargets[0];
+          if (!innerMost) {
+            return;
+          }
+
+          const dropTargetData = innerMost.data;
+
+          // Handle dropping on another checklist item
+          if (isChecklistItemDropTargetData(dropTargetData)) {
+            const sourceItem = dragging.item;
+            const targetItem = dropTargetData.item;
+            const sourceChecklistId = dragging.checklistId as string;
+            const targetChecklistId = dropTargetData.checklistId as string;
+
+            if (sourceItem.id === targetItem.id) {
+              return;
+            }
+
+            const sourceChecklist = checklists.find(c => c.id === sourceChecklistId);
+            const targetChecklist = checklists.find(c => c.id === targetChecklistId);
+
+            if (!sourceChecklist || !targetChecklist) {
+              return;
+            }
+
+            const sourceItemIndex = sourceChecklist.items.findIndex(item => item.id === sourceItem.id);
+            const targetItemIndex = targetChecklist.items.findIndex(item => item.id === targetItem.id);
+
+            if (sourceItemIndex === -1 || targetItemIndex === -1) {
+              return;
+            }
+
+            const closestEdge = extractClosestEdge(dropTargetData);
+            const isMovingToSameChecklist = sourceChecklistId === targetChecklistId;
+
+            if (isMovingToSameChecklist) {
+              // Reordering within the same checklist
+              const reordered = reorderWithEdge({
+                axis: 'vertical',
+                list: sourceChecklist.items,
+                startIndex: sourceItemIndex,
+                indexOfTarget: targetItemIndex,
+                closestEdgeOfTarget: closestEdge,
+              });
+
+              // Optimistically update UI
+              setChecklists(prev => prev.map(checklist =>
+                checklist.id === sourceChecklistId
+                  ? { ...checklist, items: reordered }
+                  : checklist
+              ));
+
+              // Persist the reordering
+              const itemOrders = reordered.map((item, index) => ({
+                id: item.id,
+                order: index,
+                checklistId: sourceChecklistId
+              }));
+
+              reorderChecklistItemsMutation.mutate({
+                checklistId: sourceChecklistId,
+                itemOrders
+              }, {
+                onError: () => {
+                  // Revert on error
+                  setChecklists(checklists);
+                  toast.error('Failed to reorder checklist items');
+                }
+              });
+            } else {
+              // Moving item between checklists
+              const finalIndex = closestEdge === 'bottom' ? targetItemIndex + 1 : targetItemIndex;
+
+              // Remove from source checklist
+              const newSourceItems = sourceChecklist.items.filter(item => item.id !== sourceItem.id);
+
+              // Add to target checklist
+              const newTargetItems = [...targetChecklist.items];
+              newTargetItems.splice(finalIndex, 0, sourceItem);
+
+              // Optimistically update UI
+              setChecklists(prev => prev.map(checklist => {
+                if (checklist.id === sourceChecklistId) {
+                  return { ...checklist, items: newSourceItems };
+                } else if (checklist.id === targetChecklistId) {
+                  return { ...checklist, items: newTargetItems };
+                }
+                return checklist;
+              }));
+
+              // Prepare item orders for both checklists
+              const sourceItemOrders = newSourceItems.map((item, index) => ({
+                id: item.id,
+                order: index,
+                checklistId: sourceChecklistId
+              }));
+
+              const targetItemOrders = newTargetItems.map((item, index) => ({
+                id: item.id,
+                order: index,
+                checklistId: targetChecklistId
+              }));
+
+              const allItemOrders = [...sourceItemOrders, ...targetItemOrders];
+
+              reorderChecklistItemsMutation.mutate({
+                checklistId: targetChecklistId, // Main checklist for the operation
+                itemOrders: allItemOrders
+              }, {
+                onError: () => {
+                  // Revert on error
+                  setChecklists(checklists);
+                  toast.error('Failed to move checklist item');
+                }
+              });
+            }
+            return;
+          }
+
+          // Handle dropping on a checklist (empty area)
+          if (isChecklistDropTargetData(dropTargetData)) {
+            const sourceItem = dragging.item;
+            const sourceChecklistId = dragging.checklistId as string;
+            const targetChecklistId = dropTargetData.checklist.id;
+
+            if (sourceChecklistId === targetChecklistId) {
+              return; // No change needed
+            }
+
+            const sourceChecklist = checklists.find(c => c.id === sourceChecklistId);
+            const targetChecklist = checklists.find(c => c.id === targetChecklistId);
+
+            if (!sourceChecklist || !targetChecklist) {
+              return;
+            }
+
+            // Remove from source checklist
+            const newSourceItems = sourceChecklist.items.filter(item => item.id !== sourceItem.id);
+
+            // Add to end of target checklist
+            const newTargetItems = [...targetChecklist.items, sourceItem];
+
+            // Optimistically update UI
+            setChecklists(prev => prev.map(checklist => {
+              if (checklist.id === sourceChecklistId) {
+                return { ...checklist, items: newSourceItems };
+              } else if (checklist.id === targetChecklistId) {
+                return { ...checklist, items: newTargetItems };
+              }
+              return checklist;
+            }));
+
+            // Prepare item orders for both checklists
+            const sourceItemOrders = newSourceItems.map((item, index) => ({
+              id: item.id,
+              order: index,
+              checklistId: sourceChecklistId
+            }));
+
+            const targetItemOrders = newTargetItems.map((item, index) => ({
+              id: item.id,
+              order: index,
+              checklistId: targetChecklistId
+            }));
+
+            const allItemOrders = [...sourceItemOrders, ...targetItemOrders];
+
+            reorderChecklistItemsMutation.mutate({
+              checklistId: targetChecklistId,
+              itemOrders: allItemOrders
+            }, {
+              onError: () => {
+                // Revert on error
+                setChecklists(checklists);
+                toast.error('Failed to move checklist item');
+              }
+            });
+          }
+        }
+      }),
+      monitorForElements({
+        canMonitor: isDraggingAChecklist,
+        onDrop({ source, location }) {
+          const dragging = source.data;
+          if (!isChecklistData(dragging)) {
+            return;
+          }
+
+          const innerMost = location.current.dropTargets[0];
+          if (!innerMost) {
+            return;
+          }
+
+          const dropTargetData = innerMost.data;
+          if (!isChecklistDropTargetData(dropTargetData)) {
+            return;
+          }
+
+          const sourceChecklistId = dragging.checklist.id;
+          const targetChecklistId = dropTargetData.checklist.id;
+
+          if (sourceChecklistId === targetChecklistId) {
+            return;
+          }
+
+          const sourceIndex = checklists.findIndex(checklist => checklist.id === sourceChecklistId);
+          const targetIndex = checklists.findIndex(checklist => checklist.id === targetChecklistId);
+
+          if (sourceIndex === -1 || targetIndex === -1) {
+            return;
+          }
+
+          const closestEdge = extractClosestEdge(dropTargetData);
+          const reordered = reorderWithEdge({
+            axis: 'vertical',
+            list: checklists,
+            startIndex: sourceIndex,
+            indexOfTarget: targetIndex,
+            closestEdgeOfTarget: closestEdge,
+          });
+
+          // Optimistically update UI
+          setChecklists(reordered);
+
+          // Persist the reordering
+          const checklistOrders = reordered.map((checklist, index) => ({
+            id: checklist.id,
+            order: index
+          }));
+
+          reorderChecklistsMutation.mutate({
+            cardId: card.id,
+            checklistOrders
+          }, {
+            onError: () => {
+              // Revert on error
+              setChecklists(checklists);
+              toast.error('Failed to reorder checklists');
+            }
+          });
+        }
+      })
+    );
+  }, [checklists, card.id, reorderChecklistsMutation])
+
+
+  const addChecklist = useCallback((title: string) => {
+
+    let order = 0;
+    if (checklists.length > 0) {
+      order = (checklists.length - 1) + 1
+    }
+
+    // Create optimistic checklist immediately
+    const tempId = `temp-checklist-${Math.floor(Math.random() * 5000) + 1}`
+    const optimisticChecklist: TChecklist = {
+      id: tempId,
+      title,
+      items: [],
+      cardId: card.id as string,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      order: order,
+    }
+
+    // Add to optimistic state immediately
+    setChecklists(prev => [...prev, optimisticChecklist])
+
+    // Call backend API
+    createChecklistMutation.mutate(
+      { title, cardId: card.id, order: order },
+      {
+        onSuccess: (data: TChecklist) => {
+          // replace the optimisitc checklist with the real data checklist
+          setChecklists(prev => prev.map(checklist =>
+            checklist.id === tempId
+              ? { ...checklist, ...data }
+              : checklist
+          ))
+
+          queryClient.invalidateQueries({ queryKey: projectKeys.detail(card.projectId) })
+        },
+        onError: (error) => {
+          setChecklists(prev => prev.filter(checklist => checklist.id !== tempId))
+        }
+      }
+    )
+  }, [card.id, createChecklistMutation, checklists.length])
+
+  const deleteChecklist = useCallback((checklistId: string) => {
+    // Optimistically remove checklist
+    const checklistToDelete = checklists.find(c => c.id === checklistId)
+    if (!checklistToDelete) return
+
+    setChecklists(prev => prev.filter(checklist => checklist.id !== checklistId))
+
+
+    deleteChecklistMutation.mutate(checklistId, {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: projectKeys.detail(card.projectId) })
+      },
+      onError: () => {
+        setChecklists(prev => [...prev, checklistToDelete])
+        queryClient.invalidateQueries({ queryKey: projectKeys.detail(card.projectId) })
+      }
+    })
+
+  }, [checklists, checklists, deleteChecklistMutation])
+
+
+  const updateChecklistTitle = useCallback((checklistId: string, newTitle: string) => {
+    const originalTitle = checklists.find(c => c.id === checklistId)?.title
+    if (!originalTitle || originalTitle === newTitle) return
+
+    // Optimistically update
+    setChecklists(prev => prev.map(checklist =>
+      checklist.id === checklistId
+        ? { ...checklist, title: newTitle }
+        : checklist
+    ))
+
+    updateChecklistMutation.mutate(
+      { id: checklistId, title: newTitle, oldTitle: originalTitle },
+      {
+        onError: () => {
+          setChecklists(prev =>
+            prev.map(checklist =>
+              checklist.id === checklistId
+                ? { ...checklist, title: originalTitle }
+                : checklist
+            )
+          );
+        }
+      }
+    )
+
+  }, [checklists, checklists, updateChecklistMutation])
+
+  const addChecklistItem = useCallback((checklistId: string, itemText: string) => {
+    const tempId = `temp-item-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+    const newItem: TChecklistItem = {
+      id: tempId,
+      text: itemText,
+      isCompleted: false,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      checklistId: checklistId,
+      order: 0
+    }
+
+    // Optimistically add item
+    setChecklists(prev => prev.map(checklist =>
+      checklist.id === checklistId
+        ? { ...checklist, items: [...checklist.items, newItem] }
+        : checklist
+    ))
+
+    // Only call API for real checklists (not optimistic ones)
+    // if (!optimisticChecklists.includes(checklistId)) {
+    const checklist = checklists.find(c => c.id === checklistId)
+    const itemOrder = checklist?.items.length || 0
+
+    createChecklistItemMutation.mutate(
+      { text: itemText, checklistId, order: itemOrder, isCompleted: false },
+      {
+        onSuccess: (realItem: TChecklistItem) => {
+          // Replace optimistic item with real data
+          setChecklists(prev => prev.map(checklist =>
+            checklist.id === checklistId
+              ? {
+                ...checklist,
+                items: checklist.items.map(item =>
+                  item.id === tempId
+                    ? {
+                      id: realItem.id,
+                      text: realItem.text,
+                      isCompleted: realItem.isCompleted,
+                      createdAt: realItem.createdAt,
+                      updatedAt: realItem.updatedAt,
+                      checklistId: realItem.checklistId,
+                      order: realItem.order
+                    }
+                    : item
+                )
+              }
+              : checklist
+          ))
+          queryClient.invalidateQueries({ queryKey: projectKeys.detail(card.projectId) })
+        },
+        onError: () => {
+          // Remove optimistic item on error
+          setChecklists(prev => prev.map(checklist =>
+            checklist.id === checklistId
+              ? { ...checklist, items: checklist.items.filter(item => item.id !== tempId) }
+              : checklist
+          ))
+          toast.error('Failed to add checklist item')
+        }
+      }
+    )
+    // }
+  }, [checklists, checklists, createChecklistItemMutation])
+
+  const deleteChecklistItem = useCallback((checklistId: string, itemId: string) => {
+    // Find the item to delete for potential restoration
+    const checklist = checklists.find(c => c.id === checklistId)
+    const itemToDelete = checklist?.items.find(item => item.id === itemId)
+    if (!itemToDelete) return
+
+    // Optimistically remove item
+    setChecklists(prev => prev.map(checklist =>
+      checklist.id === checklistId
+        ? { ...checklist, items: checklist.items.filter(item => item.id !== itemId) }
+        : checklist
+    ))
+
+    // Only call API for real items (not optimistic ones)
+
+    deleteChecklistItemMutation.mutate(itemId);
+
+  }, [checklists, deleteChecklistItemMutation, card.projectId]);
+
+
+  const toggleChecklistItem = useCallback((checklistId: string, itemId: string) => {
+    const checklist = checklists.find(c => c.id === checklistId)
+    const item = checklist?.items.find(i => i.id === itemId)
+    if (!item) return
+
+    const newCompletedState = !item.isCompleted
+
+    // Optimistically update
+    setChecklists(prev => prev.map(checklist =>
+      checklist.id === checklistId
+        ? {
+          ...checklist,
+          items: checklist.items.map(item =>
+            item.id === itemId
+              ? { ...item, isCompleted: newCompletedState }
+              : item
+          )
+        }
+        : checklist
+    ))
+
+    // Only call API for real items (not optimistic ones)
+    // if (!itemId.startsWith('temp-')) {
+    updateChecklistItemMutation.mutate(
+      { id: itemId, isCompleted: newCompletedState },
+      {
+        onSuccess: (data) => {
+
+          // Update the checklist with new data returned
+          setChecklists(prev => prev.map(checklist =>
+            checklist.id === checklistId
+              ? {
+                ...checklist, items: checklist.items.map(item =>
+                  item.id === itemId
+                    ? { ...item, isCompleted: data.isCompleted }
+                    : item
+                )
+              }
+              : checklist
+          ))
+
+          queryClient.invalidateQueries({ queryKey: projectKeys.detail(card.projectId) })
+
+        },
+        onError: () => {
+          // Revert optimistic update on error
+          setChecklists(prev => prev.map(checklist =>
+            checklist.id === checklistId
+              ? {
+                ...checklist,
+                items: checklist.items.map(item =>
+                  item.id === itemId
+                    ? { ...item, isCompleted: !newCompletedState }
+                    : item
+                )
+              }
+              : checklist
+          ))
+          toast.error('Failed to update checklist item')
+        }
+      }
+    )
+    // }
+  }, [checklists, updateChecklistItemMutation])
+
+
+  const updateChecklistItemText = useCallback((checklistId: string, itemId: string, newText: string) => {
+    const checklist = checklists.find(c => c.id === checklistId)
+    const originalText = checklist?.items.find(i => i.id === itemId)?.text
+    if (!originalText || originalText === newText) return
+
+    // Optimistically update
+    setChecklists(prev => prev.map(checklist =>
+      checklist.id === checklistId
+        ? {
+          ...checklist,
+          items: checklist.items.map(item =>
+            item.id === itemId
+              ? { ...item, text: newText }
+              : item
+          )
+        }
+        : checklist
+    ))
+
+    // Only call API for real items (not optimistic ones)
+    // if (!itemId.startsWith('temp-')) {
+    updateChecklistItemMutation.mutate(
+      { id: itemId, text: newText },
+      {
+        onError: () => {
+          // Revert optimistic update on error
+          setChecklists(prev => prev.map(checklist =>
+            checklist.id === checklistId
+              ? {
+                ...checklist,
+                items: checklist.items.map(item =>
+                  item.id === itemId
+                    ? { ...item, text: originalText }
+                    : item
+                )
+              }
+              : checklist
+          ))
+          toast.error('Failed to update checklist item text')
+        }
+      }
+    )
+    //  }
+  }, [checklists, updateChecklistItemMutation])
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -421,11 +767,10 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
               {isEditingTitle ? (
                 <Textarea
                   className="w-full max-w-full break-all whitespace-break-spaces resize-none p-2 overflow-hidden"
-                  {...form.register('title')}
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
                   ref={(el) => {
-                    const { ref } = form.register('title');
-                    if (typeof ref === 'function') ref(el);
-                    textareaRef.current = el;
+                    titleRef.current = el;
                     // Sync height when element is first set
                     if (el) {
                       setTimeout(() => syncTextareaHeight(), 0);
@@ -449,7 +794,7 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
                   </p>
                 </div>
               )}
-            
+
               {columnTitle !== '' && columnTitle !== null && columnTitle !== undefined && (
                 <div className="flex items-center gap-2 text-sm p-2">
                   <span>in list</span>
@@ -467,8 +812,6 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
               <X className="h-4 w-4" />
             </button>
           </div>
-
-
 
           <div className="flex flex-col gap-4">
             <div className="flex flex-1 gap-4">
@@ -495,14 +838,12 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
                           <Button
                             variant="outline"
                             onClick={handleDescriptionCancel}
-                            disabled={updateTaskMutation.isPending}
-                          >
+                            disabled={updateTaskMutation.isPending}>
                             Cancel
                           </Button>
                           <Button
                             onClick={handleDescriptionSave}
-                            disabled={updateTaskMutation.isPending}
-                          >
+                            disabled={updateTaskMutation.isPending}>
                             Save
                           </Button>
                         </div>
@@ -525,26 +866,93 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
                         )}
                       </div>
                     )}
+
+                    <DisplayChecklist
+                      checklists={checklists}
+                      cardId={card.id}
+                      onAddItem={addChecklistItem}
+                      onDeleteItem={deleteChecklistItem}
+                      onToggleItem={toggleChecklistItem}
+                      onDelete={deleteChecklist}
+                      onUpdateTitle={updateChecklistTitle}
+                      onUpdateItemText={updateChecklistItemText}
+                      className="mt-4"
+                    />
+
                   </div>
                 </div>
               </div>
-              <div className="flex-[1_1_auto]">
+              <div className="flex flex-[1_1_auto] flex-col gap-1">
                 <p className="text-sm font-medium mb-2">Actions</p>
-                <DeleteActionButton onClick={() => setIsDeleteDialogOpen(true)}>
+                <DeleteActionButton onClick={() => setIsDeleteDialogOpen(true)} className="mb-2">
                   Delete Card
                 </DeleteActionButton>
+
+                <AddChecklistButton onAddChecklist={addChecklist}>
+                  Add Checklist
+                </AddChecklistButton>
               </div>
             </div>
           </div>
         </div>
       </DialogContentWithoutClose>
 
-      <TaskDeleteDialog
-        card={card}
-        isOpen={isDeleteDialogOpen}
-        onClose={() => setIsDeleteDialogOpen(false)}
-        onDeleted={onClose}
-      />
+      <RenderIf condition={isDeleteDialogOpen}>
+        <TaskDeleteDialog
+          card={card}
+          isOpen={isDeleteDialogOpen}
+          onClose={() => setIsDeleteDialogOpen(false)}
+          onDeleted={onClose}
+        />
+      </RenderIf>
     </Dialog>
   )
-} 
+}
+
+
+interface DisplayChecklistProps {
+  checklists: TChecklist[]
+  cardId: string
+  onAddItem: (checklistId: string, itemText: string) => void
+  onDeleteItem: (checklistId: string, itemId: string) => void
+  onToggleItem: (checklistId: string, itemId: string) => void
+  onDelete: (checklistId: string) => void
+  onUpdateTitle: (checklistId: string, newTitle: string) => void
+  onUpdateItemText: (checklistId: string, itemId: string, newText: string) => void
+  className?: string
+}
+
+export function DisplayChecklist(props: DisplayChecklistProps) {
+  const {
+    checklists,
+    cardId,
+    onAddItem,
+    onDeleteItem,
+    onToggleItem,
+    onDelete,
+    onUpdateTitle,
+    onUpdateItemText,
+    className
+  } = props;
+
+  // TODO: Drop checklist items on empty checklist
+  return (
+    <>
+      {checklists.map((checklist) => (
+        <Checklist
+          key={checklist.id}
+          cardId={cardId}
+
+          checklist={checklist}
+          onAddItem={(itemText) => onAddItem(checklist.id, itemText)}
+          onDeleteItem={(itemId) => onDeleteItem(checklist.id, itemId)}
+          onToggleItem={(itemId) => onToggleItem(checklist.id, itemId)}
+          onDelete={() => onDelete(checklist.id)}
+          onUpdateTitle={(newTitle) => onUpdateTitle(checklist.id, newTitle)}
+          onUpdateItemText={(itemId, newText) => onUpdateItemText(checklist.id, itemId, newText)}
+          className={className}
+        />
+      ))}
+    </>
+  )
+}

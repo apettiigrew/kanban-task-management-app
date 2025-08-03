@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button"
 import { EditProjectModal } from "@/components/edit-project-modal"
 import { useState } from "react"
-import { type TProject } from '@/utils/data'
+import { TProject } from '@/models/project'
 
 interface ProjectDetailsModalProps {
   project: TProject

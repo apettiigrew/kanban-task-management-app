@@ -12,12 +12,12 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { useDeleteProject } from "@/hooks/queries/use-projects"
-import { Project } from "@/types/project"
+import { TProject } from "@/models/project"
 import { toast } from "sonner"
 import { FormError } from "@/lib/form-error-handler"
 
 interface DeleteProjectDialogProps {
-  project: Project
+  project: TProject
   open: boolean
   onOpenChange: (open: boolean) => void
 }

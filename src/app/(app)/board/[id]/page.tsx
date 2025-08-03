@@ -1,10 +1,11 @@
 "use client"
 
-import { Board } from "@/components/board"
+import { Board } from "@/components/board/board"
 import { ErrorBoundary } from "@/components/error-boundary"
 import { RouteLoading } from "@/components/route-loading"
 import { useProject } from "@/hooks/queries/use-projects"
-import { ProjectWithColumnsAndTasks } from "@/utils/data"
+import { TProject } from "@/models/project"
+
 import { useParams } from "next/navigation"
 import { Suspense } from "react"
 
@@ -50,6 +51,7 @@ interface BoardContentProps {
 function BoardContent({ projectId }: BoardContentProps) {
   const { data: project, error: projectError } = useProject({ id: projectId, refetchOnWindowFocus: true })
 
+  console.log("rendering board content")
   if (projectError) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -63,7 +65,7 @@ function BoardContent({ projectId }: BoardContentProps) {
       </div>
     )
   }
-
+  
   return (
     <div className="max-h-screen bg-background bg-gradient-to-br from-blue-100 via-sky-100 to-indigo-200">
       {/* <ProjectHeader
@@ -73,7 +75,7 @@ function BoardContent({ projectId }: BoardContentProps) {
 
       <main className="flex-1 overflow-x-auto overflow-y-hidden">
         <Suspense fallback={<RouteLoading message="Loading board..." />}>
-          {project && <Board project={project as ProjectWithColumnsAndTasks} />}
+          {project && <Board project={project} />}
         </Suspense>
       </main>
     </div>

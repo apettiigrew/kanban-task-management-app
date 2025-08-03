@@ -2,9 +2,10 @@
 
 import { apiRequest, FormError } from '@/lib/form-error-handler'
 import { CreateTask, DeleteTask, MoveTask, ReorderTasks, Task, UpdateTask } from '@/lib/validations/task'
-import { ProjectWithColumnsAndTasks } from '@/utils/data'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { projectKeys } from '../queries/use-projects'
+import { projectKeys } from '@/hooks/queries/use-projects'
+import { TProject } from '@/models/project'
+import { TCard } from '@/models/card'
 
 // API client functions for mutations
 const createTask = async (data: CreateTask): Promise<Task> => {
@@ -41,233 +42,126 @@ const reorderTasks = async (data: ReorderTasks): Promise<void> => {
     })
 }
 
-// Enhanced mutation hooks with form error handling and optimistic updates
-interface UseCreateTaskOptions {
-    onSuccess?: (data: Task) => void
-    onError?: (error: FormError) => void
-    onFieldErrors?: (errors: Record<string, string>) => void
-}
-
-interface UseUpdateTaskOptions {
-    onSuccess?: (data: Task) => void
-    onError?: (error: FormError) => void
-    onFieldErrors?: (errors: Record<string, string>) => void
-}
-
-interface UseDeleteTaskOptions {
-    onSuccess?: () => void
-    onError?: (error: FormError) => void
-}
-
-interface UseMoveTaskOptions {
-    onSuccess?: () => void
-    onError?: (error: FormError) => void
-}
-
-interface UseReorderTasksOptions {
-    onSuccess?: () => void
-    onError?: (error: FormError) => void
-}
-
-
-export const useCreateTask = (options: UseCreateTaskOptions = {}) => {
+export const useCreateTask = () => {
     const queryClient = useQueryClient()
 
     return useMutation({
         mutationKey: ['createTask'],
         mutationFn: createTask,
         onMutate: async (newTask) => {
+            // Cancel any outgoing refetches to avoid overwriting our optimistic update
+            await queryClient.cancelQueries({ queryKey: projectKeys.detail(newTask.projectId) })
 
-            // get snapshot of preivous state
+            // Snapshot the previous value for rollback
             const previousProject = queryClient.getQueryData(projectKeys.detail(newTask.projectId))
 
-            const optimisticTask: CreateTask & { id: string, createdAt: Date, updatedAt: Date } = {
-                id: "temp",
-                title: newTask.title,
-                description: newTask.description || "",
-                order: newTask.order,
-                projectId: newTask.projectId,
-                columnId: newTask.columnId,
-                createdAt: new Date(),
-                updatedAt: new Date(),
-            }
+            // Optimistically add the task to the cache
+            queryClient.setQueryData(projectKeys.detail(newTask.projectId), (oldData: TProject | undefined) => {
+                if (!oldData) return oldData
 
-            // Optimistically add the new task to various query caches
-            queryClient.setQueryData(projectKeys.detail(newTask.projectId), (oldData: ProjectWithColumnsAndTasks) => {
-                const column = oldData.columns.find(column => column.id === newTask.columnId)
-                if (column) {
-                    const newCards = [...column.cards, optimisticTask]
-                    const newColumn = { ...column, cards: newCards }
-                    const newColumns = oldData.columns.map(column => column.id === newTask.columnId ? newColumn : column)
-                    return { ...oldData, columns: newColumns }
+                // Create optimistic task
+                const optimisticTask: TCard = {
+                    id: `temp-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+                    title: newTask.title,
+                    description: newTask.description || '',
+                    columnId: newTask.columnId,
+                    projectId: newTask.projectId,
+                    order: newTask.order,
+                    checklists: [],
+                    totalChecklistItems: 0,
+                    totalCompletedChecklistItems: 0,
                 }
 
-                return oldData
+                return {
+                    ...oldData,
+                    columns: oldData.columns.map(column => 
+                        column.id === newTask.columnId 
+                            ? { ...column, cards: [...column.cards, optimisticTask] }
+                            : column
+                    )
+                }
             })
 
-            return {
-                previousProject
-            }
+            return { previousProject, projectId: newTask.projectId }
         },
         onError: (error: FormError, newTask, context) => {
-
-
-            // Handle errors through options
-            if (error.fieldErrors && options.onFieldErrors) {
-                options.onFieldErrors(error.fieldErrors)
-            } else if (options.onError) {
-                options.onError(error)
+            // Revert to previous state on error
+            if (context?.previousProject && context?.projectId) {
+                queryClient.setQueryData(projectKeys.detail(context.projectId), context.previousProject)
             }
         },
-        onSuccess: (data, variables, context) => {
-            //Replace optimistic task with real data in all caches
-            queryClient.setQueryData(projectKeys.detail(variables.projectId), (oldData: ProjectWithColumnsAndTasks) => {
-                const column = oldData.columns.find(column => column.id === variables.columnId)
-                if (column) {
-                    const newCards = column.cards.map(card => card.id === "temp" ? data : card)
-                    const newColumn = { ...column, cards: newCards }
-                    const newColumns = oldData.columns.map(column => column.id === variables.columnId ? newColumn : column)
-                    return { ...oldData, columns: newColumns }
-                }
-                return oldData
-            })
-
-            if (options.onSuccess) {
-                options.onSuccess(data)
-            }
+        onSettled: (data, error, newTask) => {
+            // Always refetch after error or success to ensure consistency
+            queryClient.invalidateQueries({ queryKey: projectKeys.detail(newTask.projectId) })
         },
     })
 }
 
-export const useUpdateTask = (options: UseUpdateTaskOptions = {}) => {
-    const queryClient = useQueryClient()
-
+export const useUpdateTask = () => {
     return useMutation({
         mutationKey: ['updateTask'],
         mutationFn: updateTask,
-        onMutate: async (updatedTask) => {
-            // Get snapshot of previous state
-            const previousProject = queryClient.getQueryData(projectKeys.detail(updatedTask.projectId))
-
-            // Optimistically update the task
-            queryClient.setQueryData(projectKeys.detail(updatedTask.projectId), (oldData: ProjectWithColumnsAndTasks) => {
-                const column = oldData.columns.find(column => column.id === updatedTask.columnId)
-                if (column) {
-                    const newCards = column.cards.map(card =>
-                        card.id === updatedTask.id ? { ...card, ...updatedTask } : card
-                    )
-                    const newColumn = { ...column, cards: newCards }
-                    const newColumns = oldData.columns.map(column =>
-                        column.id === updatedTask.columnId ? newColumn : column
-                    )
-                    return { ...oldData, columns: newColumns }
-                }
-                return oldData
-            })
-
-            return { previousProject }
-        },
-        onError: (error: FormError, variables, context) => {
-            // Revert to previous state on error
-            if (context?.previousProject) {
-                queryClient.setQueryData(projectKeys.detail(variables.projectId), context.previousProject)
-            }
-
-            if (error.fieldErrors && options.onFieldErrors) {
-                options.onFieldErrors(error.fieldErrors)
-            } else if (options.onError) {
-                options.onError(error)
-            }
-        },
-        onSuccess: (data, variables) => {
-            // Replace optimistic update with real data
-            queryClient.setQueryData(projectKeys.detail(variables.projectId), (oldData: ProjectWithColumnsAndTasks) => {
-                const column = oldData.columns.find(column => column.id === variables.columnId)
-                if (column) {
-                    const newCards = column.cards.map(card =>
-                        card.id === variables.id ? data : card
-                    )
-                    const newColumn = { ...column, cards: newCards }
-                    const newColumns = oldData.columns.map(column =>
-                        column.id === variables.columnId ? newColumn : column
-                    )
-                    return { ...oldData, columns: newColumns }
-                }
-                return oldData
-            })
-
-            if (options.onSuccess) {
-                options.onSuccess(data)
-            }
-        },
     })
 }
 
-export const useDeleteTask = (options: UseDeleteTaskOptions = {}) => {
+export const useDeleteTask = () => {
     const queryClient = useQueryClient()
 
     return useMutation({
         mutationKey: ['deleteTask'],
         mutationFn: deleteTask,
-        onMutate: async ({ id, projectId, columnId }) => {
-            // Get snapshot of previous state
-            const previousProject = queryClient.getQueryData(projectKeys.detail(projectId))
+        onMutate: async (variables: DeleteTask) => {
+            // Cancel any outgoing refetches to avoid overwriting our optimistic update
+            await queryClient.cancelQueries({ queryKey: projectKeys.detail(variables.projectId) })
 
-            // Optimistically remove the task
-            queryClient.setQueryData(projectKeys.detail(projectId), (oldData: ProjectWithColumnsAndTasks) => {
-                const column = oldData.columns.find(column => column.id === columnId)
-                if (column) {
-                    const newCards = column.cards.filter(card => card.id !== id)
-                    const newColumn = { ...column, cards: newCards }
+            // Snapshot the previous value for rollback
+            const previousProject = queryClient.getQueryData(projectKeys.detail(variables.projectId))
 
-                    const newColumns = oldData.columns.map(column =>
-                        column.id === columnId ? newColumn : column
-                    )
-                    return { ...oldData, columns: newColumns }
+            // Optimistically update by removing the task from the cache
+            queryClient.setQueryData(projectKeys.detail(variables.projectId), (old: TProject | undefined) => {
+                if (!old || !old.columns) return old
+
+                return {
+                    ...old,
+                    columns: old.columns.map((column) => ({
+                        ...column,
+                        cards: column.cards?.filter((card) => card.id !== variables.id) || []
+                    }))
                 }
-                return oldData
             })
 
-            return { previousProject, projectId }
+            // Return a context object with the previous value
+            return { previousProject, variables }
         },
-        onError: (error: FormError, taskId, context) => {
-            // Revert to previous state on error
-            if (context?.previousProject && context?.projectId) {
-                queryClient.setQueryData(projectKeys.detail(context.projectId), context.previousProject)
-            }
-
-            if (options.onError) {
-                options.onError(error)
+        onError: (err, variables, context) => {
+            // Rollback on error
+            if (context?.previousProject) {
+                queryClient.setQueryData(projectKeys.detail(variables.projectId), context.previousProject)
             }
         },
-        onSuccess: (data, taskId, context) => {
-            // Invalidate related queries to ensure consistency
-            if (context?.projectId) {
-                queryClient.invalidateQueries({ queryKey: projectKeys.detail(context.projectId) })
-            }
-
-            if (options.onSuccess) {
-                options.onSuccess()
-            }
-        },
+        onSettled: (data, error, variables) => {
+            // Always refetch after error or success to ensure consistency
+            queryClient.invalidateQueries({ queryKey: projectKeys.detail(variables.projectId) })
+        }
     })
 }
 
-export const useMoveTask = (options: UseMoveTaskOptions = {}) => {
+
+export const useMoveTask = () => {
     const queryClient = useQueryClient()
 
     return useMutation({
         mutationKey: ['moveTask'],
         mutationFn: moveTask,
         onMutate: async (moveData) => {
-            // Cancel any outgoing refetches
+            // Cancel any outgoing refetches to avoid overwriting our optimistic update
             await queryClient.cancelQueries({ queryKey: projectKeys.detail(moveData.projectId) })
 
-            // Get snapshot of previous state
-            const previousProject = queryClient.getQueryData(projectKeys.detail(moveData.projectId))
-
-            // Optimistically update the cache
-            queryClient.setQueryData(projectKeys.detail(moveData.projectId), (oldData: ProjectWithColumnsAndTasks) => {
+            // Snapshot the previous value for rollback
+            const previousProject = queryClient.getQueryData(projectKeys.detail(moveData.projectId))    
+            
+            // Optimistically update the cache with the new column state
+            queryClient.setQueryData(projectKeys.detail(moveData.projectId), (oldData: TProject | undefined) => {
                 if (!oldData) return oldData
                 return {
                     ...oldData,
@@ -282,42 +176,30 @@ export const useMoveTask = (options: UseMoveTaskOptions = {}) => {
             if (context?.previousProject && context?.projectId) {
                 queryClient.setQueryData(projectKeys.detail(context.projectId), context.previousProject)
             }
-
-            if (options.onError) {
-                options.onError(error)
-            }
         },
-        onSuccess: (data, moveData, context) => {
-            // Update with server response
-            queryClient.setQueryData(projectKeys.detail(moveData.projectId), (oldData: ProjectWithColumnsAndTasks) => {
-                if (!oldData) return oldData
-                return {
-                    ...oldData,
-                    columns: moveData.columns
-                }
-            })
-
-            if (options.onSuccess) {
-                options.onSuccess()
-            }
+        onSettled: (data, error, moveData) => {
+            // Always refetch after error or success to ensure consistency with server
+            queryClient.invalidateQueries({ queryKey: projectKeys.detail(moveData.projectId) })
         },
     })
 }
 
-export const useReorderTasks = (options: UseReorderTasksOptions = {}) => {
+export const useReorderTasks = () => {
     const queryClient = useQueryClient()
 
     return useMutation({
         mutationKey: ['reorderTasks'],
         mutationFn: reorderTasks,
         onMutate: async (reorderData) => {
+            // Cancel any outgoing refetches to avoid overwriting our optimistic update
             await queryClient.cancelQueries({ queryKey: projectKeys.detail(reorderData.projectId) })
 
             // Get snapshot of previous state
             const previousProject = queryClient.getQueryData(projectKeys.detail(reorderData.projectId))
 
             // Optimistically reorder tasks within the column
-            queryClient.setQueryData(projectKeys.detail(reorderData.projectId), (oldData: ProjectWithColumnsAndTasks) => {
+            queryClient.setQueryData(projectKeys.detail(reorderData.projectId), (oldData: TProject | undefined) => {
+                if (!oldData) return oldData
                 return { ...oldData, columns: reorderData.columns }
             })
 
@@ -328,21 +210,12 @@ export const useReorderTasks = (options: UseReorderTasksOptions = {}) => {
             if (context?.previousProject && context?.projectId) {
                 queryClient.setQueryData(projectKeys.detail(context.projectId), context.previousProject)
             }
-
-            if (options.onError) {
-                options.onError(error)
-            }
         },
-        onSuccess: (data, reorderData, context) => {
-            // Invalidate related queries to ensure consistency
-            if (context?.projectId) {
-                queryClient.invalidateQueries({ queryKey: projectKeys.detail(context.projectId) })
-            }
-
-            if (options.onSuccess) {
-                options.onSuccess()
-            }
+        onSettled: (data, error, reorderData) => {
+            // Always refetch after error or success to ensure consistency
+            queryClient.invalidateQueries({ queryKey: projectKeys.detail(reorderData.projectId) })
         },
     })
 }
+
 

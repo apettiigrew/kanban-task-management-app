@@ -75,7 +75,6 @@ export async function POST(request: NextRequest) {
       }
     })
 
-    console.log(column)
     return createSuccessResponse(column, 'Column created successfully', 201)
   } catch (error) {
     return handleAPIError(error, '/api/columns')

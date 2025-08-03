@@ -1,7 +1,23 @@
+import { CardShadow, CardTask } from '@/components/card';
+import { ColumnWrapper } from '@/components/column-wrapper';
+import { Button } from '@/components/ui/button';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu';
+import { Input } from '@/components/ui/input';
+import { useUpdateColumn } from '@/hooks/mutations/use-column-mutations';
+import { useCreateTask } from '@/hooks/mutations/use-task-mutations';
+import { useOutsideClick } from '@/hooks/use-outside-click';
+import { FormError } from '@/lib/form-error-handler';
+import { TCard } from '@/models/card';
+import { TColumn } from '@/models/column';
+import { TProject } from '@/models/project';
 import { SettingsContext } from '@/providers/settings-context';
-import { useUpdateColumn, useDeleteColumn } from '@/hooks/mutations/use-column-mutations';
-import { useInvalidateProject, useInvalidateProjects } from '@/hooks/queries/use-projects';
-import { getColumnData, isCardData, isCardDropTargetData, isColumnData, isDraggingACard, isDraggingAColumn, isShallowEqual, TCard, TCardData, TColumn } from '@/utils/data';
+import { getColumnData, isCardData, isCardDropTargetData, isColumnData, isDraggingACard, isDraggingAColumn, isShallowEqual, TCardData } from '@/utils/data';
 import { cc } from '@/utils/style-utils';
 import { autoScrollForElements } from '@atlaskit/pragmatic-drag-and-drop-auto-scroll/element';
 import { unsafeOverflowAutoScrollForElements } from '@atlaskit/pragmatic-drag-and-drop-auto-scroll/unsafe-overflow/element';
@@ -14,34 +30,9 @@ import {
     draggable,
     dropTargetForElements
 } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
-import { X, MoreHorizontal, Trash2 } from 'lucide-react';
-import { useContext, useEffect, useRef, useState } from 'react';
-import { Input } from './ui/input';
-import { ColumnWrapper } from './column-wrapper';
-import { Button } from './ui/button';
-import { CardShadow, CardTask } from './card';
+import { MoreHorizontal, Trash2, X } from 'lucide-react';
+import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { FormError } from '@/lib/form-error-handler';
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuSeparator,
-    DropdownMenuTrigger
-} from '@/components/ui/dropdown-menu';
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-    AlertDialogTrigger
-} from '@/components/ui/alert-dialog';
-import { useCreateTask } from '@/hooks/mutations/use-task-mutations';
-import { useOutsideClick } from '@/hooks/use-outside-click';
 
 type TColumnState =
     | { type: 'is-card-over'; isOverChildCard: boolean; dragging: DOMRect }
@@ -63,13 +54,15 @@ interface ColumnProps {
     onDelete: () => void;
 }
 export function Column({ column, onDelete }: ColumnProps) {
+    // Use the column data directly since optimistic updates are now handled by TanStack Query
+    const currentColumn = column;
 
-    console.log("column", column);
+
     const [isEditingTitle, setIsEditingTitle] = useState(false);
-    const [columnTitle, setColumnTitle] = useState(column.title);
+    const [columnTitle, setColumnTitle] = useState(currentColumn.title);
     const [isAddingCard, setIsAddingCard] = useState(false);
     const [newCardTitle, setNewCardTitle] = useState('');
-    const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+
     const outerFullHeightRef = useRef<HTMLDivElement>(null);
     const titleInputRef = useRef<HTMLInputElement>(null);
     const newCardInputRef = useRef<HTMLInputElement>(null);
@@ -79,82 +72,20 @@ export function Column({ column, onDelete }: ColumnProps) {
     const { settings } = useContext(SettingsContext);
 
     // Handle outside click for card creation cancellation
-    const handleOutsideClick = () => {
+    const handleOutsideClick = useCallback(() => {
         if (isAddingCard && !newCardTitle.trim()) {
             setIsAddingCard(false);
             setNewCardTitle('');
         }
-    };
+    }, [isAddingCard, newCardTitle]);
 
     const addCardRef = useOutsideClick(handleOutsideClick);
 
-    const { invalidateByProject } = useInvalidateProject();
+    const createTaskMutation = useCreateTask();
+    const updateColumnMutation = useUpdateColumn();
 
-    const createTaskMutation = useCreateTask({
-        onError: (error: FormError) => {
-            toast.error(error.message || 'Failed to create task');
-        }
-    });
 
-    // Update column mutation with optimistic updates
-    const updateColumnMutation = useUpdateColumn({
-        onSuccess: (data) => {
-            console.log("updateColumnMutation onSuccess", data);
-        },
-        onError: (error: FormError) => {
-            toast.error(error.message || 'Failed to update column title');
-            setColumnTitle(column.title);
-        }
-    });
-
-    // Delete column mutation
-    const deleteColumnMutation = useDeleteColumn({
-        onSuccess: () => {
-            setShowDeleteDialog(false);
-        },
-        onError: (error: FormError) => {
-            toast.error(error.message || 'Failed to delete column');
-        }
-    });
-
-    useEffect(() => {
-        setColumnTitle(column.title);
-    }, [column.title]);
-
-    const handleTitleSave = () => {
-        const trimmedTitle = columnTitle.trim();
-
-        if (!trimmedTitle) {
-            toast.error('Column title cannot be empty');
-            setColumnTitle(column.title);
-            setIsEditingTitle(false);
-            return;
-        }
-
-        if (trimmedTitle === column.title) {
-            setIsEditingTitle(false);
-            return;
-        }
-
-        setColumnTitle(trimmedTitle);
-        updateColumnMutation.mutate({
-            id: column.id,
-            title: trimmedTitle,
-            projectId: column.projectId,
-        });
-
-        setIsEditingTitle(false);
-    };
-
-    const handleTitleCancel = () => {
-        setColumnTitle(column.title);
-        setIsEditingTitle(false);
-    };
-
-    const handleDelete = () => {
-        onDelete();
-   
-    };
+    
 
     useEffect(() => {
         if (isEditingTitle && titleInputRef.current) {
@@ -224,18 +155,55 @@ export function Column({ column, onDelete }: ColumnProps) {
                 getOverflow: () => ({ forTopEdge: { top: 1000 }, forBottomEdge: { bottom: 1000 } }),
             })
         );
-    }, [column, column.cards, settings]);
+    }, [column, currentColumn.cards, settings]);
 
-    const addCard = (columnId: string, title: string) => {
+    const handleTitleSave = useCallback(() => {
+        const trimmedTitle = columnTitle.trim();
+
+        if (!trimmedTitle) {
+            toast.error('Column title cannot be empty');
+            setColumnTitle(column.title);
+            setIsEditingTitle(false);
+            return;
+        }
+
+        if (trimmedTitle === column.title) {
+            setIsEditingTitle(false);
+            return;
+        }
+
+        setColumnTitle(trimmedTitle);
+        updateColumnMutation.mutate({
+            id: column.id,
+            title: trimmedTitle,
+            projectId: column.projectId,
+        });
+
+        setIsEditingTitle(false);
+    }, [columnTitle, column.title, updateColumnMutation, column.id, column.projectId]);
+
+    const handleTitleCancel = useCallback(() => {
+        setColumnTitle(column.title);
+        setIsEditingTitle(false);
+    }, [column.title]);
+
+    const handleDelete = useCallback(() => {
+        onDelete();
+
+    }, [onDelete]);
+
+    const addCard = useCallback((columnId: string, title: string) => {
         setIsAddingCard(false);
         setNewCardTitle('');
+
+        // Create task via mutation - optimistic updates are handled by the mutation itself
         createTaskMutation.mutate({
             projectId: column.projectId,
             columnId: columnId,
             title: title,
-            order: column.cards.length,
+            order: currentColumn.cards.length,
         });
-    }
+    }, [column.projectId, currentColumn.cards.length, createTaskMutation]);
 
     return (
         <ColumnWrapper
@@ -287,53 +255,22 @@ export function Column({ column, onDelete }: ColumnProps) {
                             <DropdownMenuItem className="center">
                                 List actions
                             </DropdownMenuItem>
+                            <DropdownMenuItem
+                                className="text-red-600 focus:text-red-600"
+                                onSelect={(e) => e.preventDefault()}
+                                onClick={handleDelete}
+                            >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Delete column
+                            </DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-                                <AlertDialogTrigger asChild>
-                                    <DropdownMenuItem
-                                        className="text-red-600 focus:text-red-600"
-                                        onSelect={(e) => e.preventDefault()}
-                                    >
-                                        <Trash2 className="h-4 w-4 mr-2" />
-                                        Delete column
-                                    </DropdownMenuItem>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                    <AlertDialogHeader>
-                                        <AlertDialogTitle>Delete Column</AlertDialogTitle>
-                                        <AlertDialogDescription>
-                                            Are you sure you want to delete "{columnTitle}"?
-                                            {column.cards && column.cards.length > 0 ? (
-                                                <span className="block mt-2 text-red-600 font-medium">
-                                                    This column contains {column.cards.length} task{column.cards.length !== 1 ? 's' : ''}.
-                                                    Please move or delete all tasks before deleting the column.
-                                                </span>
-                                            ) : (
-                                                <span className="block mt-2">
-                                                    This action cannot be undone.
-                                                </span>
-                                            )}
-                                        </AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter>
-                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                        <AlertDialogAction
-                                            onClick={handleDelete}
-                                            disabled={column.cards && column.cards.length > 0 || deleteColumnMutation.isPending}
-                                            className="bg-red-600 hover:bg-red-700"
-                                        >
-                                            {deleteColumnMutation.isPending ? 'Deleting...' : 'Delete'}
-                                        </AlertDialogAction>
-                                    </AlertDialogFooter>
-                                </AlertDialogContent>
-                            </AlertDialog>
                         </DropdownMenuContent>
                     </DropdownMenu>
                 )}
             </div>
 
             <div className="flex flex-col gap-3 overflow-y-auto scrollbar-thin [&:not(:hover)]:scrollbar-transparent hover:scrollbar-gray-300 flex-grow max-h-screen min-h-0" ref={scrollableRef}>
-                <DisplayCard columnId={column.id} cards={column.cards} state={state} columnTitle={columnTitle} />
+                <DisplayCard columnId={column.id} cards={currentColumn.cards} state={state} columnTitle={columnTitle} />
             </div>
             <div>
                 {isAddingCard ? (

@@ -10,6 +10,7 @@ export default function AppLayout({
 }: {
   children: React.ReactNode
 }) {
+  
   const {  data: projects = [] } = useProjects({ staleTime: 5 * 60 * 1000,  refetchOnWindowFocus: true})
   
   const [showAllProjects, setShowAllProjects] = useState(false)

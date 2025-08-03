@@ -2,6 +2,7 @@
 export * from './project'
 export * from './column'
 export * from './task'
+export * from './checklist'
 
 // Common validation utilities
 import { z } from 'zod'

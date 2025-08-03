@@ -5,17 +5,12 @@ import {
   handleAPIError,
   createSuccessResponse,
   validateRequestBody,
-  checkRateLimit,
   NotFoundError
 } from '@/lib/api-error-handler'
 
 // GET /api/columns/[id] - Get a specific column
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   try {
-  
     const { searchParams } = new URL(request.url)
     const includeTasks = searchParams.get('includeTasks') === 'true'
 
@@ -43,10 +38,7 @@ export async function GET(
 }
 
 // PUT /api/columns/[id] - Update a specific column
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const body = await request.json()
 
@@ -76,7 +68,7 @@ export async function PUT(
         }
       }
     })
-  
+
     return createSuccessResponse(column, 'Column updated successfully')
   } catch (error) {
     return handleAPIError(error, `/api/columns/${params.id}`)
@@ -84,13 +76,8 @@ export async function PUT(
 }
 
 // DELETE /api/columns/[id] - Delete a specific column
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
   try {
-  
-    // Check if column exists
     const existingColumn = await prisma.column.findUnique({
       where: { id: params.id },
       include: {
@@ -106,26 +93,46 @@ export async function DELETE(
       throw new NotFoundError('Column')
     }
 
-    await prisma.card.deleteMany({
-      where: {
-        columnId: params.id
-      }
-    })
-    
-    await prisma.column.delete({
-      where: { id: params.id },
-    })
+    // Perform all operations in a transaction
+    await prisma.$transaction(async (tx) => {
+      // delete all cards that belong to the column
+      await tx.card.deleteMany({
+        where: {
+          columnId: params.id
+        }
+      })
 
-    // reorder the columns in prisma
-    await prisma.column.updateMany({
-      where: {
-        projectId: existingColumn.projectId
-      },
-      data: {
-        order: { decrement: 1 }
-      }
-    })
+      // delete the column
+      await tx.column.delete({
+        where: { id: params.id },
+      })
 
+      // get remaining columns to reorder
+      const remainingColumns = await tx.column.findMany({
+        where: {
+          projectId: existingColumn.projectId
+        },
+        orderBy: {
+          order: 'asc'
+        }
+      })
+
+      // reorder the columns that come after the deleted column
+      const updatePromises = remainingColumns
+        .map((column, index) => {
+          if (column.order > existingColumn.order) {
+            return tx.column.update({
+              where: { id: column.id },
+              data: {
+                order: index
+              }
+            })
+          }
+        })
+
+      // execute all reorder updates
+      await Promise.all(updatePromises)
+    })
     return createSuccessResponse(undefined, 'Column deleted successfully')
   } catch (error) {
     return handleAPIError(error, `/api/columns/${params.id}`)

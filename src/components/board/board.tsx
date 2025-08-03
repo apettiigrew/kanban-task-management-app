@@ -7,7 +7,7 @@ import { useCreateColumn, useReorderColumns, useDeleteColumn } from '@/hooks/mut
 import { useMoveTask, useReorderTasks } from '@/hooks/mutations/use-task-mutations';
 import { FormError } from '@/lib/form-error-handler';
 import { SettingsContext } from '@/providers/settings-context';
-import { isCardData, isCardDropTargetData, isColumnData, isDraggingACard, isDraggingAColumn, ProjectWithColumnsAndTasks, TCard, TColumn } from '@/utils/data';
+import { isCardData, isCardDropTargetData, isColumnData, isDraggingACard, isDraggingAColumn } from '@/utils/data';
 import { autoScrollForElements } from '@atlaskit/pragmatic-drag-and-drop-auto-scroll/element';
 import { unsafeOverflowAutoScrollForElements } from '@atlaskit/pragmatic-drag-and-drop-auto-scroll/unsafe-overflow/element';
 import {
@@ -18,123 +18,75 @@ import { combine } from '@atlaskit/pragmatic-drag-and-drop/combine';
 import { monitorForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
 import { reorder } from '@atlaskit/pragmatic-drag-and-drop/reorder';
 import { PlusCircle } from 'lucide-react';
-import { useContext, useEffect, useRef, useState } from 'react';
+import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { Column } from './column';
+import { Column } from '@/components/column/column';
+import { TProject } from '@/models/project';
+import { TColumn } from '@/models/column';
+import { TCard } from '@/models/card';
 
 interface BoardProps {
-    project: ProjectWithColumnsAndTasks
+    project: TProject
 }
-
+var renderCount = 0;
 export function Board({ project }: BoardProps) {
-    console.log("project", project);
-    const [projectState, setProjectState] = useState(project);
+    console.log("Board render", project, renderCount++);
+    const [optimisticUpdates, setOptimisticUpdates] = useState<TProject>();
+
+    const currentProject = {
+        ...project,
+        ...optimisticUpdates
+    };
+    console.log("currentProject", currentProject);
+    console.log("optimisticUpdates", optimisticUpdates);
+
     const [isAddingList, setIsAddingList] = useState(false);
     const [newListTitle, setNewListTitle] = useState('');
     const { settings } = useContext(SettingsContext);
     const scrollableRef = useRef<HTMLDivElement | null>(null);
 
-    useEffect(() => {
-        setProjectState(project);
-    }, [project]);
+    const createColumnMutation = useCreateColumn();
+    const moveTaskMutation = useMoveTask();
+    const reorderTasksMutation = useReorderTasks();
+    const reorderColumnsMutation = useReorderColumns();
+    const deleteColumnMutation = useDeleteColumn();
 
-    // Create column mutation with database persistence
-    const createColumnMutation = useCreateColumn({
-        onSuccess: (data) => {
-            setNewListTitle('');
-            setIsAddingList(false);
-            // Replace the optimistic column with the real one from server
-            setProjectState(prev => ({
-                ...prev,
-                columns: prev.columns.map(col =>
-                    col.id.startsWith('temp') ? data : col
-                )
-            }));
-        },
-        onError: (error: FormError) => {
-            // Rollback optimistic update by removing the temporary column
-            setProjectState(prev => ({
-                ...prev,
-                columns: prev.columns.filter(col => !col.id.startsWith('temp-'))
-            }));
-            toast.error(error.message || 'Failed to create column');
-        },
-        onFieldErrors: (errors) => {
-            // Rollback optimistic update by removing the temporary column
-            setProjectState(prev => ({
-                ...prev,
-                columns: prev.columns.filter(col => !col.id.startsWith('temp-'))
-            }));
-            if (errors.title) {
-                toast.error(errors.title);
-            }
-        }
-    });
+    const handleDeleteColumn = useCallback((columnId: string) => {
 
-    // Task mutation hooks for drag and drop functionality
-    const moveTaskMutation = useMoveTask({
-        onSuccess: () => {
-            // invalidateByProject(project.id);
-            console.log("moveTaskMutation onSuccess", projectState);
-        },
-        onError: (error: FormError) => {
-            toast.error(error.message || 'Failed to move task');
-            // Revert to previous state on error
-            setProjectState(project);
-        }
-    });
+        const optimisticColumn = currentProject.columns.find(col => col.id === columnId);
+        const filteredColumns = currentProject.columns.filter(col => col.id !== columnId);
 
-    const reorderTasksMutation = useReorderTasks({
-        onSuccess: () => {
-
-        },
-        onError: (error: FormError) => {
-            toast.error(error.message || 'Failed to reorder tasks');
-            // Revert to previous state on error
-            setProjectState(project);
-        }
-    });
-
-    const reorderColumnsMutation = useReorderColumns({
-        onError: (error: FormError) => {
-            toast.error(error.message || 'Failed to reorder columns');
-        }
-    });
-
-    const deleteColumnMutation = useDeleteColumn({
-        onSuccess: () => {
-            // The optimistic update is already applied, just need to handle success
-        },
-        onError: (error: FormError) => {
-            // Revert to previous state on error
-            setProjectState(project);
-            toast.error(error.message || 'Failed to delete column');
-        }
-    });
-
-    const handleDeleteColumn = (columnId: string) => {
-        // Optimistically update UI
-        setProjectState(prev => {
-            const filteredColumns = prev.columns.filter(col => col.id !== columnId);
-            // Reorder remaining columns
-            const reorderedColumns = filteredColumns.map((col, index) => ({
-                ...col,
-                order: index
-            }));
+        const reorderedColumns = filteredColumns.map((col, index) => ({
+            ...col,
+            order: index
+        }));
+        setOptimisticUpdates((prev) => {
             return {
                 ...prev,
                 columns: reorderedColumns
-            };
+            } as TProject;
         });
 
         // Make the API call
         deleteColumnMutation.mutate({
             id: columnId,
-            projectId: projectState.id
+            projectId: currentProject.id
+        },{
+            onError:()=>{
+               // On re add the column that was deleted optimistically
+               const oldColumns = [...currentProject.columns]
+               console.log("handleDeleteColumn onError", oldColumns);
+               setOptimisticUpdates((prev)=>{
+                return {
+                    ...prev,
+                    columns: oldColumns
+                } as TProject;
+               })
+            }
         });
-    };
+    }, [optimisticUpdates, deleteColumnMutation, currentProject]);
 
-    const handleAddList = () => {
+    const handleAddList = useCallback(() => {
         const trimmedTitle = newListTitle.trim();
 
         if (!trimmedTitle) {
@@ -142,19 +94,17 @@ export function Board({ project }: BoardProps) {
             return;
         }
 
-        console.log("projectState.columns", projectState.columns);
         var order = 0;
-        if (projectState.columns.length === 0) {
+        if (currentProject.columns.length === 0) {
             order = 0;
         } else {
-            const maxOrder = projectState.columns.length - 1;
-            order = maxOrder + 1;
+            order = (currentProject.columns.length - 1) + 1;
         }
         // Create optimistic column for immediate UI update
         const optimisticColumn: TColumn = {
-            id: `temp`,
+            id: `temp-${Math.floor(Math.random() * 1000000)}`,
             title: trimmedTitle,
-            projectId: projectState.id,
+            projectId: currentProject.id,
             order: order,
             createdAt: new Date(),
             updatedAt: new Date(),
@@ -162,18 +112,42 @@ export function Board({ project }: BoardProps) {
         };
 
         // Optimistically update UI
-        setProjectState(prev => ({
-            ...prev,
-            columns: [...prev.columns, optimisticColumn]
-        }));
-
+        setOptimisticUpdates({ ...currentProject, columns: [...currentProject.columns, optimisticColumn] });
+        setIsAddingList(false);
+        setNewListTitle('');
         // Make the API call
         createColumnMutation.mutate({
             title: trimmedTitle,
-            projectId: projectState.id,
+            projectId: currentProject.id,
             order: order
+        }, {
+            onSuccess: (data) => {
+
+                setOptimisticUpdates((prev) => ({
+                    ...prev,
+                    columns: prev!.columns.map((column: TColumn) =>
+                        column.id === optimisticColumn.id ? {
+                            id: data.id,
+                            title: data.title,
+                            projectId: data.projectId,
+                            order: data.order,
+                            createdAt: data.createdAt,
+                            updatedAt: data.updatedAt,
+                            cards: data.cards
+                        } : column
+                    ) as TColumn[]
+                }) as TProject);
+            },
+            onError: () => {
+                setOptimisticUpdates((prev) => ({
+                    ...prev,
+                    columns: prev!.columns.filter(column =>
+                        column.id !== optimisticColumn.id
+                    ) as TColumn[]
+                }) as TProject);
+            }
         });
-    };
+    }, [currentProject, createColumnMutation, newListTitle, optimisticUpdates, project]);
 
     useEffect(() => {
         const element = scrollableRef.current;
@@ -195,10 +169,10 @@ export function Board({ project }: BoardProps) {
                         return;
                     }
                     const dropTargetData = innerMost.data;
-                    const homeColumnIndex = projectState.columns.findIndex(
+                    const homeColumnIndex = currentProject.columns.findIndex(
                         (column) => column.id === dragging.columnId,
                     );
-                    const home: TColumn | undefined = projectState.columns[homeColumnIndex];
+                    const home: TColumn | undefined = currentProject.columns[homeColumnIndex];
 
                     if (!home) {
                         return;
@@ -207,11 +181,11 @@ export function Board({ project }: BoardProps) {
 
                     // dropping on a card
                     if (isCardDropTargetData(dropTargetData)) {
-                        console.log("dropping on a card");
-                        const destinationColumnIndex = projectState.columns.findIndex(
+                        // console.log("dropping on a card");
+                        const destinationColumnIndex = currentProject.columns.findIndex(
                             (column) => column.id === dropTargetData.columnId,
                         );
-                        const destination = projectState.columns[destinationColumnIndex];
+                        const destination = currentProject.columns[destinationColumnIndex];
 
                         // reordering in home column
                         if (home === destination) {
@@ -246,20 +220,31 @@ export function Board({ project }: BoardProps) {
                                 ...home,
                                 cards: reorderedCards,
                             };
-                            const columns = Array.from(projectState.columns);
+                            const columns = Array.from(currentProject.columns);
                             columns[homeColumnIndex] = updated;
 
                             // Optimistically update UI
-                            setProjectState(prev => ({
-                                ...prev,
-                                columns
-                            }));
+                            setOptimisticUpdates((prev) => {
+                                return {
+                                    ...prev,
+                                    columns: columns
+                                } as TProject;
+                            });
 
                             reorderTasksMutation.mutate({
                                 columnId: home.id,
-                                projectId: projectState.id,
+                                projectId: currentProject.id,
                                 taskOrders: reorderedCards,
                                 columns
+                            }, {
+                                onSuccess: () => {
+                                    // Clear optimistic updates since TanStack Query will handle the cache
+                                    setOptimisticUpdates(undefined);
+                                },
+                                onError: () => {
+                                    // Revert optimistic updates on error
+                                    setOptimisticUpdates(undefined);
+                                }
                             });
                             return;
                         }
@@ -293,7 +278,10 @@ export function Board({ project }: BoardProps) {
                             description: card.description,
                             columnId: card.columnId,
                             projectId: card.projectId,
-                            order: index
+                            order: index,
+                            checklists: card.checklists,
+                            totalChecklistItems: card.totalChecklistItems,
+                            totalCompletedChecklistItems: card.totalCompletedChecklistItems,
                         }));
 
                         const reorderedHomeCards = homeCards.map((card, index) => ({
@@ -302,10 +290,13 @@ export function Board({ project }: BoardProps) {
                             description: card.description,
                             columnId: card.columnId,
                             projectId: card.projectId,
-                            order: index
+                            order: index,
+                            checklists: card.checklists,
+                            totalChecklistItems: card.totalChecklistItems,
+                            totalCompletedChecklistItems: card.totalCompletedChecklistItems,
                         }));
 
-                        const columns = Array.from(projectState.columns);
+                        const columns = Array.from(currentProject.columns);
                         columns[homeColumnIndex] = {
                             ...home,
                             cards: reorderedHomeCards,
@@ -314,13 +305,15 @@ export function Board({ project }: BoardProps) {
                             ...destination,
                             cards: reorderedDestinationCards,
                         };
-                        console.log("columns", columns);
+                        // console.log("columns", columns);
 
                         // Optimistically update UI
-                        setProjectState(prev => ({
-                            ...prev,
-                            columns
-                        }));
+                        setOptimisticUpdates((prev) => {
+                            return {
+                                ...prev,
+                                columns: columns
+                            } as TProject;
+                        });
 
                         // Move the task between columns
                         moveTaskMutation.mutate({
@@ -328,18 +321,27 @@ export function Board({ project }: BoardProps) {
                             sourceColumnId: home.id,
                             destinationColumnId: destination.id,
                             destinationOrder: finalIndex,
-                            projectId: projectState.id,
+                            projectId: currentProject.id,
                             columns: columns
+                        }, {
+                            onSuccess: () => {
+                                // Clear optimistic updates since TanStack Query will handle the cache
+                                setOptimisticUpdates(undefined);
+                            },
+                            onError: () => {
+                                // Revert optimistic updates on error
+                                setOptimisticUpdates(undefined);
+                            }
                         });
                         return;
                     }
 
                     // dropping onto a column, but not onto a card
                     if (isColumnData(dropTargetData)) {
-                        const destinationColumnIndex = projectState.columns.findIndex(
+                        const destinationColumnIndex = currentProject.columns.findIndex(
                             (column) => column.id === dropTargetData.column.id,
                         );
-                        const destination = projectState.columns[destinationColumnIndex];
+                        const destination = currentProject.columns[destinationColumnIndex];
 
                         if (!destination) {
                             return;
@@ -357,14 +359,16 @@ export function Board({ project }: BoardProps) {
                                 ...home,
                                 cards: reordered,
                             };
-                            const columns = Array.from(projectState.columns);
+                            const columns = Array.from(currentProject.columns);
                             columns[homeColumnIndex] = updated;
 
                             // Optimistically update UI
-                            setProjectState(prev => ({
-                                ...prev,
-                                columns
-                            }));
+                            setOptimisticUpdates((prev) => {
+                                return {
+                                    ...prev,
+                                    columns: columns
+                                } as TProject;
+                            });
 
                             // Update the order in the database
                             const taskOrders = reordered.map((card, index) => ({
@@ -374,9 +378,18 @@ export function Board({ project }: BoardProps) {
 
                             reorderTasksMutation.mutate({
                                 columnId: home.id,
-                                projectId: projectState.id,
+                                projectId: currentProject.id,
                                 taskOrders,
                                 columns
+                            }, {
+                                onSuccess: () => {
+                                    // Clear optimistic updates since TanStack Query will handle the cache
+                                    setOptimisticUpdates(undefined);
+                                },
+                                onError: () => {
+                                    // Revert optimistic updates on error
+                                    setOptimisticUpdates(undefined);
+                                }
                             });
                             return;
                         }
@@ -389,7 +402,7 @@ export function Board({ project }: BoardProps) {
                         const destinationCards = Array.from(destination.cards);
                         destinationCards.splice(destination.cards.length, 0, dragging.card);
 
-                        const columns = Array.from(projectState.columns);
+                        const columns = Array.from(currentProject.columns);
                         columns[homeColumnIndex] = {
                             ...home,
                             cards: homeCards,
@@ -400,10 +413,12 @@ export function Board({ project }: BoardProps) {
                         };
 
                         // Optimistically update UI
-                        setProjectState(prev => ({
-                            ...prev,
-                            columns
-                        }));
+                        setOptimisticUpdates((prev) => {
+                            return {
+                                ...prev,
+                                columns: columns
+                            } as TProject;
+                        });
 
                         // Move the task to another column
                         moveTaskMutation.mutate({
@@ -411,8 +426,17 @@ export function Board({ project }: BoardProps) {
                             sourceColumnId: home.id,
                             destinationColumnId: destination.id,
                             destinationOrder: destination.cards.length,
-                            projectId: projectState.id,
+                            projectId: currentProject.id,
                             columns
+                        }, {
+                            onSuccess: () => {
+                                // Clear optimistic updates since TanStack Query will handle the cache
+                                setOptimisticUpdates(undefined);
+                            },
+                            onError: () => {
+                                // Revert optimistic updates on error
+                                setOptimisticUpdates(undefined);
+                            }
                         });
 
                         return;
@@ -438,8 +462,8 @@ export function Board({ project }: BoardProps) {
                         return;
                     }
 
-                    const homeIndex = projectState.columns.findIndex((column) => column.id === dragging.column.id);
-                    const destinationIndex = projectState.columns.findIndex(
+                    const homeIndex = currentProject.columns.findIndex((column) => column.id === dragging.column.id);
+                    const destinationIndex = currentProject.columns.findIndex(
                         (column) => column.id === dropTargetData.column.id,
                     );
 
@@ -455,7 +479,7 @@ export function Board({ project }: BoardProps) {
 
                     const reordered = reorderWithEdge({
                         axis: 'horizontal',
-                        list: projectState.columns,
+                        list: currentProject.columns,
                         startIndex: homeIndex,
                         indexOfTarget: destinationIndex,
                         closestEdgeOfTarget: closestEdge,
@@ -473,14 +497,25 @@ export function Board({ project }: BoardProps) {
                     }));
 
                     // Optimistically update UI
-                    setProjectState(prev => ({
-                        ...prev,
-                        columns: columnOrders
-                    }));
+                    setOptimisticUpdates((prev) => {
+                        return {
+                            ...prev,
+                            columns: columnOrders
+                        } as TProject;
+                    });
 
                     reorderColumnsMutation.mutate({
-                        projectId: projectState.id,
+                        projectId: currentProject.id,
                         columnOrders
+                    }, {
+                        onSuccess: () => {
+                            // Clear optimistic updates since TanStack Query will handle the cache
+                            setOptimisticUpdates(undefined);
+                        },
+                        onError: () => {
+                            // Revert optimistic updates on error
+                            setOptimisticUpdates(undefined);
+                        }
                     });
                 },
             }),
@@ -525,17 +560,17 @@ export function Board({ project }: BoardProps) {
                 },
             }),
         );
-    }, [projectState, settings.boardScrollSpeed, settings.isOverElementAutoScrollEnabled, settings.isOverflowScrollingEnabled]);
+    }, [currentProject, settings.boardScrollSpeed, settings.isOverElementAutoScrollEnabled, settings.isOverflowScrollingEnabled]);
 
     return (
         <div ref={scrollableRef} className="h-screen flex flex-col">
             <div className="px-6 flex-1 flex flex-col">
                 <div className="flex items-center justify-between mb-6 mt-6">
-                    <h1 className="text-3xl font-bold">{projectState.title}</h1>
+                    <h1 className="text-3xl font-bold">{currentProject.title}</h1>
                 </div>
 
                 <div className="flex items-start gap-4 overflow-x-auto pb-4 snap-x snap-mandatory flex-1">
-                    {projectState.columns.map((column) => (
+                    {currentProject.columns.map((column) => (
                         <Column
                             key={column.id}
                             column={column}
@@ -568,7 +603,7 @@ interface AddListButtonProps {
     disabled?: boolean;
 }
 
-export const AddListButton: React.FC<AddListButtonProps> = ({ onClick, disabled = false }) => {
+const AddListButton: React.FC<AddListButtonProps> = ({ onClick, disabled = false }) => {
     return (
         <div className="w-[280px] min-w-[280px] flex-shrink-0">
             <Button
@@ -592,7 +627,7 @@ interface NewListFormProps {
     isCreating?: boolean;
 }
 
-export const NewListForm: React.FC<NewListFormProps> = ({
+const NewListForm: React.FC<NewListFormProps> = ({
     newListTitle,
     setNewListTitle,
     handleAddList,
@@ -600,7 +635,7 @@ export const NewListForm: React.FC<NewListFormProps> = ({
     isCreating = false,
 }) => {
     return (
-        <div className="w-[280px] min-w-[280px] flex-shrink-0 bg-muted/40 p-2 rounded-md">
+        <div className="w-[280px] min-w-[280px] flex-shrink-0  bg-gray-50 text-gray-900 rounded-2xl p-4 border border-gray-200">
             <Input
                 autoFocus
                 value={newListTitle}

@@ -5,12 +5,12 @@ import {
   handleAPIError,
   createSuccessResponse,
   validateRequestBody,
-  checkRateLimit,
   NotFoundError
 } from '@/lib/api-error-handler'
+import { TProject } from '@/models/project';
 
 // GET /api/projects/[id] - Get a specific project
-export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }>}) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
 
@@ -26,18 +26,60 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             cards: {
               orderBy: {
                 order: 'asc'
+              },
+              include: {
+                checklists: {
+                  select: {
+                    id: true, // only include id if needed
+                    _count: {
+                      select: { items: true }
+                    },
+                    items: {
+                      select: { isCompleted: true }
+                    }
+                  }
+                }
               }
             }
           }
         }
-      },
-    })
+      }
+    });
 
     if (!project) {
       throw new NotFoundError('Project')
     }
 
-    return createSuccessResponse(project, 'Project fetched successfully')
+    // get all items in all checklists
+    const transformedProject = {
+      ...project, 
+      columns: project.columns.map((column) => {
+        const transformedCards = column.cards.map((card) => {
+          let totalChecklistItems = 0;
+          let totalCompletedChecklistItems = 0;
+
+          card.checklists.forEach((checklist) => {
+            totalChecklistItems += checklist._count.items;
+            totalCompletedChecklistItems += checklist.items.filter((item) => item.isCompleted).length;
+          });
+
+
+
+          return {
+            ...card,
+            totalChecklistItems,
+            totalCompletedChecklistItems,
+          };
+        });
+
+        return {
+          ...column,
+          cards: transformedCards,
+        };
+      }),
+    };
+
+    return createSuccessResponse(transformedProject, 'Project fetched successfully')
   } catch (error) {
     const { id } = await params;
     return handleAPIError(error, `/api/projects/${id}`)

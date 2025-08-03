@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { useState } from "react"
 import { MoreHorizontal, Edit, ExternalLink, Trash2 } from "lucide-react"
-import { TProject } from '@/utils/data'
+import { TProject } from '@/models/project'
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,

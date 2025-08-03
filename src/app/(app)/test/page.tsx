@@ -1,3 +1,8 @@
 export default function TestPage() {
-    return <div>Test</div>
+    return (
+        <div className="max-h-screen bg-amber-300">
+            
+                test
+        </div>
+    )
 }

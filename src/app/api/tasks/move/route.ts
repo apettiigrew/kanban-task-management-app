@@ -24,8 +24,7 @@ export async function PUT(request: NextRequest) {
     if (!existingTask) {
       throw new NotFoundError('Task')
     }
-
-    console.log("validatedData", validatedData);
+    
     // Update every cards that's in the two columns that change if they are one just update that column
     for (const column of validatedData.columns) {
       for (const card of column.cards) {
