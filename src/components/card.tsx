@@ -211,11 +211,10 @@ export function CardDisplay(props: CardDisplayProps) {
           'hover:shadow-lg hover:border-2 hover:border-blue-900 hover:bg-blue-50 active:cursor-grabbing',
           innerStyles[state.type],
           classIf(state.type === 'is-dragging', 'opacity-50 shadow-none')
-        )}
-      >
+        )}>
         <div className="flex flex-col">
           <div className="flex items-start justify-between gap-2">
-            <div className="flex-1 break-all overflow-hidden" onClick={handleCardClick}>
+            <div className="flex-1 overflow-hidden" onClick={handleCardClick}>
               {card.title}
             </div>
             <DropdownMenu>

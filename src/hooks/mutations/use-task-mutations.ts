@@ -1,10 +1,11 @@
 'use client'
 
-import { apiRequest } from '@/lib/form-error-handler'
+import { apiRequest, FormError } from '@/lib/form-error-handler'
 import { CreateTask, DeleteTask, MoveTask, ReorderTasks, Task, UpdateTask } from '@/lib/validations/task'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { projectKeys } from '@/hooks/queries/use-projects'
 import { TProject } from '@/models/project'
+import { TCard } from '@/models/card'
 
 // API client functions for mutations
 const createTask = async (data: CreateTask): Promise<Task> => {
@@ -42,9 +43,57 @@ const reorderTasks = async (data: ReorderTasks): Promise<void> => {
 }
 
 export const useCreateTask = () => {
+    const queryClient = useQueryClient()
+
     return useMutation({
         mutationKey: ['createTask'],
         mutationFn: createTask,
+        onMutate: async (newTask) => {
+            // Cancel any outgoing refetches to avoid overwriting our optimistic update
+            await queryClient.cancelQueries({ queryKey: projectKeys.detail(newTask.projectId) })
+
+            // Snapshot the previous value for rollback
+            const previousProject = queryClient.getQueryData(projectKeys.detail(newTask.projectId))
+
+            // Optimistically add the task to the cache
+            queryClient.setQueryData(projectKeys.detail(newTask.projectId), (oldData: TProject | undefined) => {
+                if (!oldData) return oldData
+
+                // Create optimistic task
+                const optimisticTask: TCard = {
+                    id: `temp-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+                    title: newTask.title,
+                    description: newTask.description || '',
+                    columnId: newTask.columnId,
+                    projectId: newTask.projectId,
+                    order: newTask.order,
+                    checklists: [],
+                    totalChecklistItems: 0,
+                    totalCompletedChecklistItems: 0,
+                }
+
+                return {
+                    ...oldData,
+                    columns: oldData.columns.map(column => 
+                        column.id === newTask.columnId 
+                            ? { ...column, cards: [...column.cards, optimisticTask] }
+                            : column
+                    )
+                }
+            })
+
+            return { previousProject, projectId: newTask.projectId }
+        },
+        onError: (error: FormError, newTask, context) => {
+            // Revert to previous state on error
+            if (context?.previousProject && context?.projectId) {
+                queryClient.setQueryData(projectKeys.detail(context.projectId), context.previousProject)
+            }
+        },
+        onSettled: (data, error, newTask) => {
+            // Always refetch after error or success to ensure consistency
+            queryClient.invalidateQueries({ queryKey: projectKeys.detail(newTask.projectId) })
+        },
     })
 }
 
@@ -97,17 +146,76 @@ export const useDeleteTask = () => {
     })
 }
 
+
 export const useMoveTask = () => {
+    const queryClient = useQueryClient()
+
     return useMutation({
         mutationKey: ['moveTask'],
         mutationFn: moveTask,
+        onMutate: async (moveData) => {
+            // Cancel any outgoing refetches to avoid overwriting our optimistic update
+            await queryClient.cancelQueries({ queryKey: projectKeys.detail(moveData.projectId) })
+
+            // Snapshot the previous value for rollback
+            const previousProject = queryClient.getQueryData(projectKeys.detail(moveData.projectId))    
+            
+            // Optimistically update the cache with the new column state
+            queryClient.setQueryData(projectKeys.detail(moveData.projectId), (oldData: TProject | undefined) => {
+                if (!oldData) return oldData
+                return {
+                    ...oldData,
+                    columns: moveData.columns
+                }
+            })
+
+            return { previousProject, projectId: moveData.projectId }
+        },
+        onError: (error: FormError, moveData, context) => {
+            // Revert to previous state on error
+            if (context?.previousProject && context?.projectId) {
+                queryClient.setQueryData(projectKeys.detail(context.projectId), context.previousProject)
+            }
+        },
+        onSettled: (data, error, moveData) => {
+            // Always refetch after error or success to ensure consistency with server
+            queryClient.invalidateQueries({ queryKey: projectKeys.detail(moveData.projectId) })
+        },
     })
 }
 
 export const useReorderTasks = () => {
+    const queryClient = useQueryClient()
+
     return useMutation({
         mutationKey: ['reorderTasks'],
         mutationFn: reorderTasks,
+        onMutate: async (reorderData) => {
+            // Cancel any outgoing refetches to avoid overwriting our optimistic update
+            await queryClient.cancelQueries({ queryKey: projectKeys.detail(reorderData.projectId) })
+
+            // Get snapshot of previous state
+            const previousProject = queryClient.getQueryData(projectKeys.detail(reorderData.projectId))
+
+            // Optimistically reorder tasks within the column
+            queryClient.setQueryData(projectKeys.detail(reorderData.projectId), (oldData: TProject | undefined) => {
+                if (!oldData) return oldData
+                return { ...oldData, columns: reorderData.columns }
+            })
+
+            return { previousProject, projectId: reorderData.projectId }
+        },
+        onError: (error: FormError, reorderData, context) => {
+            // Revert to previous state on error
+            if (context?.previousProject && context?.projectId) {
+                queryClient.setQueryData(projectKeys.detail(context.projectId), context.previousProject)
+            }
+        },
+        onSettled: (data, error, reorderData) => {
+            // Always refetch after error or success to ensure consistency
+            queryClient.invalidateQueries({ queryKey: projectKeys.detail(reorderData.projectId) })
+        },
     })
 }
+
 

@@ -54,13 +54,8 @@ interface ColumnProps {
     onDelete: () => void;
 }
 export function Column({ column, onDelete }: ColumnProps) {
-    // Optimistic updates state for cards
-    const [optimisticCards, setOptimisticCards] = useState<TCard[]>([]);
-
-    const currentColumn = {
-        ...column,
-        cards: [...column.cards, ...optimisticCards]
-    };
+    // Use the column data directly since optimistic updates are now handled by TanStack Query
+    const currentColumn = column;
 
 
     const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -160,7 +155,7 @@ export function Column({ column, onDelete }: ColumnProps) {
                 getOverflow: () => ({ forTopEdge: { top: 1000 }, forBottomEdge: { bottom: 1000 } }),
             })
         );
-    }, [column, currentColumn.cards, optimisticCards, settings]);
+    }, [column, currentColumn.cards, settings]);
 
     const handleTitleSave = useCallback(() => {
         const trimmedTitle = columnTitle.trim();
@@ -201,54 +196,14 @@ export function Column({ column, onDelete }: ColumnProps) {
         setIsAddingCard(false);
         setNewCardTitle('');
 
-        // Create optimistic card for immediate UI update
-        const optimisticCard: TCard = {
-            id: `temp-${Math.floor(Math.random() * 1000000)}`,
-            title: title,
-            description: '',
-            columnId: columnId,
-            projectId: column.projectId,
-            order: currentColumn.cards.length,
-            checklists: [],
-            totalChecklistItems: 0,
-            totalCompletedChecklistItems: 0,
-        };
-
-        // Optimistically update UI
-        setOptimisticCards((prev) => [...prev, optimisticCard]);
-
+        // Create task via mutation - optimistic updates are handled by the mutation itself
         createTaskMutation.mutate({
             projectId: column.projectId,
             columnId: columnId,
             title: title,
             order: currentColumn.cards.length,
-        }, {
-            onSuccess: (data) => {
-                console.log("addCard onSuccess", data);
-                // Replace optimistic card with real data
-                setOptimisticCards((prev) =>
-                    prev.map((card) =>
-                        card.id === optimisticCard.id ? {
-                            id: data.id,
-                            title: data.title,
-                            description: data.description || '',
-                            columnId: data.columnId,
-                            projectId: data.projectId,
-                            order: data.order,
-                            checklists: [],
-                            totalChecklistItems: 0,
-                            totalCompletedChecklistItems: 0,
-                        } : card
-                    )
-                );
-            },
-            onError: () => {
-                setOptimisticCards((prev) =>
-                    prev.filter((card) => card.id !== optimisticCard.id)
-                );
-            }
         });
-    }, [column.projectId, currentColumn.cards.length, createTaskMutation, setOptimisticCards]);
+    }, [column.projectId, currentColumn.cards.length, createTaskMutation]);
 
     return (
         <ColumnWrapper

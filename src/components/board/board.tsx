@@ -236,6 +236,15 @@ export function Board({ project }: BoardProps) {
                                 projectId: currentProject.id,
                                 taskOrders: reorderedCards,
                                 columns
+                            }, {
+                                onSuccess: () => {
+                                    // Clear optimistic updates since TanStack Query will handle the cache
+                                    setOptimisticUpdates(undefined);
+                                },
+                                onError: () => {
+                                    // Revert optimistic updates on error
+                                    setOptimisticUpdates(undefined);
+                                }
                             });
                             return;
                         }
@@ -314,6 +323,15 @@ export function Board({ project }: BoardProps) {
                             destinationOrder: finalIndex,
                             projectId: currentProject.id,
                             columns: columns
+                        }, {
+                            onSuccess: () => {
+                                // Clear optimistic updates since TanStack Query will handle the cache
+                                setOptimisticUpdates(undefined);
+                            },
+                            onError: () => {
+                                // Revert optimistic updates on error
+                                setOptimisticUpdates(undefined);
+                            }
                         });
                         return;
                     }
@@ -363,6 +381,15 @@ export function Board({ project }: BoardProps) {
                                 projectId: currentProject.id,
                                 taskOrders,
                                 columns
+                            }, {
+                                onSuccess: () => {
+                                    // Clear optimistic updates since TanStack Query will handle the cache
+                                    setOptimisticUpdates(undefined);
+                                },
+                                onError: () => {
+                                    // Revert optimistic updates on error
+                                    setOptimisticUpdates(undefined);
+                                }
                             });
                             return;
                         }
@@ -401,6 +428,15 @@ export function Board({ project }: BoardProps) {
                             destinationOrder: destination.cards.length,
                             projectId: currentProject.id,
                             columns
+                        }, {
+                            onSuccess: () => {
+                                // Clear optimistic updates since TanStack Query will handle the cache
+                                setOptimisticUpdates(undefined);
+                            },
+                            onError: () => {
+                                // Revert optimistic updates on error
+                                setOptimisticUpdates(undefined);
+                            }
                         });
 
                         return;
@@ -471,6 +507,15 @@ export function Board({ project }: BoardProps) {
                     reorderColumnsMutation.mutate({
                         projectId: currentProject.id,
                         columnOrders
+                    }, {
+                        onSuccess: () => {
+                            // Clear optimistic updates since TanStack Query will handle the cache
+                            setOptimisticUpdates(undefined);
+                        },
+                        onError: () => {
+                            // Revert optimistic updates on error
+                            setOptimisticUpdates(undefined);
+                        }
                     });
                 },
             }),
