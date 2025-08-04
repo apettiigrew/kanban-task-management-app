@@ -151,13 +151,14 @@ export function CardTask(props: CardProps) {
         <CardShadow dragging={cardState.dragging} />
       )}
 
-      <TaskEditModal
-        columnTitle={columnTitle}
-        card={card}
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-      />
-
+      <RenderIf condition={isModalOpen}>
+        <TaskEditModal
+          columnTitle={columnTitle}
+          card={card}
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+        />
+      </RenderIf>
 
       <RenderIf condition={isDeleteDialogOpen}>
         <TaskDeleteDialog
@@ -224,8 +225,7 @@ export function CardDisplay(props: CardDisplayProps) {
                   size="sm"
                   className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
                   onClick={(e) => e.stopPropagation()}
-                  aria-label="Card actions"
-                >
+                  aria-label="Card actions">
                   <Pencil className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
@@ -234,8 +234,7 @@ export function CardDisplay(props: CardDisplayProps) {
                   onClick={(e) => {
                     e.stopPropagation();
                     handleCardClick(e);
-                  }}
-                >
+                  }}>
                   Edit card
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />

@@ -29,7 +29,8 @@ interface BoardProps {
     project: TProject
 }
 var renderCount = 0;
-export function Board({ project }: BoardProps) {
+export function Board(props: BoardProps) {
+    const { project } = props;
     console.log("Board render", project, renderCount++);
     const [optimisticUpdates, setOptimisticUpdates] = useState<TProject>();
 
