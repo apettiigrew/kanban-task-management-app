@@ -281,7 +281,9 @@ export function Column({ column, onDelete }: ColumnProps) {
                             value={newCardTitle}
                             onChange={(e) => setNewCardTitle(e.target.value)}
                             onKeyDown={(e) => {
-                                if (e.key === 'Enter') addCard(column.id, newCardTitle.trim());
+                                if (e.key === 'Enter' && newCardTitle.trim()) {
+                                    addCard(column.id, newCardTitle.trim());
+                                }
                                 if (e.key === 'Escape') {
                                     setIsAddingCard(false);
                                     setNewCardTitle('');
@@ -292,8 +294,9 @@ export function Column({ column, onDelete }: ColumnProps) {
                         <div className="flex justify-between gap-3">
                             <Button
                                 className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 border-0 text-white"
-                                onClick={() => addCard(column.id, newCardTitle.trim())}>
-                                Add a card
+                                onClick={() => addCard(column.id, newCardTitle.trim())}
+                                disabled={!newCardTitle.trim()}>
+                                Add card
                             </Button>
                             <Button
                                 onClick={() => {
