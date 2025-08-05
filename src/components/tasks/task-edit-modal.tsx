@@ -194,15 +194,15 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
   }, [card.description, editor, setIsEditingDescription])
 
   const syncTextareaHeight = useCallback(() => {
-    if (textareaRef.current) {
+    if (titleRef.current) {
       // Reset height to get minimal height
-      textareaRef.current.style.height = '0px'
+      titleRef.current.style.height = '0px'
 
       // Get the actual content height needed
-      const scrollHeight = textareaRef.current.scrollHeight
+      const scrollHeight = titleRef.current.scrollHeight
 
       // Get padding values
-      const computedStyle = getComputedStyle(textareaRef.current)
+      const computedStyle = getComputedStyle(titleRef.current)
       const paddingTop = parseInt(computedStyle.paddingTop)
       const paddingBottom = parseInt(computedStyle.paddingBottom)
 
@@ -213,12 +213,12 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
       // Use the smaller of scrollHeight or calculated minimum for tight fit
       const finalHeight = Math.max(minHeight, scrollHeight)
 
-      textareaRef.current.style.height = `${finalHeight}px`
+      titleRef.current.style.height = `${finalHeight}px`
     }
-  }, [textareaRef])
+  }, [titleRef])
 
   useEffect(() => {
-    if (isEditingTitle && textareaRef.current) {
+    if (isEditingTitle && titleRef.current) {
       syncTextareaHeight()
     }
   }, [isEditingTitle, title, syncTextareaHeight])
@@ -775,12 +775,11 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
             <div className="flex flex-col gap-1 flex-[1_1_auto] w-full max-w-full overflow-hidden">
               {isEditingTitle ? (
                 <Textarea
-                  className="w-full max-w-full break-all whitespace-break-spaces resize-none p-2 overflow-hidden"
+                  className="w-full max-w-full break-all whitespace-break-spaces resize-none p-2 overflow-hidden text-4xl font-bold"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   ref={(el) => {
                     titleRef.current = el;
-                    // Sync height when element is first set
                     if (el) {
                       setTimeout(() => syncTextareaHeight(), 0);
                     }
@@ -798,7 +797,7 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
                 <div
                   className="cursor-pointer p-2 w-full max-w-full break-words whitespace-pre-line overflow-hidden"
                   onClick={() => setIsEditingTitle(true)}>
-                  <p className="w-full max-w-full break-words overflow-hidden">
+                  <p className="w-full max-w-full break-words overflow-hidden text-4xl font-bold">
                     {title}
                   </p>
                 </div>
