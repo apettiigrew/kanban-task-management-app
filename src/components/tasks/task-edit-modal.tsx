@@ -68,8 +68,6 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
   const [description, setDescription] = useState(card.description)
   const [isEditingTitle, setIsEditingTitle] = useState(false)
   const [isEditingDescription, setIsEditingDescription] = useState(false)
-
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
   const [checklists, setChecklists] = useState<TChecklist[]>([])
   const titleRef = useRef<HTMLTextAreaElement>(null)
   const checklistsInitialized = useRef(false)
@@ -178,6 +176,7 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
           onSuccess: (updatedCard) => {
             setIsEditingDescription(false)
             setDescription(updatedCard.description || '')
+            queryClient.invalidateQueries({ queryKey: projectKeys.detail(card.projectId) })
           },
           onError: () => {
             setTitle(card.title)
@@ -864,10 +863,10 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
                         aria-label="Edit description"
                         onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') setIsEditingDescription(true) }}
                       >
-                        {card.description ? (
+                        {description ? (
                           <div
                             className="prose prose-sm max-w-none ProseMirror break-all overflow-wrap-anywhere"
-                            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(card.description) }}
+                            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(description) }}
                           />
                         ) : (
                           <p className="text-muted-foreground">Add a description...</p>
