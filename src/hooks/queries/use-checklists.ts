@@ -34,7 +34,7 @@ export const useChecklistsByCard = (cardId: string, options: UseChecklistsByCard
     queryFn: () => fetchChecklistsByCard(cardId),
     enabled: Boolean(cardId) && (options.enabled !== false),
     refetchOnWindowFocus: options.refetchOnWindowFocus ?? true,
-    staleTime: options.staleTime ?? 2 * 60 * 1000, // 2 minutes
+    staleTime:0 , 
     retry: (failureCount, error) => {
       // Don't retry on 4xx errors (client errors)
       if (error instanceof FormError || (error instanceof Error && error.message.includes('4'))) {

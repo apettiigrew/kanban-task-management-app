@@ -5,6 +5,7 @@ import {
   Dialog,
   DialogContentWithoutClose,
   DialogTitle,
+  DialogDescription,
 } from '@/components/ui/dialog'
 
 import {
@@ -68,7 +69,7 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
   const [description, setDescription] = useState(card.description)
   const [isEditingTitle, setIsEditingTitle] = useState(false)
   const [isEditingDescription, setIsEditingDescription] = useState(false)
-  
+
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const [checklists, setChecklists] = useState<TChecklist[]>([])
   const titleRef = useRef<HTMLTextAreaElement>(null)
@@ -106,13 +107,11 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
     },
   })
 
-
   const {
     data: fetchedChecklists = [],
   } = useChecklistsByCard(card.id)
 
   useEffect(() => {
-
     if (fetchedChecklists.length > 0 && !checklistsInitialized.current) {
       setChecklists(fetchedChecklists)
       checklistsInitialized.current = true
@@ -122,7 +121,6 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
       checklistsInitialized.current = false
     }
   }, [fetchedChecklists])
-
 
   const handleTitleBlur = useCallback(async () => {
     let newTitle = title
@@ -148,6 +146,13 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
       columnId: card.columnId,
       order: card.order,
       projectId: card.projectId,
+    }, {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: projectKeys.detail(card.projectId) })
+      },
+      onError: () => {
+        setTitle(card.title)
+      }
     })
 
     setIsEditingTitle(false)
@@ -190,7 +195,6 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
     setIsEditingDescription(false)
   }, [card.description, editor, setIsEditingDescription])
 
-  // Sync textarea height with content
   const syncTextareaHeight = useCallback(() => {
     if (textareaRef.current) {
       // Reset height to get minimal height
@@ -220,8 +224,6 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
       syncTextareaHeight()
     }
   }, [isEditingTitle, title, syncTextareaHeight])
-
-
 
   useEffect(() => {
     return combine(
@@ -771,6 +773,9 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContentWithoutClose className="sm:max-w-[800px]">
         <DialogTitle className="sr-only">Edit Task</DialogTitle>
+        <DialogDescription className="sr-only">
+          Edit card details including title, description, and checklists
+        </DialogDescription>
         <div className="flex flex-col gap-4 w-full max-w-full">
           <div className="flex w-full max-w-full gap-4">
             <div className="flex flex-col gap-1 flex-[1_1_auto] w-full max-w-full overflow-hidden">
