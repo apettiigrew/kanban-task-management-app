@@ -55,7 +55,7 @@ interface ColumnProps {
 }
 export function Column(props: ColumnProps) {
     const { column, onDelete } = props;
-    console.log("Column render", column);
+    // console.log("Column render", column);
     const currentColumn = column;
     // const [cards,setCards] = useState<TCard[]>(currentColumn.cards);
 
