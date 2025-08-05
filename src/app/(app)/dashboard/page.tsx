@@ -1,9 +1,9 @@
 "use client"
 
-import { DashboardHeader } from "@/components/dashboard-header"
-import { ProjectsGrid } from "@/components/projects-grid"
 import { AddProjectModal } from "@/components/add-project-modal"
+import { DashboardHeader } from "@/components/dashboard-header"
 import { LoadingState } from "@/components/loading-spinner"
+import { ProjectsGrid } from "@/components/projects-grid"
 import { useProjects } from "@/hooks/queries/use-projects"
 import { Toaster } from "sonner"
 
@@ -45,7 +45,7 @@ function DashboardContent() {
         )}
       </main>
       <Toaster />
-    </div>
+      </div>
   )
 }
 

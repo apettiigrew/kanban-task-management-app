@@ -1,3 +1,4 @@
+import { TaskDialogProvider } from '@/contexts/task-dialog-context';
 import { SettingsContextProvider } from '@/providers/settings-context';
 
 interface RootLayoutProps {
@@ -7,8 +8,10 @@ interface RootLayoutProps {
 
 export default async function RootLayout({ children, params }: RootLayoutProps) {
   return (
-    <SettingsContextProvider>
-      {children}
-    </SettingsContextProvider>
+    <TaskDialogProvider>
+      <SettingsContextProvider>
+        {children}
+      </SettingsContextProvider>
+    </TaskDialogProvider>
   );
 }

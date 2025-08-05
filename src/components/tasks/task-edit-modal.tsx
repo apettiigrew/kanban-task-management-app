@@ -54,9 +54,8 @@ import { AddChecklistButton } from '../add-checklist-button'
 import { DeleteActionButton } from '../delete-action-button'
 import { MenuBar } from '../editor/menubar'
 import { Textarea } from '../ui/textarea'
-import { TaskDeleteDialog } from './task-delete-dialog'
-import { RenderIf } from '@/utils/render-if'
 import { Checklist } from '../checklist/checklist'
+import { useTaskDialog } from '@/contexts/task-dialog-context'
 
 interface TaskEditModalProps {
   card: TCard
@@ -69,10 +68,11 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
   const [description, setDescription] = useState(card.description)
   const [isEditingTitle, setIsEditingTitle] = useState(false)
   const [isEditingDescription, setIsEditingDescription] = useState(false)
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const { openDeleteModal } = useTaskDialog()
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const [checklists, setChecklists] = useState<TChecklist[]>([])
   const titleRef = useRef<HTMLTextAreaElement>(null)
+  const checklistsInitialized = useRef(false)
 
     // Initialize mutation hooks with query invalidation
     const queryClient = useQueryClient()
@@ -112,11 +112,19 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
   } = useChecklistsByCard(card.id)
 
 
+  console.log("render checklists")
   useEffect(() => {
-    if (fetchedChecklists) {
-      setChecklists((prev) => [...prev, ...fetchedChecklists])
+    if (fetchedChecklists.length > 0 && !checklistsInitialized.current) {
+      setChecklists(fetchedChecklists)
+      checklistsInitialized.current = true
     }
   }, [fetchedChecklists])
+
+  // Reset initialization when card changes
+  useEffect(() => {
+    checklistsInitialized.current = false
+    setChecklists([])
+  }, [card.id])
 
   
 
@@ -884,7 +892,7 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
               </div>
               <div className="flex flex-[1_1_auto] flex-col gap-1">
                 <p className="text-sm font-medium mb-2">Actions</p>
-                <DeleteActionButton onClick={() => setIsDeleteDialogOpen(true)} className="mb-2">
+                <DeleteActionButton onClick={() => openDeleteModal(card)} className="mb-2">
                   Delete Card
                 </DeleteActionButton>
 
@@ -896,15 +904,6 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
           </div>
         </div>
       </DialogContentWithoutClose>
-
-      <RenderIf condition={isDeleteDialogOpen}>
-        <TaskDeleteDialog
-          card={card}
-          isOpen={isDeleteDialogOpen}
-          onClose={() => setIsDeleteDialogOpen(false)}
-          onDeleted={onClose}
-        />
-      </RenderIf>
     </Dialog>
   )
 }
