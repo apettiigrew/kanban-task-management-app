@@ -53,11 +53,11 @@ interface ColumnProps {
     column: TColumn;
     onDelete: () => void;
 }
-export function Column({ column, onDelete }: ColumnProps) {
-    // Use the column data directly since optimistic updates are now handled by TanStack Query
+export function Column(props: ColumnProps) {
+    const { column, onDelete } = props;
+    console.log("Column render", column);
     const currentColumn = column;
-    const [cards,setCards] = useState<TCard[]>(currentColumn.cards);
-
+    // const [cards,setCards] = useState<TCard[]>(currentColumn.cards);
 
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [columnTitle, setColumnTitle] = useState(currentColumn.title);
@@ -223,7 +223,7 @@ export function Column({ column, onDelete }: ColumnProps) {
             />
 
             <div className="flex flex-col gap-3 overflow-y-auto scrollbar-thin [&:not(:hover)]:scrollbar-transparent hover:scrollbar-gray-300 flex-grow max-h-screen min-h-0" ref={scrollableRef}>
-                <DisplayCard columnId={column.id} cards={cards} state={state} columnTitle={columnTitle} />
+                <DisplayCard columnId={column.id} cards={currentColumn.cards} state={state} columnTitle={columnTitle} />
             </div>
             <div>
                 {isAddingCard ? (

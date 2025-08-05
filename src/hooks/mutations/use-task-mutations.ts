@@ -82,6 +82,7 @@ export const useCreateTask = () => {
                 }
             })
 
+            console.log("calling mutate inside useCreateTask onMutate");
             return { previousProject, projectId: newTask.projectId }
         },
         onError: (error: FormError, newTask, context) => {
@@ -91,7 +92,7 @@ export const useCreateTask = () => {
             }
         },
         onSettled: (data, error, newTask) => {
-            // Always refetch after error or success to ensure consistency
+            console.log("calling invalidateQueries inside useCreateTask");
             queryClient.invalidateQueries({ queryKey: projectKeys.detail(newTask.projectId) })
         },
     })

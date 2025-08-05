@@ -1,11 +1,14 @@
 "use client"
 
 import '@/app/board.css';
+import { Column } from '@/components/column/column';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useCreateColumn, useReorderColumns, useDeleteColumn } from '@/hooks/mutations/use-column-mutations';
+import { useCreateColumn, useDeleteColumn, useReorderColumns } from '@/hooks/mutations/use-column-mutations';
 import { useMoveTask, useReorderTasks } from '@/hooks/mutations/use-task-mutations';
-import { FormError } from '@/lib/form-error-handler';
+import { TCard } from '@/models/card';
+import { TColumn } from '@/models/column';
+import { TProject } from '@/models/project';
 import { SettingsContext } from '@/providers/settings-context';
 import { isCardData, isCardDropTargetData, isColumnData, isDraggingACard, isDraggingAColumn } from '@/utils/data';
 import { autoScrollForElements } from '@atlaskit/pragmatic-drag-and-drop-auto-scroll/element';
@@ -18,29 +21,20 @@ import { combine } from '@atlaskit/pragmatic-drag-and-drop/combine';
 import { monitorForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
 import { reorder } from '@atlaskit/pragmatic-drag-and-drop/reorder';
 import { PlusCircle } from 'lucide-react';
-import { useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { Column } from '@/components/column/column';
-import { TProject } from '@/models/project';
-import { TColumn } from '@/models/column';
-import { TCard } from '@/models/card';
-
+import merge from 'lodash.merge';
 interface BoardProps {
     project: TProject
 }
-var renderCount = 0;
+
 export function Board(props: BoardProps) {
     const { project } = props;
-    console.log("Board render", project, renderCount++);
     const [optimisticUpdates, setOptimisticUpdates] = useState<TProject>();
 
-    const currentProject = {
-        ...project,
-        ...optimisticUpdates
-    };
-    console.log("currentProject", currentProject);
-    console.log("optimisticUpdates", optimisticUpdates);
+    const currentProject = useMemo (() => merge({}, project, optimisticUpdates), [project.columns, optimisticUpdates?.columns])
 
+    console.log("currentProject inside Board", currentProject)
     const [isAddingList, setIsAddingList] = useState(false);
     const [newListTitle, setNewListTitle] = useState('');
     const { settings } = useContext(SettingsContext);
@@ -76,7 +70,7 @@ export function Board(props: BoardProps) {
             onError:()=>{
                // On re add the column that was deleted optimistically
                const oldColumns = [...currentProject.columns]
-               console.log("handleDeleteColumn onError", oldColumns);
+               
                setOptimisticUpdates((prev)=>{
                 return {
                     ...prev,
@@ -134,7 +128,7 @@ export function Board(props: BoardProps) {
                             order: data.order,
                             createdAt: data.createdAt,
                             updatedAt: data.updatedAt,
-                            cards: data.cards
+                            cards: []
                         } : column
                     ) as TColumn[]
                 }) as TProject);
@@ -182,7 +176,7 @@ export function Board(props: BoardProps) {
 
                     // dropping on a card
                     if (isCardDropTargetData(dropTargetData)) {
-                        // console.log("dropping on a card");
+                        
                         const destinationColumnIndex = currentProject.columns.findIndex(
                             (column) => column.id === dropTargetData.columnId,
                         );
@@ -306,7 +300,7 @@ export function Board(props: BoardProps) {
                             ...destination,
                             cards: reorderedDestinationCards,
                         };
-                        // console.log("columns", columns);
+                        
 
                         // Optimistically update UI
                         setOptimisticUpdates((prev) => {

@@ -51,7 +51,7 @@ interface BoardContentProps {
 function BoardContent({ projectId }: BoardContentProps) {
   const { data: project, error: projectError } = useProject({ id: projectId, refetchOnWindowFocus: true })
 
-  console.log("rendering board content")
+  console.log("project inside BoardContent", project)
   if (projectError) {
     return (
       <div className="min-h-screen flex items-center justify-center">
