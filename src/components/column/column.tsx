@@ -53,11 +53,9 @@ interface ColumnProps {
     column: TColumn;
     onDelete: () => void;
 }
-export function Column({ column, onDelete }: ColumnProps) {
-    // Use the column data directly since optimistic updates are now handled by TanStack Query
+export function Column(props: ColumnProps) {
+    const { column, onDelete } = props;
     const currentColumn = column;
-
-
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [columnTitle, setColumnTitle] = useState(currentColumn.title);
     const [isAddingCard, setIsAddingCard] = useState(false);
@@ -83,9 +81,6 @@ export function Column({ column, onDelete }: ColumnProps) {
 
     const createTaskMutation = useCreateTask();
     const updateColumnMutation = useUpdateColumn();
-
-
-    
 
     useEffect(() => {
         if (isEditingTitle && titleInputRef.current) {
@@ -161,7 +156,6 @@ export function Column({ column, onDelete }: ColumnProps) {
         const trimmedTitle = columnTitle.trim();
 
         if (!trimmedTitle) {
-            toast.error('Column title cannot be empty');
             setColumnTitle(column.title);
             setIsEditingTitle(false);
             return;
@@ -196,12 +190,13 @@ export function Column({ column, onDelete }: ColumnProps) {
         setIsAddingCard(false);
         setNewCardTitle('');
 
-        // Create task via mutation - optimistic updates are handled by the mutation itself
+        const order = currentColumn.cards.length > 0 ? currentColumn.cards.length - 1 : 0;
+
         createTaskMutation.mutate({
             projectId: column.projectId,
             columnId: columnId,
             title: title,
-            order: currentColumn.cards.length,
+            order: order,
         });
     }, [column.projectId, currentColumn.cards.length, createTaskMutation]);
 
@@ -212,62 +207,16 @@ export function Column({ column, onDelete }: ColumnProps) {
                 stateStyles[state.type]
             )}
             ref={outerFullHeightRef}>
-            <div className="flex justify-between items-center">
-                <div className="flex items-center gap-2 flex-1">
-                    {isEditingTitle ? (
-                        <Input
-                            ref={titleInputRef}
-                            className="text-sm font-semibold text-gray-500"
-                            value={columnTitle}
-                            onChange={(e) => setColumnTitle(e.target.value)}
-                            onBlur={handleTitleSave}
-                            onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
-                                    e.preventDefault();
-                                    handleTitleSave();
-                                } else if (e.key === 'Escape') {
-                                    e.preventDefault();
-                                    handleTitleCancel();
-                                }
-                            }}
-                            placeholder="Enter column title..."
-                        />
-                    ) : (
-                        <h2
-                            onClick={() => setIsEditingTitle(true)}
-                            className="text-sm font-semibold text-black-500 cursor-pointer hover:text-gray-700 transition-colors flex-1"
-                            title="Click to edit title"
-                        >
-                            {columnTitle}
-                        </h2>
-                    )}
-                </div>
-
-                {!isEditingTitle && (
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                                <MoreHorizontal className="h-4 w-4" />
-                                <span className="sr-only">Open column menu</span>
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-48">
-                            <DropdownMenuItem className="center">
-                                List actions
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                                className="text-red-600 focus:text-red-600"
-                                onSelect={(e) => e.preventDefault()}
-                                onClick={handleDelete}
-                            >
-                                <Trash2 className="h-4 w-4 mr-2" />
-                                Delete column
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                        </DropdownMenuContent>
-                    </DropdownMenu>
-                )}
-            </div>
+            <ColumnHeader
+                columnTitle={columnTitle}
+                isEditingTitle={isEditingTitle}
+                titleInputRef={titleInputRef}
+                onTitleChange={setColumnTitle}
+                onEditingChange={setIsEditingTitle}
+                onTitleSave={handleTitleSave}
+                onTitleCancel={handleTitleCancel}
+                onDelete={handleDelete}
+            />
 
             <div className="flex flex-col gap-3 overflow-y-auto scrollbar-thin [&:not(:hover)]:scrollbar-transparent hover:scrollbar-gray-300 flex-grow max-h-screen min-h-0" ref={scrollableRef}>
                 <DisplayCard columnId={column.id} cards={currentColumn.cards} state={state} columnTitle={columnTitle} />
@@ -281,7 +230,9 @@ export function Column({ column, onDelete }: ColumnProps) {
                             value={newCardTitle}
                             onChange={(e) => setNewCardTitle(e.target.value)}
                             onKeyDown={(e) => {
-                                if (e.key === 'Enter') addCard(column.id, newCardTitle.trim());
+                                if (e.key === 'Enter' && newCardTitle.trim()) {
+                                    addCard(column.id, newCardTitle.trim());
+                                }
                                 if (e.key === 'Escape') {
                                     setIsAddingCard(false);
                                     setNewCardTitle('');
@@ -291,9 +242,10 @@ export function Column({ column, onDelete }: ColumnProps) {
                         />
                         <div className="flex justify-between gap-3">
                             <Button
-                                className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 border-0 text-white"
-                                onClick={() => addCard(column.id, newCardTitle.trim())}>
-                                Add a card
+                                variant="primary"
+                                onClick={() => addCard(column.id, newCardTitle.trim())}
+                                disabled={!newCardTitle.trim()}>
+                                Add card
                             </Button>
                             <Button
                                 onClick={() => {
@@ -310,7 +262,7 @@ export function Column({ column, onDelete }: ColumnProps) {
                     </div>
                 ) : (
                     <Button
-                        className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 border-0 text-white"
+                        variant="primary"
                         onClick={() => setIsAddingCard(true)}
                     >
                         Add a card
@@ -321,12 +273,94 @@ export function Column({ column, onDelete }: ColumnProps) {
     );
 }
 
+interface ColumnHeaderProps {
+    columnTitle: string;
+    isEditingTitle: boolean;
+    titleInputRef: React.RefObject<HTMLInputElement | null>;
+    onTitleChange: (title: string) => void;
+    onEditingChange: (isEditing: boolean) => void;
+    onTitleSave: () => void;
+    onTitleCancel: () => void;
+    onDelete: () => void;
+}
+
+function ColumnHeader({
+    columnTitle,
+    isEditingTitle,
+    titleInputRef,
+    onTitleChange,
+    onEditingChange,
+    onTitleSave,
+    onTitleCancel,
+    onDelete
+}: ColumnHeaderProps) {
+    return (
+        <div className="flex justify-between items-center">
+            <div className="flex items-center gap-2 flex-1">
+                {isEditingTitle ? (
+                    <Input
+                        ref={titleInputRef}
+                        className="text-sm font-semibold text-gray-500"
+                        value={columnTitle}
+                        onChange={(e) => onTitleChange(e.target.value)}
+                        onBlur={onTitleSave}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                                e.preventDefault();
+                                onTitleSave();
+                            } else if (e.key === 'Escape') {
+                                e.preventDefault();
+                                onTitleCancel();
+                            }
+                        }}
+                        placeholder="Enter column title..."
+                    />
+                ) : (
+                    <h2
+                        onClick={() => onEditingChange(true)}
+                        className="text-sm font-semibold text-black-500 cursor-pointer hover:text-gray-700 transition-colors flex-1"
+                        title="Click to edit title"
+                    >
+                        {columnTitle}
+                    </h2>
+                )}
+            </div>
+
+            {!isEditingTitle && (
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                            <MoreHorizontal className="h-4 w-4" />
+                            <span className="sr-only">Open column menu</span>
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-48">
+                        <DropdownMenuItem className="center">
+                            List actions
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                            className="text-red-600 focus:text-red-600"
+                            onSelect={(e) => e.preventDefault()}
+                            onClick={onDelete}
+                        >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Delete column
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                    </DropdownMenuContent>
+                </DropdownMenu>
+            )}
+        </div>
+    );
+}
+
 interface DisplayCardProps {
     cards: TCard[];
     columnId: string;
     state: TColumnState;
     columnTitle: string;
 }
+
 function DisplayCard({ cards, columnId, state, columnTitle }: DisplayCardProps) {
     if (!cards || cards.length === 0) {
         return state.type === 'is-card-over' ? <CardShadow dragging={state.dragging} /> : null;

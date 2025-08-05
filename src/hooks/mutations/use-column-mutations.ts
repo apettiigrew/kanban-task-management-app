@@ -3,6 +3,7 @@
 import { apiRequest } from '@/lib/form-error-handler'
 import { TColumn } from '@/models/column'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { projectKeys } from '../queries/use-projects'
 
 // Types for mutation data
 interface CreateColumnData {
@@ -76,9 +77,14 @@ export const useDeleteColumn = () => {
 }
 
 export const useReorderColumns = () => {
-  return useMutation({
+  const queryClient = useQueryClient()
+
+    return useMutation({
     mutationKey: ['reorderColumns'],
     mutationFn: reorderColumns,
+    onSettled: (data, error, variables) => {
+      queryClient.invalidateQueries({ queryKey: projectKeys.detail(variables.projectId) })
+    }
   })
 }
 

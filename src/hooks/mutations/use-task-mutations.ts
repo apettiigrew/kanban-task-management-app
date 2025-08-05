@@ -1,11 +1,11 @@
 'use client'
 
+import { projectKeys } from '@/hooks/queries/use-projects'
 import { apiRequest, FormError } from '@/lib/form-error-handler'
 import { CreateTask, DeleteTask, MoveTask, ReorderTasks, Task, UpdateTask } from '@/lib/validations/task'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { projectKeys } from '@/hooks/queries/use-projects'
-import { TProject } from '@/models/project'
 import { TCard } from '@/models/card'
+import { TProject } from '@/models/project'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 
 // API client functions for mutations
 const createTask = async (data: CreateTask): Promise<Task> => {
@@ -81,7 +81,6 @@ export const useCreateTask = () => {
                     )
                 }
             })
-
             return { previousProject, projectId: newTask.projectId }
         },
         onError: (error: FormError, newTask, context) => {
@@ -91,7 +90,6 @@ export const useCreateTask = () => {
             }
         },
         onSettled: (data, error, newTask) => {
-            // Always refetch after error or success to ensure consistency
             queryClient.invalidateQueries({ queryKey: projectKeys.detail(newTask.projectId) })
         },
     })
@@ -153,34 +151,9 @@ export const useMoveTask = () => {
     return useMutation({
         mutationKey: ['moveTask'],
         mutationFn: moveTask,
-        onMutate: async (moveData) => {
-            // Cancel any outgoing refetches to avoid overwriting our optimistic update
-            await queryClient.cancelQueries({ queryKey: projectKeys.detail(moveData.projectId) })
-
-            // Snapshot the previous value for rollback
-            const previousProject = queryClient.getQueryData(projectKeys.detail(moveData.projectId))    
-            
-            // Optimistically update the cache with the new column state
-            queryClient.setQueryData(projectKeys.detail(moveData.projectId), (oldData: TProject | undefined) => {
-                if (!oldData) return oldData
-                return {
-                    ...oldData,
-                    columns: moveData.columns
-                }
-            })
-
-            return { previousProject, projectId: moveData.projectId }
-        },
-        onError: (error: FormError, moveData, context) => {
-            // Revert to previous state on error
-            if (context?.previousProject && context?.projectId) {
-                queryClient.setQueryData(projectKeys.detail(context.projectId), context.previousProject)
-            }
-        },
-        onSettled: (data, error, moveData) => {
-            // Always refetch after error or success to ensure consistency with server
-            queryClient.invalidateQueries({ queryKey: projectKeys.detail(moveData.projectId) })
-        },
+        onSettled: (data, error, variables) => {
+            queryClient.invalidateQueries({ queryKey: projectKeys.detail(variables.projectId) })
+        }
     })
 }
 

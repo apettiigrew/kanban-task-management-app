@@ -17,7 +17,6 @@ export function DeleteActionButton(props: DeleteActionButtonProps) {
     className ? className : ""
   );
 
-  // console.log(classNames);
   return (
     <Button
       variant="outline"

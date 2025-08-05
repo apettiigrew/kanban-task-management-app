@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import {
   Dialog,
   DialogContentWithoutClose,
+  DialogDescription,
   DialogTitle,
 } from '@/components/ui/dialog'
 
@@ -21,7 +22,6 @@ import { useUpdateTask } from '@/hooks/mutations/use-task-mutations'
 import { useChecklistsByCard } from '@/hooks/queries/use-checklists'
 
 import { projectKeys } from '@/hooks/queries/use-projects'
-import { FormError } from '@/lib/form-error-handler'
 import { TCard } from '@/models/card'
 import { TChecklist } from '@/models/checklist'
 import { TChecklistItem } from '@/models/checklist-item'
@@ -51,12 +51,11 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { AddChecklistButton } from '../add-checklist-button'
 
+import { useTaskDialog } from '@/contexts/task-dialog-context'
+import { Checklist } from '../checklist/checklist'
 import { DeleteActionButton } from '../delete-action-button'
 import { MenuBar } from '../editor/menubar'
 import { Textarea } from '../ui/textarea'
-import { TaskDeleteDialog } from './task-delete-dialog'
-import { RenderIf } from '@/utils/render-if'
-import { Checklist } from '../checklist/checklist'
 
 interface TaskEditModalProps {
   card: TCard
@@ -69,23 +68,22 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
   const [description, setDescription] = useState(card.description)
   const [isEditingTitle, setIsEditingTitle] = useState(false)
   const [isEditingDescription, setIsEditingDescription] = useState(false)
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
   const [checklists, setChecklists] = useState<TChecklist[]>([])
   const titleRef = useRef<HTMLTextAreaElement>(null)
+  const checklistsInitialized = useRef(false)
+  const { openDeleteModal } = useTaskDialog()
 
-    // Initialize mutation hooks with query invalidation
-    const queryClient = useQueryClient()
-    const createChecklistMutation = useCreateChecklist()
-    const updateChecklistMutation = useUpdateChecklist()
-    const deleteChecklistMutation = useDeleteChecklist()
-    const createChecklistItemMutation = useCreateChecklistItem()
-    const updateChecklistItemMutation = useUpdateChecklistItem()
-    const deleteChecklistItemMutation = useDeleteChecklistItem()
-    const reorderChecklistsMutation = useReorderChecklists()
-    const reorderChecklistItemsMutation = useReorderChecklistItems()
-    const updateTaskMutation = useUpdateTask()
-    
+  const queryClient = useQueryClient()
+  const createChecklistMutation = useCreateChecklist()
+  const updateChecklistMutation = useUpdateChecklist()
+  const deleteChecklistMutation = useDeleteChecklist()
+  const createChecklistItemMutation = useCreateChecklistItem()
+  const updateChecklistItemMutation = useUpdateChecklistItem()
+  const deleteChecklistItemMutation = useDeleteChecklistItem()
+  const reorderChecklistsMutation = useReorderChecklists()
+  const reorderChecklistItemsMutation = useReorderChecklistItems()
+  const updateTaskMutation = useUpdateTask()
+
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -106,19 +104,20 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
     },
   })
 
-
   const {
     data: fetchedChecklists = [],
   } = useChecklistsByCard(card.id)
 
-
   useEffect(() => {
-    if (fetchedChecklists) {
-      setChecklists((prev) => [...prev, ...fetchedChecklists])
+    if (fetchedChecklists.length > 0 && !checklistsInitialized.current) {
+      setChecklists(fetchedChecklists)
+      checklistsInitialized.current = true
+    }
+
+    return () => {
+      checklistsInitialized.current = false
     }
   }, [fetchedChecklists])
-
-  
 
   const handleTitleBlur = useCallback(async () => {
     let newTitle = title
@@ -144,10 +143,23 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
       columnId: card.columnId,
       order: card.order,
       projectId: card.projectId,
+    }, {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: projectKeys.detail(card.projectId) })
+      },
+      onError: () => {
+        setTitle(card.title)
+      }
     })
 
     setIsEditingTitle(false)
-  }, [card.title, card.description, card.columnId, card.order, card.projectId, setTitle, setIsEditingTitle, updateTaskMutation])
+  }, [
+    card.title,
+    card.description,
+    card.columnId,
+    card.order,
+    card.projectId,
+    setTitle, setIsEditingTitle, updateTaskMutation])
 
   const handleDescriptionSave = useCallback(async () => {
     const description = editor?.getHTML()
@@ -162,9 +174,9 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
       },
         {
           onSuccess: (updatedCard) => {
-            setIsEditingTitle(false)
             setIsEditingDescription(false)
-            setTitle(updatedCard.title)
+            setDescription(updatedCard.description || '')
+            queryClient.invalidateQueries({ queryKey: projectKeys.detail(card.projectId) })
           },
           onError: () => {
             setTitle(card.title)
@@ -180,17 +192,16 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
     setIsEditingDescription(false)
   }, [card.description, editor, setIsEditingDescription])
 
-  // Sync textarea height with content
   const syncTextareaHeight = useCallback(() => {
-    if (textareaRef.current) {
+    if (titleRef.current) {
       // Reset height to get minimal height
-      textareaRef.current.style.height = '0px'
+      titleRef.current.style.height = '0px'
 
       // Get the actual content height needed
-      const scrollHeight = textareaRef.current.scrollHeight
+      const scrollHeight = titleRef.current.scrollHeight
 
       // Get padding values
-      const computedStyle = getComputedStyle(textareaRef.current)
+      const computedStyle = getComputedStyle(titleRef.current)
       const paddingTop = parseInt(computedStyle.paddingTop)
       const paddingBottom = parseInt(computedStyle.paddingBottom)
 
@@ -201,17 +212,15 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
       // Use the smaller of scrollHeight or calculated minimum for tight fit
       const finalHeight = Math.max(minHeight, scrollHeight)
 
-      textareaRef.current.style.height = `${finalHeight}px`
+      titleRef.current.style.height = `${finalHeight}px`
     }
-  }, [textareaRef])
+  }, [titleRef])
 
   useEffect(() => {
-    if (isEditingTitle && textareaRef.current) {
+    if (isEditingTitle && titleRef.current) {
       syncTextareaHeight()
     }
   }, [isEditingTitle, title, syncTextareaHeight])
-
-
 
   useEffect(() => {
     return combine(
@@ -468,7 +477,6 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
     );
   }, [checklists, card.id, reorderChecklistsMutation])
 
-
   const addChecklist = useCallback((title: string) => {
 
     let order = 0;
@@ -531,7 +539,6 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
     })
 
   }, [checklists, checklists, deleteChecklistMutation])
-
 
   const updateChecklistTitle = useCallback((checklistId: string, newTitle: string) => {
     const originalTitle = checklists.find(c => c.id === checklistId)?.title
@@ -645,7 +652,6 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
 
   }, [checklists, deleteChecklistItemMutation, card.projectId]);
 
-
   const toggleChecklistItem = useCallback((checklistId: string, itemId: string) => {
     const checklist = checklists.find(c => c.id === checklistId)
     const item = checklist?.items.find(i => i.id === itemId)
@@ -711,7 +717,6 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
     // }
   }, [checklists, updateChecklistItemMutation])
 
-
   const updateChecklistItemText = useCallback((checklistId: string, itemId: string, newText: string) => {
     const checklist = checklists.find(c => c.id === checklistId)
     const originalText = checklist?.items.find(i => i.id === itemId)?.text
@@ -761,17 +766,19 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContentWithoutClose className="sm:max-w-[800px]">
         <DialogTitle className="sr-only">Edit Task</DialogTitle>
+        <DialogDescription className="sr-only">
+          Edit card details including title, description, and checklists
+        </DialogDescription>
         <div className="flex flex-col gap-4 w-full max-w-full">
           <div className="flex w-full max-w-full gap-4">
             <div className="flex flex-col gap-1 flex-[1_1_auto] w-full max-w-full overflow-hidden">
               {isEditingTitle ? (
                 <Textarea
-                  className="w-full max-w-full break-all whitespace-break-spaces resize-none p-2 overflow-hidden"
+                  className="w-full max-w-full break-all whitespace-break-spaces resize-none p-2 overflow-hidden text-4xl font-bold"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   ref={(el) => {
                     titleRef.current = el;
-                    // Sync height when element is first set
                     if (el) {
                       setTimeout(() => syncTextareaHeight(), 0);
                     }
@@ -789,7 +796,7 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
                 <div
                   className="cursor-pointer p-2 w-full max-w-full break-words whitespace-pre-line overflow-hidden"
                   onClick={() => setIsEditingTitle(true)}>
-                  <p className="w-full max-w-full break-words overflow-hidden">
+                  <p className="w-full max-w-full break-words overflow-hidden text-4xl font-bold">
                     {title}
                   </p>
                 </div>
@@ -856,10 +863,10 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
                         aria-label="Edit description"
                         onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') setIsEditingDescription(true) }}
                       >
-                        {card.description ? (
+                        {description ? (
                           <div
                             className="prose prose-sm max-w-none ProseMirror break-all overflow-wrap-anywhere"
-                            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(card.description) }}
+                            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(description) }}
                           />
                         ) : (
                           <p className="text-muted-foreground">Add a description...</p>
@@ -884,7 +891,7 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
               </div>
               <div className="flex flex-[1_1_auto] flex-col gap-1">
                 <p className="text-sm font-medium mb-2">Actions</p>
-                <DeleteActionButton onClick={() => setIsDeleteDialogOpen(true)} className="mb-2">
+                <DeleteActionButton onClick={() => openDeleteModal(card)} className="mb-2">
                   Delete Card
                 </DeleteActionButton>
 
@@ -896,19 +903,9 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
           </div>
         </div>
       </DialogContentWithoutClose>
-
-      <RenderIf condition={isDeleteDialogOpen}>
-        <TaskDeleteDialog
-          card={card}
-          isOpen={isDeleteDialogOpen}
-          onClose={() => setIsDeleteDialogOpen(false)}
-          onDeleted={onClose}
-        />
-      </RenderIf>
     </Dialog>
   )
 }
-
 
 interface DisplayChecklistProps {
   checklists: TChecklist[]

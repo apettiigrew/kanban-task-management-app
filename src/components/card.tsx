@@ -29,10 +29,8 @@ import {
 } from '@/utils/data';
 import { cc, classIf } from '@/utils/style-utils';
 import { TextIcon } from './icons/icons';
-import { TaskDeleteDialog } from './tasks/task-delete-dialog';
-import { TaskEditModal } from './tasks/task-edit-modal';
 import { ChecklistProgressIndicator } from './checklist-progress-indicator';
-import { RenderIf } from '@/utils/render-if';
+import { useTaskDialog } from '@/contexts/task-dialog-context';
 
 
 interface DescriptionIndicatorProps {
@@ -70,16 +68,19 @@ interface CardProps {
 }
 export function CardTask(props: CardProps) {
   const [cardState, setCardState] = useState<CardState>(draggingState);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const { card, columnId, columnTitle } = props;
+  const { openEditModal, openDeleteModal } = useTaskDialog();
   const outerRef = useRef<HTMLDivElement | null>(null);
   const innerRef = useRef<HTMLDivElement | null>(null);
 
   const handleCardClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (cardState.type === 'is-dragging') return;
-    setIsModalOpen(true);
+    openEditModal(card, columnTitle);
+  };
+
+  const handleDeleteClick = () => {
+    openDeleteModal(card);
   };
 
   useEffect(() => {
@@ -131,7 +132,7 @@ export function CardTask(props: CardProps) {
     );
   }, [card, columnId]);
 
-  // console.log('cardState', cardState);
+  
   return (
     <>
       {cardState.type === 'is-over' && cardState.closestEdge === 'top' && (
@@ -144,29 +145,12 @@ export function CardTask(props: CardProps) {
         outerRef={outerRef}
         innerRef={innerRef}
         handleCardClick={handleCardClick}
-        handleDeleteClick={() => setIsDeleteDialogOpen(true)}
+        handleDeleteClick={handleDeleteClick}
       />
 
       {cardState.type === 'is-over' && cardState.closestEdge === 'bottom' && (
         <CardShadow dragging={cardState.dragging} />
       )}
-
-      <TaskEditModal
-        columnTitle={columnTitle}
-        card={card}
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-      />
-
-
-      <RenderIf condition={isDeleteDialogOpen}>
-        <TaskDeleteDialog
-          card={card}
-          isOpen={isDeleteDialogOpen}
-          onClose={() => setIsDeleteDialogOpen(false)}
-          onDeleted={() => setIsDeleteDialogOpen(false)}
-        />
-      </RenderIf>
     </>
   );
 }
@@ -224,8 +208,7 @@ export function CardDisplay(props: CardDisplayProps) {
                   size="sm"
                   className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
                   onClick={(e) => e.stopPropagation()}
-                  aria-label="Card actions"
-                >
+                  aria-label="Card actions">
                   <Pencil className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
@@ -234,8 +217,7 @@ export function CardDisplay(props: CardDisplayProps) {
                   onClick={(e) => {
                     e.stopPropagation();
                     handleCardClick(e);
-                  }}
-                >
+                  }}>
                   Edit card
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
