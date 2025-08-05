@@ -55,10 +55,7 @@ interface ColumnProps {
 }
 export function Column(props: ColumnProps) {
     const { column, onDelete } = props;
-    // console.log("Column render", column);
     const currentColumn = column;
-    // const [cards,setCards] = useState<TCard[]>(currentColumn.cards);
-
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [columnTitle, setColumnTitle] = useState(currentColumn.title);
     const [isAddingCard, setIsAddingCard] = useState(false);
@@ -159,7 +156,6 @@ export function Column(props: ColumnProps) {
         const trimmedTitle = columnTitle.trim();
 
         if (!trimmedTitle) {
-            toast.error('Column title cannot be empty');
             setColumnTitle(column.title);
             setIsEditingTitle(false);
             return;
@@ -195,7 +191,7 @@ export function Column(props: ColumnProps) {
         setNewCardTitle('');
 
         const order = currentColumn.cards.length > 0 ? currentColumn.cards.length - 1 : 0;
-        
+
         createTaskMutation.mutate({
             projectId: column.projectId,
             columnId: columnId,
@@ -246,7 +242,7 @@ export function Column(props: ColumnProps) {
                         />
                         <div className="flex justify-between gap-3">
                             <Button
-                                className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 border-0 text-white"
+                                variant="primary"
                                 onClick={() => addCard(column.id, newCardTitle.trim())}
                                 disabled={!newCardTitle.trim()}>
                                 Add card
@@ -266,7 +262,7 @@ export function Column(props: ColumnProps) {
                     </div>
                 ) : (
                     <Button
-                        className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 border-0 text-white"
+                        variant="primary"
                         onClick={() => setIsAddingCard(true)}
                     >
                         Add a card
@@ -364,6 +360,7 @@ interface DisplayCardProps {
     state: TColumnState;
     columnTitle: string;
 }
+
 function DisplayCard({ cards, columnId, state, columnTitle }: DisplayCardProps) {
     if (!cards || cards.length === 0) {
         return state.type === 'is-card-over' ? <CardShadow dragging={state.dragging} /> : null;

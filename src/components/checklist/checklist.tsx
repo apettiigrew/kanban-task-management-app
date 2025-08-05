@@ -371,12 +371,11 @@ export function Checklist(props: ChecklistProps) {
                 />
                 <div className="flex items-start gap-2">
                   <Button
-                    variant="default"
+                    variant="primary"
                     size="sm"
                     onClick={handleAddItem}
                     disabled={!newItemText.trim()}
-                    className="flex-shrink-0"
-                  >
+                    className="flex-shrink-0">
                     Add
                   </Button>
                   <Button

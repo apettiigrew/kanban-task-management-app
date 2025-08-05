@@ -70,6 +70,7 @@ export function AddChecklistButton({ onAddChecklist, disabled = false, children 
           
           <div className="flex gap-2">
             <Button 
+              variant="primary"
               type="submit" 
               size="sm"
               disabled={!title.trim()}

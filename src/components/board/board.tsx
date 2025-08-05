@@ -608,6 +608,7 @@ const NewListForm: React.FC<NewListFormProps> = ({
             />
             <div className="flex gap-1">
                 <Button
+                    variant="primary"
                     size="sm"
                     onClick={handleAddList}
                     disabled={!newListTitle.trim() || isCreating}
