@@ -149,15 +149,7 @@ export function Checklist(props: ChecklistProps) {
           setChecklistState({ type: 'is-over', dragging: source.data.rect, closestEdge });
         },
         onDropTargetChange: ({ source, location }) => isChecklistItemData(source.data) && setIsChecklistItemOver({ data: source.data, location }),
-        onDragLeave: ({ source }) => !isChecklistData(source.data) || source.data.checklist.id !== checklist.id ? setChecklistState({ type: 'idle' }) : undefined,
-        // onDragLeave({ source }) {
-        //   if (!isChecklistData(source.data)) return;
-        //   setChecklistState(
-        //     source.data.checklist.id === checklist.id
-        //       ? { type: 'is-dragging-and-left-self' }
-        //       : { type: 'idle' }
-        //   );
-        // },
+        onDragLeave: ({ source }) => !isChecklistData(source.data) || source.data.checklist.id !== checklist.id ? setChecklistState({ type: 'idle' }) : setChecklistState({ type: 'is-dragging-and-left-self' }),
         onDrag({ source, self }) {
           if (!isChecklistData(source.data) || source.data.checklist.id === checklist.id) return;
           const closestEdge = extractClosestEdge(self.data);

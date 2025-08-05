@@ -68,24 +68,24 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
   const [description, setDescription] = useState(card.description)
   const [isEditingTitle, setIsEditingTitle] = useState(false)
   const [isEditingDescription, setIsEditingDescription] = useState(false)
-  const { openDeleteModal } = useTaskDialog()
+  
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const [checklists, setChecklists] = useState<TChecklist[]>([])
   const titleRef = useRef<HTMLTextAreaElement>(null)
   const checklistsInitialized = useRef(false)
+  const { openDeleteModal } = useTaskDialog()
 
-    // Initialize mutation hooks with query invalidation
-    const queryClient = useQueryClient()
-    const createChecklistMutation = useCreateChecklist()
-    const updateChecklistMutation = useUpdateChecklist()
-    const deleteChecklistMutation = useDeleteChecklist()
-    const createChecklistItemMutation = useCreateChecklistItem()
-    const updateChecklistItemMutation = useUpdateChecklistItem()
-    const deleteChecklistItemMutation = useDeleteChecklistItem()
-    const reorderChecklistsMutation = useReorderChecklists()
-    const reorderChecklistItemsMutation = useReorderChecklistItems()
-    const updateTaskMutation = useUpdateTask()
-    
+  const queryClient = useQueryClient()
+  const createChecklistMutation = useCreateChecklist()
+  const updateChecklistMutation = useUpdateChecklist()
+  const deleteChecklistMutation = useDeleteChecklist()
+  const createChecklistItemMutation = useCreateChecklistItem()
+  const updateChecklistItemMutation = useUpdateChecklistItem()
+  const deleteChecklistItemMutation = useDeleteChecklistItem()
+  const reorderChecklistsMutation = useReorderChecklists()
+  const reorderChecklistItemsMutation = useReorderChecklistItems()
+  const updateTaskMutation = useUpdateTask()
+
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -111,22 +111,18 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
     data: fetchedChecklists = [],
   } = useChecklistsByCard(card.id)
 
-
-  console.log("render checklists")
   useEffect(() => {
+
     if (fetchedChecklists.length > 0 && !checklistsInitialized.current) {
       setChecklists(fetchedChecklists)
       checklistsInitialized.current = true
     }
+
+    return () => {
+      checklistsInitialized.current = false
+    }
   }, [fetchedChecklists])
 
-  // Reset initialization when card changes
-  useEffect(() => {
-    checklistsInitialized.current = false
-    setChecklists([])
-  }, [card.id])
-
-  
 
   const handleTitleBlur = useCallback(async () => {
     let newTitle = title
@@ -155,7 +151,13 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
     })
 
     setIsEditingTitle(false)
-  }, [card.title, card.description, card.columnId, card.order, card.projectId, setTitle, setIsEditingTitle, updateTaskMutation])
+  }, [
+    card.title,
+    card.description,
+    card.columnId,
+    card.order,
+    card.projectId,
+    setTitle, setIsEditingTitle, updateTaskMutation])
 
   const handleDescriptionSave = useCallback(async () => {
     const description = editor?.getHTML()
