@@ -4,8 +4,8 @@ import { Button } from '@/components/ui/button'
 import {
   Dialog,
   DialogContentWithoutClose,
-  DialogTitle,
   DialogDescription,
+  DialogTitle,
 } from '@/components/ui/dialog'
 
 import {
@@ -22,7 +22,6 @@ import { useUpdateTask } from '@/hooks/mutations/use-task-mutations'
 import { useChecklistsByCard } from '@/hooks/queries/use-checklists'
 
 import { projectKeys } from '@/hooks/queries/use-projects'
-import { FormError } from '@/lib/form-error-handler'
 import { TCard } from '@/models/card'
 import { TChecklist } from '@/models/checklist'
 import { TChecklistItem } from '@/models/checklist-item'
@@ -52,11 +51,11 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { AddChecklistButton } from '../add-checklist-button'
 
+import { useTaskDialog } from '@/contexts/task-dialog-context'
+import { Checklist } from '../checklist/checklist'
 import { DeleteActionButton } from '../delete-action-button'
 import { MenuBar } from '../editor/menubar'
 import { Textarea } from '../ui/textarea'
-import { Checklist } from '../checklist/checklist'
-import { useTaskDialog } from '@/contexts/task-dialog-context'
 
 interface TaskEditModalProps {
   card: TCard
@@ -177,9 +176,8 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
       },
         {
           onSuccess: (updatedCard) => {
-            setIsEditingTitle(false)
             setIsEditingDescription(false)
-            setTitle(updatedCard.title)
+            setDescription(updatedCard.description || '')
           },
           onError: () => {
             setTitle(card.title)
@@ -480,7 +478,6 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
     );
   }, [checklists, card.id, reorderChecklistsMutation])
 
-
   const addChecklist = useCallback((title: string) => {
 
     let order = 0;
@@ -543,7 +540,6 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
     })
 
   }, [checklists, checklists, deleteChecklistMutation])
-
 
   const updateChecklistTitle = useCallback((checklistId: string, newTitle: string) => {
     const originalTitle = checklists.find(c => c.id === checklistId)?.title
@@ -657,7 +653,6 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
 
   }, [checklists, deleteChecklistItemMutation, card.projectId]);
 
-
   const toggleChecklistItem = useCallback((checklistId: string, itemId: string) => {
     const checklist = checklists.find(c => c.id === checklistId)
     const item = checklist?.items.find(i => i.id === itemId)
@@ -722,7 +717,6 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
     )
     // }
   }, [checklists, updateChecklistItemMutation])
-
 
   const updateChecklistItemText = useCallback((checklistId: string, itemId: string, newText: string) => {
     const checklist = checklists.find(c => c.id === checklistId)
@@ -914,7 +908,6 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
     </Dialog>
   )
 }
-
 
 interface DisplayChecklistProps {
   checklists: TChecklist[]
