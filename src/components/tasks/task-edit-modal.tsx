@@ -849,6 +849,7 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
                             Cancel
                           </Button>
                           <Button
+                            variant="primary"
                             onClick={handleDescriptionSave}
                             disabled={updateTaskMutation.isPending}>
                             Save
