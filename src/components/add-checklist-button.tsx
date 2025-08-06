@@ -75,7 +75,7 @@ export function AddChecklistButton({ onAddChecklist, disabled = false, children 
               size="sm"
               disabled={!title.trim()}
               className="flex-1"
-            >
+              onClick={handleSubmit}>
               Add
             </Button>
             <Button 
