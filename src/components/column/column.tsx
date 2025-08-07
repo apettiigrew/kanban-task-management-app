@@ -190,8 +190,11 @@ export function Column(props: ColumnProps) {
         setIsAddingCard(false);
         setNewCardTitle('');
 
-        const order = currentColumn.cards.length > 0 ? currentColumn.cards.length - 1 : 0;
+        console.log("currentColumn.cards", currentColumn.cards)
+        const order = currentColumn.cards.length > 0 ? (currentColumn.cards.length - 1) + 1 : 0;
 
+    
+        console.log("add Cardorder", order)
         createTaskMutation.mutate({
             projectId: column.projectId,
             columnId: columnId,
