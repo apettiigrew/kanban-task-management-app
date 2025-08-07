@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/dialog'
 import { useDeleteTask } from '@/hooks/mutations/use-task-mutations'
 import { TCard } from '@/models/card'
-import { useCallback } from 'react'
+import { useCallback, useMemo } from 'react'
 
 interface TaskDeleteDialogProps {
   card: TCard
@@ -21,9 +21,28 @@ interface TaskDeleteDialogProps {
   
 }
 
+// Utility functions for text truncation
+const truncateText = (text: string, maxLength: number): string => {
+  return text.length > maxLength ? `${text.substring(0, maxLength)}...` : text
+}
+
+const cleanAndTruncateDescription = (description: string, maxLength: number): string => {
+  const cleanDescription = description.replace(/<[^>]*>/g, '').trim()
+  return truncateText(cleanDescription, maxLength)
+}
+
 export function TaskDeleteDialog(props: TaskDeleteDialogProps) {
   const { card, isOpen, onClose, onDeleted } = props
   const deleteTaskMutation = useDeleteTask()
+
+  // Memoized text processing
+  const displayTitle = useMemo(() => {
+    return truncateText(card.title, 50)
+  }, [card.title])
+
+  const displayDescription = useMemo(() => {
+    return card.description ? cleanAndTruncateDescription(card.description, 40) : null
+  }, [card.description])
 
   const handleDelete = useCallback(() => {
     deleteTaskMutation.mutate({
@@ -40,21 +59,18 @@ export function TaskDeleteDialog(props: TaskDeleteDialogProps) {
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[425px] max-w-[90vw] overflow-hidden">
         <DialogHeader>
           <DialogTitle>Delete Card</DialogTitle>
           <DialogDescription>
             Are you sure you want to permanently delete this card? This action cannot be undone.
           </DialogDescription>
         </DialogHeader>
-        <div className="py-4">
-          <div className="rounded-md border p-3 bg-muted/50">
-            <p className="font-medium text-sm truncate">{card.title}</p>
-            {card.description && (
-              <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                {card.description.replace(/<[^>]*>/g, '').trim()}
-              </p>
-            )}
+        <div className="py-4 w-full overflow-hidden">
+          <div className="rounded-md border p-3 bg-muted/50 max-h-16 overflow-hidden w-full min-w-0">
+            <p className="font-medium text-sm truncate w-full min-w-0 overflow-hidden">
+              {displayTitle}
+            </p>
           </div>
         </div>
         <DialogFooter>
