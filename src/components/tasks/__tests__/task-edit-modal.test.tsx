@@ -113,6 +113,14 @@ jest.mock('sonner', () => ({
   },
 }))
 
+// Mock OpenAI service
+jest.mock('@/service/openai-service', () => ({
+  handleImproveWritingOpenAI: jest.fn().mockResolvedValue('Improved text'),
+  handleMakeLongerOpenAI: jest.fn().mockResolvedValue('Longer improved text'),
+  handleMakeShorterOpenAI: jest.fn().mockResolvedValue('Shorter text'),
+  handleMakeSMARTOpenAI: jest.fn().mockResolvedValue('SMART goal text'),
+}))
+
 // Mock the task mutations
 const mockMutate = jest.fn()
 

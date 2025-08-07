@@ -99,3 +99,9 @@ export const TextIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
   </svg>
 );
 
+import { Wand } from 'lucide-react';
+
+export const WandIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
+  <Wand {...props} />
+);
+
