@@ -71,6 +71,7 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
   const [isEditingTitle, setIsEditingTitle] = useState(false)
   const [isEditingDescription, setIsEditingDescription] = useState(false)
   const [checklists, setChecklists] = useState<TChecklist[]>([])
+  const [isAIProcessing, setIsAIProcessing] = useState(false)
   const titleRef = useRef<HTMLTextAreaElement>(null)
   const checklistsInitialized = useRef(false)
   const { openDeleteModal } = useTaskDialog()
@@ -515,7 +516,7 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
 
           queryClient.invalidateQueries({ queryKey: projectKeys.detail(card.projectId) })
         },
-        onError: (error) => {
+        onError: (_error) => {
           setChecklists(prev => prev.filter(checklist => checklist.id !== tempId))
         }
       }
@@ -760,120 +761,162 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
 
   const handleImproveWriting = useCallback(async () => {
     const oldTitle = title;
-    const improvedTitle = await handleImproveWritingOpenAI(title)
-    // const improvedTitle = "get%all"
-    setTitle("")
-    let index = 0;
-    const interval = setInterval(() => {
-      setTitle((prev) => prev + improvedTitle[index]);
-      index++;
-      if (index === improvedTitle.length) clearInterval(interval);
-    }, 10);
+    setIsAIProcessing(true);
+    
+    try {
+      const improvedTitle = await handleImproveWritingOpenAI(title)
+      setTitle("")
+      let index = 0;
+      const interval = setInterval(() => {
+        setTitle((prev) => prev + improvedTitle[index]);
+        index++;
+        if (index === improvedTitle.length) {
+          clearInterval(interval);
+          setIsAIProcessing(false);
+        }
+      }, 10);
 
-    updateTaskMutation.mutate({
-      id: card.id as string,
-      title: improvedTitle,
-      description: card.description || null,
-      columnId: card.columnId,
-      order: card.order,
-      projectId: card.projectId,
-    }, {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: projectKeys.detail(card.projectId) })
-      },
-      onError: () => {
-        setTitle(oldTitle)
-      }
-    })
+      updateTaskMutation.mutate({
+        id: card.id as string,
+        title: improvedTitle,
+        description: card.description || null,
+        columnId: card.columnId,
+        order: card.order,
+        projectId: card.projectId,
+      }, {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: projectKeys.detail(card.projectId) })
+        },
+        onError: () => {
+          setTitle(oldTitle)
+          setIsAIProcessing(false);
+        }
+      })
+    } catch (_error) {
+      setTitle(oldTitle);
+      setIsAIProcessing(false);
+      toast.error('Failed to improve writing');
+    }
   }, [title]);
 
   const handleMakeLonger = useCallback(async () => {
     const oldTitle = title;
-    const improvedTitle = await handleMakeLongerOpenAI(title)
-    // const improvedTitle = "get%all"
-    setTitle("")
-    let index = 0;
-    const interval = setInterval(() => {
-      setTitle((prev) => prev + improvedTitle[index]);
-      index++;
-      if (index === improvedTitle.length) clearInterval(interval);
-    }, 10);
+    setIsAIProcessing(true);
+    
+    try {
+      const improvedTitle = await handleMakeLongerOpenAI(title)
+      setTitle("")
+      let index = 0;
+      const interval = setInterval(() => {
+        setTitle((prev) => prev + improvedTitle[index]);
+        index++;
+        if (index === improvedTitle.length) {
+          clearInterval(interval);
+          setIsAIProcessing(false);
+        }
+      }, 10);
 
-    updateTaskMutation.mutate({
-      id: card.id as string,
-      title: improvedTitle,
-      description: card.description || null,
-      columnId: card.columnId,
-      order: card.order,
-      projectId: card.projectId,
-    }, {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: projectKeys.detail(card.projectId) })
-      },
-      onError: () => {
-        setTitle(oldTitle)
-      }
-    })
-
+      updateTaskMutation.mutate({
+        id: card.id as string,
+        title: improvedTitle,
+        description: card.description || null,
+        columnId: card.columnId,
+        order: card.order,
+        projectId: card.projectId,
+      }, {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: projectKeys.detail(card.projectId) })
+        },
+        onError: () => {
+          setTitle(oldTitle)
+          setIsAIProcessing(false);
+        }
+      })
+    } catch (_error) {
+      setTitle(oldTitle);
+      setIsAIProcessing(false);
+      toast.error('Failed to make longer');
+    }
   }, [title]);
 
   const handleMakeShorter = useCallback(async () => {
     const oldTitle = title;
-    const improvedTitle = await handleMakeShorterOpenAI(title)
-    setTitle("")
-    let index = 0;
-    const interval = setInterval(() => {
-      setTitle((prev) => prev + improvedTitle[index]);
-      index++;
-      if (index === improvedTitle.length) clearInterval(interval);
-    }, 10);
+    setIsAIProcessing(true);
+    
+    try {
+      const improvedTitle = await handleMakeShorterOpenAI(title)
+      setTitle("")
+      let index = 0;
+      const interval = setInterval(() => {
+        setTitle((prev) => prev + improvedTitle[index]);
+        index++;
+        if (index === improvedTitle.length) {
+          clearInterval(interval);
+          setIsAIProcessing(false);
+        }
+      }, 10);
 
-    updateTaskMutation.mutate({
-      id: card.id as string,
-      title: improvedTitle,
-      description: card.description || null,
-      columnId: card.columnId,
-      order: card.order,
-      projectId: card.projectId,
-    }, {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: projectKeys.detail(card.projectId) })
-      },
-      onError: () => {
-        setTitle(oldTitle)
-      }
-    })
+      updateTaskMutation.mutate({
+        id: card.id as string,
+        title: improvedTitle,
+        description: card.description || null,
+        columnId: card.columnId,
+        order: card.order,
+        projectId: card.projectId,
+      }, {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: projectKeys.detail(card.projectId) })
+        },
+        onError: () => {
+          setTitle(oldTitle)
+          setIsAIProcessing(false);
+        }
+      })
+    } catch (_error) {
+      setTitle(oldTitle);
+      setIsAIProcessing(false);
+      toast.error('Failed to make shorter');
+    }
   }, [title]);
 
   const handleMakeSMART = useCallback(async () => {
     const oldTitle = title;
-    const improvedTitle = await handleMakeSMARTOpenAI(title)
-    setTitle("")
-    let index = 0;
-    const interval = setInterval(() => {
-      setTitle((prev) => prev + improvedTitle[index]);
-      index++;
-      if (index === improvedTitle.length) clearInterval(interval);
-    }, 10);
+    setIsAIProcessing(true);
+    
+    try {
+      const improvedTitle = await handleMakeSMARTOpenAI(title)
+      setTitle("")
+      let index = 0;
+      const interval = setInterval(() => {
+        setTitle((prev) => prev + improvedTitle[index]);
+        index++;
+        if (index === improvedTitle.length) {
+          clearInterval(interval);
+          setIsAIProcessing(false);
+        }
+      }, 10);
 
-
-    console.log("calling update task mutation")
-    updateTaskMutation.mutate({
-      id: card.id as string,
-      title: improvedTitle,
-      description: card.description || null,
-      columnId: card.columnId,
-      order: card.order,
-      projectId: card.projectId,
-    }, {
-      onSuccess: () => {
-        console.log("success")
-        queryClient.invalidateQueries({ queryKey: projectKeys.detail(card.projectId) })
-      },
-      onError: () => {
-        setTitle(card.title)
-      }
-    })
+      updateTaskMutation.mutate({
+        id: card.id as string,
+        title: improvedTitle,
+        description: card.description || null,
+        columnId: card.columnId,
+        order: card.order,
+        projectId: card.projectId,
+      }, {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: projectKeys.detail(card.projectId) })
+        },
+        onError: () => {
+          setTitle(oldTitle)
+          setIsAIProcessing(false);
+        }
+      })
+    } catch (_error) {
+      setTitle(oldTitle);
+      setIsAIProcessing(false);
+      toast.error('Failed to make SMART');
+    }
   }, [title]);
 
   return (
@@ -922,6 +965,7 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
                     onMakeSMART={handleMakeSMART}
                     onMakeLonger={handleMakeLonger}
                     onMakeShorter={handleMakeShorter}
+                    isLoading={isAIProcessing}
                   />
                 </div>
               </div>

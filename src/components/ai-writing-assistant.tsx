@@ -13,6 +13,7 @@ import {
   Minus,
   Sparkles
 } from 'lucide-react'
+import { LoadingSpinner } from '@/components/loading-spinner'
 import { WandIcon } from './icons/icons'
 
 interface AIWritingAssistantProps {
@@ -20,6 +21,7 @@ interface AIWritingAssistantProps {
   onMakeSMART?: () => void
   onMakeLonger?: () => void
   onMakeShorter?: () => void
+  isLoading?: boolean
   className?: string
 }
 
@@ -29,12 +31,22 @@ export function AIWritingAssistant(props: AIWritingAssistantProps) {
     onMakeSMART,
     onMakeLonger,
     onMakeShorter,
+    isLoading = false,
   } = props
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <WandIcon className="h-8 w-8 text-muted-foreground cursor-pointer p-1 hover:bg-accent rounded-sm transition-all duration-200" />
+        <button 
+          className="h-8 w-8 flex items-center justify-center text-muted-foreground cursor-pointer p-1 hover:bg-accent rounded-sm transition-all duration-200"
+          disabled={isLoading}
+        >
+          {isLoading ? (
+            <LoadingSpinner size="sm" className="h-4 w-4" />
+          ) : (
+            <WandIcon className="h-6 w-6" />
+          )}
+        </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-64" align="start">
         <DropdownMenuLabel className="text-sm font-medium text-muted-foreground">
@@ -43,14 +55,16 @@ export function AIWritingAssistant(props: AIWritingAssistantProps) {
 
         <DropdownMenuItem
           onClick={onImproveWriting}
-          className="flex items-center gap-3 px-3 py-2 cursor-pointer"
+          disabled={isLoading}
+          className="flex items-center gap-3 px-3 py-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Sparkles className="h-4 w-4 text-purple-500" />
           <span>Improve writing</span>
         </DropdownMenuItem>
         <DropdownMenuItem
           onClick={onMakeLonger}
-          className="flex items-center gap-3 px-3 py-2 cursor-pointer"
+          disabled={isLoading}
+          className="flex items-center gap-3 px-3 py-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <AlignJustify className="h-4 w-4 text-purple-500" />
           <span>Make longer</span>
@@ -58,7 +72,8 @@ export function AIWritingAssistant(props: AIWritingAssistantProps) {
 
         <DropdownMenuItem
           onClick={onMakeShorter}
-          className="flex items-center gap-3 px-3 py-2 cursor-pointer"
+          disabled={isLoading}
+          className="flex items-center gap-3 px-3 py-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Minus className="h-4 w-4 text-purple-500" />
           <span>Make shorter</span>
@@ -66,7 +81,8 @@ export function AIWritingAssistant(props: AIWritingAssistantProps) {
 
         <DropdownMenuItem
           onClick={onMakeSMART}
-          className="flex items-center gap-3 px-3 py-2 cursor-pointer"
+          disabled={isLoading}
+          className="flex items-center gap-3 px-3 py-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <CheckCircle className="h-4 w-4 text-green-500" />
           <span>Make specific</span>
