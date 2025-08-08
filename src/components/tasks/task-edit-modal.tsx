@@ -7,6 +7,7 @@ import {
   DialogDescription,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { handleImproveWritingOpenAI, handleMakeLongerOpenAI, handleMakeSMARTOpenAI, handleMakeShorterOpenAI } from '@/service/openai-service'
 
 import {
   useCreateChecklist,
@@ -52,6 +53,7 @@ import { toast } from 'sonner'
 import { AddChecklistButton } from '../add-checklist-button'
 
 import { useTaskDialog } from '@/contexts/task-dialog-context'
+import { AIWritingAssistant } from '../ai-writing-assistant'
 import { Checklist } from '../checklist/checklist'
 import { DeleteActionButton } from '../delete-action-button'
 import { MenuBar } from '../editor/menubar'
@@ -69,6 +71,7 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
   const [isEditingTitle, setIsEditingTitle] = useState(false)
   const [isEditingDescription, setIsEditingDescription] = useState(false)
   const [checklists, setChecklists] = useState<TChecklist[]>([])
+  const [isAIProcessing, setIsAIProcessing] = useState(false)
   const titleRef = useRef<HTMLTextAreaElement>(null)
   const checklistsInitialized = useRef(false)
   const { openDeleteModal } = useTaskDialog()
@@ -513,7 +516,7 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
 
           queryClient.invalidateQueries({ queryKey: projectKeys.detail(card.projectId) })
         },
-        onError: (error) => {
+        onError: (_error) => {
           setChecklists(prev => prev.filter(checklist => checklist.id !== tempId))
         }
       }
@@ -588,7 +591,6 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
     ))
 
     // Only call API for real checklists (not optimistic ones)
-    // if (!optimisticChecklists.includes(checklistId)) {
     const checklist = checklists.find(c => c.id === checklistId)
     const itemOrder = checklist?.items.length || 0
 
@@ -630,7 +632,6 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
         }
       }
     )
-    // }
   }, [checklists, checklists, createChecklistItemMutation])
 
   const deleteChecklistItem = useCallback((checklistId: string, itemId: string) => {
@@ -674,7 +675,6 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
     ))
 
     // Only call API for real items (not optimistic ones)
-    // if (!itemId.startsWith('temp-')) {
     updateChecklistItemMutation.mutate(
       { id: itemId, isCompleted: newCompletedState },
       {
@@ -714,7 +714,6 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
         }
       }
     )
-    // }
   }, [checklists, updateChecklistItemMutation])
 
   const updateChecklistItemText = useCallback((checklistId: string, itemId: string, newText: string) => {
@@ -736,8 +735,6 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
         : checklist
     ))
 
-    // Only call API for real items (not optimistic ones)
-    // if (!itemId.startsWith('temp-')) {
     updateChecklistItemMutation.mutate(
       { id: itemId, text: newText },
       {
@@ -759,8 +756,168 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
         }
       }
     )
-    //  }
   }, [checklists, updateChecklistItemMutation])
+
+
+  const handleImproveWriting = useCallback(async () => {
+    const oldTitle = title;
+    setIsAIProcessing(true);
+    
+    try {
+      const improvedTitle = await handleImproveWritingOpenAI(title)
+      setTitle("")
+      let index = 0;
+      const interval = setInterval(() => {
+        setTitle((prev) => prev + improvedTitle[index]);
+        index++;
+        if (index === improvedTitle.length) {
+          clearInterval(interval);
+          setIsAIProcessing(false);
+        }
+      }, 10);
+
+      updateTaskMutation.mutate({
+        id: card.id as string,
+        title: improvedTitle,
+        description: card.description || null,
+        columnId: card.columnId,
+        order: card.order,
+        projectId: card.projectId,
+      }, {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: projectKeys.detail(card.projectId) })
+        },
+        onError: () => {
+          setTitle(oldTitle)
+          setIsAIProcessing(false);
+        }
+      })
+    } catch (_error) {
+      setTitle(oldTitle);
+      setIsAIProcessing(false);
+      toast.error('Failed to improve writing');
+    }
+  }, [title]);
+
+  const handleMakeLonger = useCallback(async () => {
+    const oldTitle = title;
+    setIsAIProcessing(true);
+    
+    try {
+      const improvedTitle = await handleMakeLongerOpenAI(title)
+      setTitle("")
+      let index = 0;
+      const interval = setInterval(() => {
+        setTitle((prev) => prev + improvedTitle[index]);
+        index++;
+        if (index === improvedTitle.length) {
+          clearInterval(interval);
+          setIsAIProcessing(false);
+        }
+      }, 10);
+
+      updateTaskMutation.mutate({
+        id: card.id as string,
+        title: improvedTitle,
+        description: card.description || null,
+        columnId: card.columnId,
+        order: card.order,
+        projectId: card.projectId,
+      }, {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: projectKeys.detail(card.projectId) })
+        },
+        onError: () => {
+          setTitle(oldTitle)
+          setIsAIProcessing(false);
+        }
+      })
+    } catch (_error) {
+      setTitle(oldTitle);
+      setIsAIProcessing(false);
+      toast.error('Failed to make longer');
+    }
+  }, [title]);
+
+  const handleMakeShorter = useCallback(async () => {
+    const oldTitle = title;
+    setIsAIProcessing(true);
+    
+    try {
+      const improvedTitle = await handleMakeShorterOpenAI(title)
+      setTitle("")
+      let index = 0;
+      const interval = setInterval(() => {
+        setTitle((prev) => prev + improvedTitle[index]);
+        index++;
+        if (index === improvedTitle.length) {
+          clearInterval(interval);
+          setIsAIProcessing(false);
+        }
+      }, 10);
+
+      updateTaskMutation.mutate({
+        id: card.id as string,
+        title: improvedTitle,
+        description: card.description || null,
+        columnId: card.columnId,
+        order: card.order,
+        projectId: card.projectId,
+      }, {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: projectKeys.detail(card.projectId) })
+        },
+        onError: () => {
+          setTitle(oldTitle)
+          setIsAIProcessing(false);
+        }
+      })
+    } catch (_error) {
+      setTitle(oldTitle);
+      setIsAIProcessing(false);
+      toast.error('Failed to make shorter');
+    }
+  }, [title]);
+
+  const handleMakeSMART = useCallback(async () => {
+    const oldTitle = title;
+    setIsAIProcessing(true);
+    
+    try {
+      const improvedTitle = await handleMakeSMARTOpenAI(title)
+      setTitle("")
+      let index = 0;
+      const interval = setInterval(() => {
+        setTitle((prev) => prev + improvedTitle[index]);
+        index++;
+        if (index === improvedTitle.length) {
+          clearInterval(interval);
+          setIsAIProcessing(false);
+        }
+      }, 10);
+
+      updateTaskMutation.mutate({
+        id: card.id as string,
+        title: improvedTitle,
+        description: card.description || null,
+        columnId: card.columnId,
+        order: card.order,
+        projectId: card.projectId,
+      }, {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: projectKeys.detail(card.projectId) })
+        },
+        onError: () => {
+          setTitle(oldTitle)
+          setIsAIProcessing(false);
+        }
+      })
+    } catch (_error) {
+      setTitle(oldTitle);
+      setIsAIProcessing(false);
+      toast.error('Failed to make SMART');
+    }
+  }, [title]);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -770,37 +927,48 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
           Edit card details including title, description, and checklists
         </DialogDescription>
         <div className="flex flex-col gap-4 w-full max-w-full">
-          <div className="flex w-full max-w-full gap-4">
+          <div className="flex w-full max-w-full gap-4 items-baseline">
             <div className="flex flex-col gap-1 flex-[1_1_auto] w-full max-w-full overflow-hidden">
-              {isEditingTitle ? (
-                <Textarea
-                  className="w-full max-w-full break-all whitespace-break-spaces resize-none p-2 overflow-hidden text-4xl font-bold"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  ref={(el) => {
-                    titleRef.current = el;
-                    if (el) {
-                      setTimeout(() => syncTextareaHeight(), 0);
-                    }
-                  }}
-                  autoFocus
-                  onBlur={handleTitleBlur}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.currentTarget.blur();
-                    }
-                  }}
-                  onInput={syncTextareaHeight}
-                />
-              ) : (
-                <div
-                  className="cursor-pointer p-2 w-full max-w-full break-words whitespace-pre-line overflow-hidden"
-                  onClick={() => setIsEditingTitle(true)}>
-                  <p className="w-full max-w-full break-words overflow-hidden text-4xl font-bold">
-                    {title}
-                  </p>
+              <div className="flex items-start gap-2 w-full">
+                {isEditingTitle ? (
+                  <Textarea
+                    className="flex-1 break-all whitespace-break-spaces resize-none p-2 overflow-hidden text-4xl font-bold"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    ref={(el) => {
+                      titleRef.current = el;
+                      if (el) {
+                        setTimeout(() => syncTextareaHeight(), 0);
+                      }
+                    }}
+                    autoFocus
+                    onBlur={handleTitleBlur}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.currentTarget.blur();
+                      }
+                    }}
+                    onInput={syncTextareaHeight}
+                  />
+                ) : (
+                  <div
+                    className="cursor-pointer p-2 flex-1 break-words whitespace-pre-line overflow-hidden"
+                    onClick={() => setIsEditingTitle(true)}>
+                    <p className="break-words overflow-hidden text-4xl font-bold">
+                      {title}
+                    </p>
+                  </div>
+                )}
+                <div className="flex-shrink-0 p-2 flex items-center">
+                  <AIWritingAssistant
+                    onImproveWriting={handleImproveWriting}
+                    onMakeSMART={handleMakeSMART}
+                    onMakeLonger={handleMakeLonger}
+                    onMakeShorter={handleMakeShorter}
+                    isLoading={isAIProcessing}
+                  />
                 </div>
-              )}
+              </div>
 
               {columnTitle !== '' && columnTitle !== null && columnTitle !== undefined && (
                 <div className="flex items-center gap-2 text-sm p-2">
@@ -833,7 +1001,7 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
                     {isEditingDescription ? (
                       <div className="space-y-2">
                         <div className="bg-background border border-gray-500">
-                          <MenuBar editor={editor} />
+                          <MenuBar editor={editor} card={card} />
                           <div className="min-h-[200px] p-4">
                             <EditorContent
                               editor={editor}
@@ -849,6 +1017,7 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
                             Cancel
                           </Button>
                           <Button
+                            variant="primary"
                             onClick={handleDescriptionSave}
                             disabled={updateTaskMutation.isPending}>
                             Save

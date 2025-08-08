@@ -11,6 +11,14 @@ import { Column } from './column'
 jest.mock('@/hooks/mutations/use-column-mutations')
 jest.mock('@/hooks/mutations/use-task-mutations')
 
+// Mock OpenAI service
+jest.mock('@/service/openai-service', () => ({
+  handleImproveWritingOpenAI: jest.fn().mockResolvedValue('Improved text'),
+  handleMakeLongerOpenAI: jest.fn().mockResolvedValue('Longer improved text'),
+  handleMakeShorterOpenAI: jest.fn().mockResolvedValue('Shorter text'),
+  handleMakeSMARTOpenAI: jest.fn().mockResolvedValue('SMART goal text'),
+}))
+
 const mockProject: TProject = {
   id: 'test-project-1',
   title: 'Test Project',
