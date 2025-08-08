@@ -1,18 +1,21 @@
+import { TCard } from "@/models/card";
+import { handleImproveWritingDescriptionOpenAI, handleMakeLongerDescriptionOpenAI, handleMakeShorterDescriptionOpenAI, handleMakeSMARTDescriptoinOpenAI } from "@/service/openai-service";
+import { Bold, ChevronDown, Code, Heading1, Heading2, Heading3, Heading4, Heading5, Heading6, Italic, List, ListOrdered, Minus, Quote, Redo2, Strikethrough, Type, Undo2 } from "lucide-react";
+import { memo, useCallback, useState } from "react";
+import { AIWritingAssistant } from "../ai-writing-assistant";
 import { Button } from "../ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../ui/dropdown-menu";
 import { Separator } from "../ui/separator";
-import { ChevronDown, Heading1, Heading2, Heading3, Heading4, Heading5, Heading6, Italic, List, ListOrdered, Minus, Quote, Redo2, Strikethrough, TextIcon, Type, Undo2 } from "lucide-react";
-import { memo } from "react";
-import { Bold } from "lucide-react";
-import { Code } from "lucide-react";
 
 interface EditorToolbarProps {
-    editor: any
+    editor: any,
+    card: TCard
 }
 
-export const MenuBar = memo(({ editor }: EditorToolbarProps) => {
+export const MenuBar = memo(({ editor, card }: EditorToolbarProps) => {
     if (!editor) return null
 
+    const [isAIProcessing, setIsAIProcessing] = useState(false)
     const getHeadingIcon = () => {
         if (editor.isActive('heading', { level: 1 })) return <Heading1 className="h-4 w-4" />
         if (editor.isActive('heading', { level: 2 })) return <Heading2 className="h-4 w-4" />
@@ -22,6 +25,48 @@ export const MenuBar = memo(({ editor }: EditorToolbarProps) => {
         if (editor.isActive('heading', { level: 6 })) return <Heading6 className="h-4 w-4" />
         return <Type className="h-4 w-4" />
     }
+
+    const handleMakeSMART = useCallback(async () => {
+        const description = editor.getHTML()
+        console.log(description)
+        if (description === "") return
+        setIsAIProcessing(true)
+        const improvedDescription = await handleMakeSMARTDescriptoinOpenAI(description)
+        console.log(improvedDescription)
+        editor.chain().focus().setContent(improvedDescription).run()
+        setIsAIProcessing(false)
+    }, [editor.getHTML()]);
+
+    const handleImproveWriting = useCallback(async () => {
+        const description = editor.getHTML()
+        console.log(description)
+        if (description === "") return
+        setIsAIProcessing(true)
+        const improvedDescription = await handleImproveWritingDescriptionOpenAI(description)
+        editor.chain().focus().setContent(improvedDescription).run()
+        setIsAIProcessing(false)
+    }, [editor.getHTML()]);
+
+    const handleMakeLonger = useCallback(async () => {
+        const description = editor.getHTML()
+        console.log(description)
+        if (description === "") return
+        setIsAIProcessing(true)
+        const improvedDescription = await handleMakeLongerDescriptionOpenAI(description)
+        editor.chain().focus().setContent(improvedDescription).run()
+        setIsAIProcessing(false)
+    }, [editor.getHTML()]);
+
+
+    const handleMakeShorter = useCallback(async () => {
+        const description = editor.getHTML()
+        console.log(description)
+        if (description === "") return
+        setIsAIProcessing(true)
+        const improvedDescription = await handleMakeShorterDescriptionOpenAI(description)
+        editor.chain().focus().setContent(improvedDescription).run()
+        setIsAIProcessing(false)
+    }, [editor.getHTML()]);
 
     return (
         <div className="flex items-center gap-1 p-2 border-b bg-background">
@@ -33,8 +78,7 @@ export const MenuBar = memo(({ editor }: EditorToolbarProps) => {
                 onClick={() => editor.chain().focus().undo().run()}
                 disabled={!editor.can().undo()}
                 className="h-8 w-8 p-0"
-                aria-label="Undo"
-            >
+                aria-label="Undo">
                 <Undo2 className="h-4 w-4" />
             </Button>
             <Button
@@ -219,6 +263,14 @@ export const MenuBar = memo(({ editor }: EditorToolbarProps) => {
             >
                 <Minus className="h-4 w-4" />
             </Button>
+            <Separator orientation="vertical" className="mx-1 h-6" />
+            <AIWritingAssistant
+                onImproveWriting={handleImproveWriting}
+                onMakeSMART={handleMakeSMART}
+                onMakeLonger={handleMakeLonger}
+                onMakeShorter={handleMakeShorter}
+                isLoading={isAIProcessing}
+            />
         </div>
     )
 });

@@ -44,7 +44,7 @@ export function AIWritingAssistant(props: AIWritingAssistantProps) {
           {isLoading ? (
             <LoadingSpinner size="sm" className="h-4 w-4" />
           ) : (
-            <WandIcon className="h-6 w-6" />
+            <WandIcon className="text-blue-500" />
           )}
         </button>
       </DropdownMenuTrigger>
