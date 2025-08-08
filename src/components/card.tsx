@@ -132,7 +132,7 @@ export function CardTask(props: CardProps) {
     );
   }, [card, columnId]);
 
-  
+
   return (
     <>
       {cardState.type === 'is-over' && cardState.closestEdge === 'top' && (
@@ -191,8 +191,11 @@ export function CardDisplay(props: CardDisplayProps) {
         data-test-id={card.id}
         ref={innerRef}
         className={cc(
-          'bg-white rounded-md p-4 text-gray-900 text-sm border border-gray-200 shadow-sm transition-all duration-200 ease-in-out cursor-pointer relative group',
-          'hover:shadow-lg hover:border-2 hover:border-blue-900 hover:bg-blue-50 active:cursor-grabbing',
+          `bg-white rounded-md p-4 text-gray-900 text-sm 
+             border-2 border-gray-100 
+             transition-all duration-200 ease-in-out cursor-pointer relative group 
+             hover:shadow-lg hover:border-blue-900 hover:bg-blue-50 
+             active:cursor-grabbing hover:cursor-grab`,
           innerStyles[state.type],
           classIf(state.type === 'is-dragging', 'opacity-50 shadow-none')
         )}>
