@@ -13,7 +13,8 @@ export async function handleImproveWritingOpenAI(input: string) {
         instructions:
             `
         You are a professional writing assistant.
-        Improve the tone, grammar, and wording of the task description to make it more effective, actionable, and clear. Do not change the meaning or add unnecessary detail.   
+        Improve the tone, grammar, and wording of the task description to make it more effective, 
+        actionable, and clear. Do not change the meaning or add unnecessary detail.   
         `,
         input: input,
     });

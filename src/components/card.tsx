@@ -185,8 +185,7 @@ export function CardDisplay(props: CardDisplayProps) {
       className={cc(
         outerStyles[state.type],
         classIf(state.type === 'is-dragging', 'opacity-50')
-      )}
-    >
+      )}>
       <div
         data-test-id={card.id}
         ref={innerRef}

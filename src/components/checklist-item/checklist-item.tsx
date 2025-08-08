@@ -191,7 +191,7 @@ export function ChecklistListItem(props: ChecklistListItemProps) {
                         />
                     ) : (
                         <p
-                            className={`flex-1 cursor-pointer hover:bg-muted/50 px-2 py-1 rounded transition-colors ${item.isCompleted ? 'line-through text-muted-foreground' : ''}`}
+                            className={`flex-1 cursor-pointer px-2 py-1 rounded transition-colors ${item.isCompleted ? 'line-through text-muted-foreground' : ''}`}
                             onClick={onTextClick}
                         >
                             {item.text}
