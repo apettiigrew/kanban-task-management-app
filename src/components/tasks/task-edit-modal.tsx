@@ -102,7 +102,7 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
       },
     },
     onUpdate: ({ editor }) => {
-      setDescription(editor.getHTML())
+      // setDescription(editor.getHTML())
     },
   })
 
