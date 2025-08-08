@@ -1,5 +1,5 @@
 import { TCard } from "@/models/card";
-import { handleImproveWritingDescriptionOpenAI, handleMakeLongerDescriptionOpenAI, handleMakeShorterDescriptionOpenAI, handleMakeSMARTDescriptoinOpenAI } from "@/service/openai-service";
+import { handleImproveWritingDescriptionOpenAI, handleMakeLongerDescriptionOpenAI, handleMakeShorterDescriptionOpenAI, handleMakeSMARTDescriptoinOpenAI, handleMakeSoftwareTicketDescriptionOpenAI } from "@/service/openai-service";
 import { Bold, ChevronDown, Code, Heading1, Heading2, Heading3, Heading4, Heading5, Heading6, Italic, List, ListOrdered, Minus, Quote, Redo2, Strikethrough, Type, Undo2 } from "lucide-react";
 import { memo, useCallback, useState } from "react";
 import { AIWritingAssistant } from "../ai-writing-assistant";
@@ -64,6 +64,16 @@ export const MenuBar = memo(({ editor, card }: EditorToolbarProps) => {
         if (description === "") return
         setIsAIProcessing(true)
         const improvedDescription = await handleMakeShorterDescriptionOpenAI(description)
+        editor.chain().focus().setContent(improvedDescription).run()
+        setIsAIProcessing(false)
+    }, [editor.getHTML()]);
+
+    const handleMakeSoftwareTicket = useCallback(async () => {
+        const description = editor.getHTML()
+        console.log(description)
+        if (description === "") return
+        setIsAIProcessing(true)
+        const improvedDescription = await handleMakeSoftwareTicketDescriptionOpenAI(description)
         editor.chain().focus().setContent(improvedDescription).run()
         setIsAIProcessing(false)
     }, [editor.getHTML()]);
@@ -269,6 +279,8 @@ export const MenuBar = memo(({ editor, card }: EditorToolbarProps) => {
                 onMakeSMART={handleMakeSMART}
                 onMakeLonger={handleMakeLonger}
                 onMakeShorter={handleMakeShorter}
+                onMakeSoftwareTicket={handleMakeSoftwareTicket}
+                showMakeSoftwareTicket={true}
                 isLoading={isAIProcessing}
             />
         </div>

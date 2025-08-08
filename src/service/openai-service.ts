@@ -206,7 +206,6 @@ Examples:
 }
 
 // handle make shorter description
-
 export async function handleMakeShorterDescriptionOpenAI(input: string) {
     const response = await client.responses.create({
         model: "gpt-4o-mini",
@@ -240,9 +239,60 @@ Output rules:
     <div>
         <p>Prepare dinner for two, including a protein, a vegetable, and a grain.</p>
     </div>
-        `,
+    `,
         input: input,
     });
 
     return response.output_text;
+}
+
+export async function handleMakeSoftwareTicketDescriptionOpenAI(input: string) {
+    try {
+        const response = await client.responses.create({
+            model: "gpt-4o-mini",
+            temperature: 0.5,
+            input: [
+                {
+                    role: "system",
+                    content: `
+Act as a technical lead, product manager, or project manager.
+Your task is to create a detailed software ticket based on the user's provided input. Adhere to the following rules:
+
+**Content Rules:**
+* Preserve the original meaning, grammar, punctuation, and spelling.
+* Do not add any unnecessary details.
+* Do not invent deadlines, dependencies, or acceptance criteria that are not present in the user's input.
+* Reduce wordiness while retaining the full intent of the provided text.
+
+**Ticket Structure:**
+* **Feature Description:**
+    * **Summary:** A concise summary of the feature.
+    * **Problem/User Need:** An easy-to-read description of the user need.
+    * **Proposed Solution:** A list of the required components (e.g., Full Name (text field), Email Address (text field with validation)).
+* **Requirements & Specifications:**
+    * **Dependencies:** List all identified dependencies.
+    * **Acceptance Criteria:** List all identified and appropriate acceptance criteria.
+
+**Output Rules:**
+* Return **only** a single HTML fragment.
+* The HTML must **not** contain any class attributes.
+* Do not include any commentary, markdown, or extra text.
+* Always return the software ticket struture. 
+* Always ensure the each section is filled with the correct information.
+                    `
+                },
+                {
+                    role: "user",
+                    content: input,
+                }
+            ],
+        });
+
+        // The generated content is now located in the response.output_text property
+        return response.output_text;
+    } catch (error) {
+        console.error("Error calling OpenAI API:", error);
+        // You might want to handle this error more gracefully in a real application
+        return "An error occurred while generating the software ticket.";
+    }
 }
