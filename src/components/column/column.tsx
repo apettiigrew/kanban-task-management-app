@@ -12,10 +12,8 @@ import { Input } from '@/components/ui/input';
 import { useUpdateColumn } from '@/hooks/mutations/use-column-mutations';
 import { useCreateTask } from '@/hooks/mutations/use-task-mutations';
 import { useOutsideClick } from '@/hooks/use-outside-click';
-import { FormError } from '@/lib/form-error-handler';
 import { TCard } from '@/models/card';
 import { TColumn } from '@/models/column';
-import { TProject } from '@/models/project';
 import { SettingsContext } from '@/providers/settings-context';
 import { getColumnData, isCardData, isCardDropTargetData, isColumnData, isDraggingACard, isDraggingAColumn, isShallowEqual, TCardData } from '@/utils/data';
 import { cc } from '@/utils/style-utils';
@@ -32,7 +30,6 @@ import {
 } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
 import { MoreHorizontal, Trash2, X } from 'lucide-react';
 import { useCallback, useContext, useEffect, useRef, useState } from 'react';
-import { toast } from 'sonner';
 
 type TColumnState =
     | { type: 'is-card-over'; isOverChildCard: boolean; dragging: DOMRect }
@@ -200,6 +197,11 @@ export function Column(props: ColumnProps) {
             columnId: columnId,
             title: title,
             order: order,
+        }, {
+            onSuccess: () => {
+                setIsAddingCard(true);
+                setNewCardTitle('');
+            }
         });
     }, [column.projectId, currentColumn.cards.length, createTaskMutation]);
 
