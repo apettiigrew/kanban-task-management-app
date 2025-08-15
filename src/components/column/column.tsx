@@ -30,6 +30,10 @@ import {
 } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
 import { MoreHorizontal, Trash2, X } from 'lucide-react';
 import { useCallback, useContext, useEffect, useRef, useState } from 'react';
+import invariant from 'tiny-invariant';
+import { setCustomNativeDragPreview } from '@atlaskit/pragmatic-drag-and-drop/element/set-custom-native-drag-preview';
+import { preserveOffsetOnSource } from '@atlaskit/pragmatic-drag-and-drop/element/preserve-offset-on-source';
+import { isSafari } from '@/utils/is-safari';
 
 type TColumnState =
     | { type: 'is-card-over'; isOverChildCard: boolean; dragging: DOMRect }
@@ -117,6 +121,30 @@ export function Column(props: ColumnProps) {
                 getInitialData: () => data,
                 onDragStart: () => setState({ type: 'is-dragging' }),
                 onDrop: () => setState(idle),
+                onGenerateDragPreview({ source, location, nativeSetDragImage }) {
+                    const data = source.data;
+                    invariant(isColumnData(data));
+                    setCustomNativeDragPreview({
+                      nativeSetDragImage,
+                      getOffset: preserveOffsetOnSource({ element: outer, input: location.current.input }),
+                      render({ container }) {
+                        // Simple drag preview generation: just cloning the current element.
+                        // Not using react for this.
+                        const rect = outer.getBoundingClientRect();
+                        const preview = outer.cloneNode(true);
+                        invariant(preview instanceof HTMLElement);
+                        preview.style.width = `${rect.width}px`;
+                        preview.style.height = `${rect.height}px`;
+          
+                        // rotation of native drag previews does not work in safari
+                        if (!isSafari()) {
+                          preview.style.transform = 'rotate(4deg)';
+                        }
+          
+                        container.appendChild(preview);
+                      },
+                    });
+                  },
             }),
             dropTargetForElements({
                 element: outer,
