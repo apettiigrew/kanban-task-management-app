@@ -518,13 +518,13 @@ export function Board(props: BoardProps) {
     }, [projectState, settings.boardScrollSpeed, settings.isOverElementAutoScrollEnabled, settings.isOverflowScrollingEnabled]);
 
     return (
-        <div ref={scrollableRef} className="h-screen flex flex-col">
-            <div className="px-6 flex-1 flex flex-col">
-                <div className="flex items-center justify-between mb-6 mt-6">
+        <div ref={scrollableRef} className="board-container flex flex-col">
+            <div className="board-content px-6 flex-1 flex flex-col">
+                <div className="flex items-center justify-between mb-6 mt-6 flex-shrink-0">
                     <h1 className="text-3xl font-bold">{projectState.title}</h1>
                 </div>
 
-                <div className="flex items-start gap-4 overflow-x-auto pb-4 snap-x snap-mandatory flex-1">
+                <div className="board-columns-container flex items-start gap-4 pb-4 snap-x snap-mandatory flex-1">
                     {projectState.columns.map((column) => (
                         <Column
                             key={column.id}
@@ -590,7 +590,7 @@ const NewListForm: React.FC<NewListFormProps> = ({
     isCreating = false,
 }) => {
     return (
-        <div className="w-[280px] min-w-[280px] flex-shrink-0  bg-gray-50 text-gray-900 rounded-2xl p-4 border border-gray-200">
+        <div className="w-[280px] min-w-[280px] flex-shrink-0 bg-gray-50 text-gray-900 rounded-2xl p-4 border border-gray-200">
             <Input
                 autoFocus
                 value={newListTitle}

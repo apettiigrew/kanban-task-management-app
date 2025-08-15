@@ -208,7 +208,7 @@ export function Column(props: ColumnProps) {
     return (
         <ColumnWrapper
             className={cc(
-                'bg-gray-50 text-gray-900 rounded-2xl p-4 border border-gray-200 w-[280px] min-w-[280px] max-h-[calc(100vh-160px)] flex flex-col gap-4 flex-shrink-0',
+                'bg-gray-50 text-gray-900 rounded-2xl p-4 border border-gray-200 max-h-[calc(100vh-160px)] flex flex-col gap-4',
                 stateStyles[state.type]
             )}
             ref={outerFullHeightRef}>
@@ -223,7 +223,7 @@ export function Column(props: ColumnProps) {
                 onDelete={handleDelete}
             />
 
-            <div className="flex flex-col gap-3 overflow-y-auto scrollbar-thin [&:not(:hover)]:scrollbar-transparent hover:scrollbar-gray-300 flex-grow max-h-screen min-h-0" ref={scrollableRef}>
+            <div className="flex flex-col gap-3 overflow-y-auto scrollbar-thin [&:not(:hover)]:scrollbar-transparent hover:scrollbar-gray-300 flex-grow min-h-0" ref={scrollableRef}>
                 <DisplayCard columnId={column.id} cards={currentColumn.cards} state={state} columnTitle={columnTitle} />
             </div>
             <div>
