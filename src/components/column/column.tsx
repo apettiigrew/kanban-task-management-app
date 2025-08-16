@@ -125,26 +125,26 @@ export function Column(props: ColumnProps) {
                     const data = source.data;
                     invariant(isColumnData(data));
                     setCustomNativeDragPreview({
-                      nativeSetDragImage,
-                      getOffset: preserveOffsetOnSource({ element: outer, input: location.current.input }),
-                      render({ container }) {
-                        // Simple drag preview generation: just cloning the current element.
-                        // Not using react for this.
-                        const rect = outer.getBoundingClientRect();
-                        const preview = outer.cloneNode(true);
-                        invariant(preview instanceof HTMLElement);
-                        preview.style.width = `${rect.width}px`;
-                        preview.style.height = `${rect.height}px`;
-          
-                        // rotation of native drag previews does not work in safari
-                        if (!isSafari()) {
-                          preview.style.transform = 'rotate(4deg)';
-                        }
-          
-                        container.appendChild(preview);
-                      },
+                        nativeSetDragImage,
+                        getOffset: preserveOffsetOnSource({ element: outer, input: location.current.input }),
+                        render({ container }) {
+                            // Simple drag preview generation: just cloning the current element.
+                            // Not using react for this.
+                            const rect = outer.getBoundingClientRect();
+                            const preview = outer.cloneNode(true);
+                            invariant(preview instanceof HTMLElement);
+                            preview.style.width = `${rect.width}px`;
+                            preview.style.height = `${rect.height}px`;
+
+                            // rotation of native drag previews does not work in safari
+                            if (!isSafari()) {
+                                preview.style.transform = 'rotate(4deg)';
+                            }
+
+                            container.appendChild(preview);
+                        },
                     });
-                  },
+                },
             }),
             dropTargetForElements({
                 element: outer,
@@ -172,7 +172,16 @@ export function Column(props: ColumnProps) {
                     settings.isOverElementAutoScrollEnabled &&
                     settings.isOverflowScrollingEnabled &&
                     isDraggingACard({ source }),
-                getOverflow: () => ({ forTopEdge: { top: 1000 }, forBottomEdge: { bottom: 1000 } }),
+                getOverflow() {
+                    return {
+                        forTopEdge: {
+                            top: 1000,
+                        },
+                        forBottomEdge: {
+                            bottom: 1000,
+                        },
+                    };
+                },
             })
         );
     }, [column, currentColumn.cards, settings]);
@@ -218,7 +227,7 @@ export function Column(props: ColumnProps) {
         console.log("currentColumn.cards", currentColumn.cards)
         const order = currentColumn.cards.length > 0 ? (currentColumn.cards.length - 1) + 1 : 0;
 
-    
+
         console.log("add Cardorder", order)
         createTaskMutation.mutate({
             projectId: column.projectId,

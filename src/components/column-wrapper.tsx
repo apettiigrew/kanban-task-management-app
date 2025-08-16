@@ -20,6 +20,7 @@ export function ColumnWrapper(props: ColumnWrapperProps) {
       `}
       style={style}
       ref={ref}
+      data-draggable-column="true"
     >
       {children}
     </div>

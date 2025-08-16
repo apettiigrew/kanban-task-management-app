@@ -23,6 +23,10 @@ import { reorder } from '@atlaskit/pragmatic-drag-and-drop/reorder';
 import { PlusCircle } from 'lucide-react';
 import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { CleanupFn } from '@atlaskit/pragmatic-drag-and-drop/dist/types/internal-types';
+import invariant from 'tiny-invariant';
+import { bindAll } from 'bind-event-listener';
+import { blockBoardPanningAttr } from '@/utils/data-attributes';
 interface BoardProps {
     project: TProject
 }
@@ -30,6 +34,7 @@ interface BoardProps {
 export function Board(props: BoardProps) {
     const { project } = props;
     const [projectState, setProjectState] = useState<TProject>(project);
+    const [isDraggingColumn, setIsDraggingColumn] = useState(false);
 
     useEffect(() => {
         setProjectState(project)
@@ -151,6 +156,7 @@ export function Board(props: BoardProps) {
         if (!element) {
             return;
         }
+
         return combine(
             monitorForElements({
                 canMonitor: isDraggingACard,
@@ -482,12 +488,16 @@ export function Board(props: BoardProps) {
 
                     return isDraggingACard({ source }) || isDraggingAColumn({ source });
                 },
-                getConfiguration: () => ({ maxScrollSpeed: settings.boardScrollSpeed }),
+                getConfiguration: ({ source }) => ({
+                    maxScrollSpeed: isDraggingAColumn({ source }) ? 'fast' : settings.boardScrollSpeed
+                }),
                 element,
             }),
             unsafeOverflowAutoScrollForElements({
                 element,
-                getConfiguration: () => ({ maxScrollSpeed: settings.boardScrollSpeed }),
+                getConfiguration: ({ source }) => ({
+                    maxScrollSpeed: isDraggingAColumn({ source }) ? 'fast' : settings.boardScrollSpeed
+                }),
                 canScroll({ source }) {
                     if (!settings.isOverElementAutoScrollEnabled) {
                         return false;
@@ -515,16 +525,108 @@ export function Board(props: BoardProps) {
                 },
             }),
         );
-    }, [projectState, settings.boardScrollSpeed, settings.isOverElementAutoScrollEnabled, settings.isOverflowScrollingEnabled]);
+    }, [projectState, settings.boardScrollSpeed, settings.isOverElementAutoScrollEnabled, settings.isOverflowScrollingEnabled, isDraggingColumn]);
 
+    // Track column dragging state
+    // useEffect(() => {
+    //     const handleDragStart = (event: DragEvent) => {
+    //         const target = event.target as HTMLElement;
+    //         if (target.closest('[data-draggable-column]')) {
+    //             setIsDraggingColumn(true);
+    //         }
+    //     };
+
+    //     const handleDragEnd = () => {
+    //         setIsDraggingColumn(false);
+    //     };
+
+    //     document.addEventListener('dragstart', handleDragStart);
+    //     document.addEventListener('dragend', handleDragEnd);
+
+    //     return () => {
+    //         document.removeEventListener('dragstart', handleDragStart);
+    //         document.removeEventListener('dragend', handleDragEnd);
+    //     };
+    // }, []);
+
+
+    // Panning the board
+    useEffect(() => {
+        let cleanupActive: CleanupFn | null = null;
+        const scrollable = scrollableRef.current;
+        invariant(scrollable);
+
+        function begin({ startX }: { startX: number }) {
+            let lastX = startX;
+
+            const cleanupEvents = bindAll(
+                window,
+                [
+                    {
+                        type: 'pointermove',
+                        listener(event) {
+                            const currentX = event.clientX;
+                            const diffX = lastX - currentX;
+
+                            lastX = currentX;
+                            scrollable?.scrollBy({ left: diffX });
+                        },
+                    },
+                    // stop panning if we see any of these events
+                    ...(
+                        [
+                            'pointercancel',
+                            'pointerup',
+                            'pointerdown',
+                            'keydown',
+                            'resize',
+                            'click',
+                            'visibilitychange',
+                        ] as const
+                    ).map((eventName) => ({ type: eventName, listener: () => cleanupEvents() })),
+                ],
+                // need to make sure we are not after the "pointerdown" on the scrollable
+                // Also this is helpful to make sure we always hear about events from this point
+                { capture: true },
+            );
+
+            cleanupActive = cleanupEvents;
+        }
+
+        const cleanupStart = bindAll(scrollable, [
+            {
+                type: 'pointerdown',
+                listener(event) {
+                    if (!(event.target instanceof HTMLElement)) {
+                        return;
+                    }
+                    // ignore interactive elements
+                    if (event.target.closest(`[${blockBoardPanningAttr}]`)) {
+                        return;
+                    }
+                    // disable panning when dragging a column
+                    if (isDraggingColumn) {
+                        return;
+                    }
+
+                    begin({ startX: event.clientX });
+                },
+            },
+        ]);
+
+        return function cleanupAll() {
+            cleanupStart();
+            cleanupActive?.();
+        };
+    }, []);
     return (
-        <div ref={scrollableRef} className="board-container flex flex-col">
-            <div className="board-content px-6 flex-1 flex flex-col">
-                <div className="flex items-center justify-between mb-6 mt-6 flex-shrink-0">
+        <div className="board-container flex flex-col">
+            <div className="board-content flex-1 flex flex-col">
+                <div className="flex items-center justify-between mb-6 mt-6 flex-shrink-0 px-6">
                     <h1 className="text-3xl font-bold">{projectState.title}</h1>
                 </div>
 
-                <div className="board-columns-container flex items-start gap-4 pb-4 snap-x snap-mandatory flex-1">
+                <div ref={scrollableRef} className="board-columns-container pb-4 snap-x snap-mandatory flex-1 px-6">
                     {projectState.columns.map((column) => (
                         <Column
                             key={column.id}
