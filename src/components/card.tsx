@@ -10,6 +10,10 @@ import {
 } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
 import { Pencil, Trash2 } from 'lucide-react';
 import React, { MutableRefObject, useEffect, useRef, useState } from 'react';
+import invariant from 'tiny-invariant';
+import { setCustomNativeDragPreview } from '@atlaskit/pragmatic-drag-and-drop/element/set-custom-native-drag-preview';
+import { preserveOffsetOnSource } from '@atlaskit/pragmatic-drag-and-drop/element/preserve-offset-on-source';
+import { isSafari } from '@/utils/is-safari';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -95,6 +99,30 @@ export function CardTask(props: CardProps) {
           getCardData({ card, columnId, rect: element.getBoundingClientRect() }),
         onDragStart: () => setCardState({ type: 'is-dragging' }),
         onDrop: () => setCardState({ type: 'idle' }),
+        onGenerateDragPreview({ source, location, nativeSetDragImage }) {
+          const data = source.data;
+          invariant(isCardData(data));
+          setCustomNativeDragPreview({
+            nativeSetDragImage,
+            getOffset: preserveOffsetOnSource({ element: inner, input: location.current.input }),
+            render({ container }) {
+              // Simple drag preview generation: just cloning the current element.
+              // Not using react for this.
+              const rect = inner.getBoundingClientRect();
+              const preview = inner.cloneNode(true);
+              invariant(preview instanceof HTMLElement);
+              preview.style.width = `${rect.width}px`;
+              preview.style.height = `${rect.height}px`;
+
+              // rotation of native drag previews does not work in safari
+              if (!isSafari()) {
+                preview.style.transform = 'rotate(4deg)';
+              }
+
+              container.appendChild(preview);
+            },
+          });
+        },
       }),
       dropTargetForElements({
         element: outer,

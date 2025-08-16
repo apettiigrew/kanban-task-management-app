@@ -68,13 +68,13 @@ function BoardContent({ projectId }: BoardContentProps) {
   
   console.log("project inside BoardContent", project)
   return (
-    <div className="max-h-screen bg-background bg-gradient-to-br from-blue-100 via-sky-100 to-indigo-200">
+    <div className="h-screen bg-background bg-gradient-to-br from-blue-100 via-sky-100 to-indigo-200 overflow-hidden">
       {/* <ProjectHeader
         project={project}
         isLoading={projectLoading}
       /> */}
 
-      <main className="flex-1 overflow-x-auto overflow-y-hidden">
+      <main className="h-full">
         <Suspense fallback={<RouteLoading message="Loading board..." />}>
           {project && <Board project={project} />}
         </Suspense>

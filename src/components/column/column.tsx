@@ -30,6 +30,10 @@ import {
 } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
 import { MoreHorizontal, Trash2, X } from 'lucide-react';
 import { useCallback, useContext, useEffect, useRef, useState } from 'react';
+import invariant from 'tiny-invariant';
+import { setCustomNativeDragPreview } from '@atlaskit/pragmatic-drag-and-drop/element/set-custom-native-drag-preview';
+import { preserveOffsetOnSource } from '@atlaskit/pragmatic-drag-and-drop/element/preserve-offset-on-source';
+import { isSafari } from '@/utils/is-safari';
 
 type TColumnState =
     | { type: 'is-card-over'; isOverChildCard: boolean; dragging: DOMRect }
@@ -117,6 +121,30 @@ export function Column(props: ColumnProps) {
                 getInitialData: () => data,
                 onDragStart: () => setState({ type: 'is-dragging' }),
                 onDrop: () => setState(idle),
+                onGenerateDragPreview({ source, location, nativeSetDragImage }) {
+                    const data = source.data;
+                    invariant(isColumnData(data));
+                    setCustomNativeDragPreview({
+                        nativeSetDragImage,
+                        getOffset: preserveOffsetOnSource({ element: outer, input: location.current.input }),
+                        render({ container }) {
+                            // Simple drag preview generation: just cloning the current element.
+                            // Not using react for this.
+                            const rect = outer.getBoundingClientRect();
+                            const preview = outer.cloneNode(true);
+                            invariant(preview instanceof HTMLElement);
+                            preview.style.width = `${rect.width}px`;
+                            preview.style.height = `${rect.height}px`;
+
+                            // rotation of native drag previews does not work in safari
+                            if (!isSafari()) {
+                                preview.style.transform = 'rotate(4deg)';
+                            }
+
+                            container.appendChild(preview);
+                        },
+                    });
+                },
             }),
             dropTargetForElements({
                 element: outer,
@@ -144,7 +172,16 @@ export function Column(props: ColumnProps) {
                     settings.isOverElementAutoScrollEnabled &&
                     settings.isOverflowScrollingEnabled &&
                     isDraggingACard({ source }),
-                getOverflow: () => ({ forTopEdge: { top: 1000 }, forBottomEdge: { bottom: 1000 } }),
+                getOverflow() {
+                    return {
+                        forTopEdge: {
+                            top: 1000,
+                        },
+                        forBottomEdge: {
+                            bottom: 1000,
+                        },
+                    };
+                },
             })
         );
     }, [column, currentColumn.cards, settings]);
@@ -190,7 +227,7 @@ export function Column(props: ColumnProps) {
         console.log("currentColumn.cards", currentColumn.cards)
         const order = currentColumn.cards.length > 0 ? (currentColumn.cards.length - 1) + 1 : 0;
 
-    
+
         console.log("add Cardorder", order)
         createTaskMutation.mutate({
             projectId: column.projectId,
@@ -208,7 +245,7 @@ export function Column(props: ColumnProps) {
     return (
         <ColumnWrapper
             className={cc(
-                'bg-gray-50 text-gray-900 rounded-2xl p-4 border border-gray-200 w-[280px] min-w-[280px] max-h-[calc(100vh-160px)] flex flex-col gap-4 flex-shrink-0',
+                'bg-gray-50 text-gray-900 rounded-2xl p-4 border border-gray-200 max-h-[calc(100vh-160px)] flex flex-col gap-4',
                 stateStyles[state.type]
             )}
             ref={outerFullHeightRef}>
@@ -223,7 +260,7 @@ export function Column(props: ColumnProps) {
                 onDelete={handleDelete}
             />
 
-            <div className="flex flex-col gap-3 overflow-y-auto scrollbar-thin [&:not(:hover)]:scrollbar-transparent hover:scrollbar-gray-300 flex-grow max-h-screen min-h-0" ref={scrollableRef}>
+            <div className="flex flex-col gap-3 overflow-y-auto scrollbar-thin [&:not(:hover)]:scrollbar-transparent hover:scrollbar-gray-300 flex-grow min-h-0" ref={scrollableRef}>
                 <DisplayCard columnId={column.id} cards={currentColumn.cards} state={state} columnTitle={columnTitle} />
             </div>
             <div>

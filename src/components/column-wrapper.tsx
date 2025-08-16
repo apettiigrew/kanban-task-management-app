@@ -15,11 +15,12 @@ export function ColumnWrapper(props: ColumnWrapperProps) {
       className={`
         bg-gray-50 text-[#1d1d1d] shadow-none rounded-[20px] p-4
         flex flex-col gap-4 border border-gray-200
-        max-w-[260px] w-full max-h-[90vh] h-min
+        w-[280px] min-w-[280px] max-h-[90vh] h-min flex-shrink-0
         ${className}
       `}
       style={style}
       ref={ref}
+      data-draggable-column="true"
     >
       {children}
     </div>
