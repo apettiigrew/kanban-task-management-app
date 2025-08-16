@@ -15,15 +15,17 @@ import { useOutsideClick } from '@/hooks/use-outside-click';
 import { TCard } from '@/models/card';
 import { TColumn } from '@/models/column';
 import { SettingsContext } from '@/providers/settings-context';
-import { getColumnData, isCardData, isCardDropTargetData, isColumnData, isDraggingACard, isDraggingAColumn, isShallowEqual, TCardData } from '@/utils/data';
+import { getColumnData, isCardData, isColumnData, isDraggingACard, isDraggingAColumn, isShallowEqual, TCardData } from '@/utils/data';
 import { cc } from '@/utils/style-utils';
 import { autoScrollForElements } from '@atlaskit/pragmatic-drag-and-drop-auto-scroll/element';
 import { unsafeOverflowAutoScrollForElements } from '@atlaskit/pragmatic-drag-and-drop-auto-scroll/unsafe-overflow/element';
 import {
     attachClosestEdge,
+    extractClosestEdge,
+    type Edge,
 } from '@atlaskit/pragmatic-drag-and-drop-hitbox/closest-edge';
 import { combine } from '@atlaskit/pragmatic-drag-and-drop/combine';
-import { DragLocationHistory } from '@atlaskit/pragmatic-drag-and-drop/dist/types/internal-types';
+
 import {
     draggable,
     dropTargetForElements
@@ -37,9 +39,13 @@ import { isSafari } from '@/utils/is-safari';
 
 type TColumnState =
     | { type: 'is-card-over'; isOverChildCard: boolean; dragging: DOMRect }
-    | { type: 'is-column-over' }
+    | { type: 'is-column-over'; dragging: DOMRect; closestEdge: Edge }
     | { type: 'idle' }
-    | { type: 'is-dragging' };
+    | { type: 'preview'; container: HTMLElement; rect: DOMRect }
+    | { type: 'is-dragging-and-left-self' }
+    | { type: 'is-dragging' }
+    | { type: 'dragging' };
+
 
 const idle = { type: 'idle' } satisfies TColumnState;
 
@@ -48,6 +54,9 @@ const stateStyles: { [Key in TColumnState['type']]: string } = {
     'is-card-over': 'border-2 border-emerald-500 bg-emerald-50 shadow-lg scale-[1.02] transition-all',
     'is-dragging': 'opacity-60 rotate-2 shadow-2xl transition-all',
     'is-column-over': 'border-2 border-purple-500 bg-purple-50 shadow-lg scale-[1.02] transition-all',
+    'is-dragging-and-left-self': 'hidden',
+    'preview': 'border-2 border-purple-500 bg-purple-50 shadow-lg scale-[1.02] transition-all',
+    'dragging': 'opacity-60 rotate-2 shadow-2xl transition-all',
 };
 
 interface ColumnProps {
@@ -67,7 +76,7 @@ export function Column(props: ColumnProps) {
     const newCardInputRef = useRef<HTMLInputElement>(null);
     const scrollableRef = useRef<HTMLDivElement | null>(null);
 
-    const [state, setState] = useState<TColumnState>(idle);
+    const [columnState, setColumnState] = useState<TColumnState>(idle);
     const { settings } = useContext(SettingsContext);
 
     // Handle outside click for card creation cancellation
@@ -101,26 +110,23 @@ export function Column(props: ColumnProps) {
         const scrollable = scrollableRef.current;
         if (!outer || !scrollable) return;
 
-        const data = getColumnData({ column });
+        const data = getColumnData({ column, rect: outer.getBoundingClientRect() });
 
-        function setIsCardOver({ data, location }: { data: TCardData; location: DragLocationHistory }) {
-            const innerMost = location.current.dropTargets[0];
-            const isOverChildCard = Boolean(innerMost && isCardDropTargetData(innerMost.data));
-
+        function setIsCardOver({ data }: { data: TCardData }) {
             const proposed: TColumnState = {
                 type: 'is-card-over',
                 dragging: data.rect,
-                isOverChildCard,
+                isOverChildCard: false, // For empty columns, this is always false
             };
-            setState((current) => (isShallowEqual(proposed, current) ? current : proposed));
+            setColumnState((current) => (isShallowEqual(proposed, current) ? current : proposed));
         }
 
         return combine(
             draggable({
                 element: outer,
                 getInitialData: () => data,
-                onDragStart: () => setState({ type: 'is-dragging' }),
-                onDrop: () => setState(idle),
+                onDragStart: () => setColumnState({ type: 'is-dragging' }),
+                onDrop: () => setColumnState(idle),
                 onGenerateDragPreview({ source, location, nativeSetDragImage }) {
                     const data = source.data;
                     invariant(isColumnData(data));
@@ -148,17 +154,43 @@ export function Column(props: ColumnProps) {
             }),
             dropTargetForElements({
                 element: outer,
-                getData: ({ input, element }) => attachClosestEdge(data, { element, input, allowedEdges: ['left', 'right'] }),
+                getData: ({ element, input }) =>
+                    attachClosestEdge(getColumnData({ column, rect: outer.getBoundingClientRect() }), {
+                        element,
+                        input,
+                        allowedEdges: ['left', 'right'],
+                    }),
                 canDrop: ({ source }) => isDraggingACard({ source }) || isDraggingAColumn({ source }),
                 getIsSticky: () => true,
-                onDragStart: ({ source, location }) => isCardData(source.data) && setIsCardOver({ data: source.data, location }),
-                onDragEnter: ({ source, location }) => {
-                    if (isCardData(source.data)) return setIsCardOver({ data: source.data, location });
-                    if (isColumnData(source.data) && source.data.column.id !== column.id) setState({ type: 'is-column-over' });
+                onDrag({ source, self }) {
+                    if (!isColumnData(source.data) || source.data.column.id === column.id) return;
+                    const closestEdge = extractClosestEdge(self.data);
+                    if (!closestEdge) return;
+                    const proposed: TColumnState = { type: 'is-column-over', dragging: source.data.rect, closestEdge };
+                    setColumnState((current) => (isShallowEqual(proposed, current) ? current : proposed));
                 },
-                onDropTargetChange: ({ source, location }) => isCardData(source.data) && setIsCardOver({ data: source.data, location }),
-                onDragLeave: ({ source }) => !isColumnData(source.data) || source.data.column.id !== column.id ? setState(idle) : undefined,
-                onDrop: () => setState(idle),
+                onDragStart: ({ source }) => isCardData(source.data) && setIsCardOver({ data: source.data }),
+                onDragEnter: ({ source, self }) => {
+                    if (isCardData(source.data)) return setIsCardOver({ data: source.data });
+                    if (isColumnData(source.data) && source.data.column.id !== column.id) {
+                        const closestEdge = extractClosestEdge(self.data);
+                        if (!closestEdge) return;
+                        setColumnState({ type: 'is-column-over', dragging: source.data.rect, closestEdge });
+                    }
+                },
+                onDropTargetChange: ({ source }) => isCardData(source.data) && setIsCardOver({ data: source.data }),
+                onDragLeave({ source }) {
+                    if (isColumnData(source.data)) {
+                        setColumnState(
+                            source.data.column.id === column.id
+                                ? { type: 'is-dragging-and-left-self' }
+                                : { type: 'idle' }
+                        );
+                    } else if (isCardData(source.data)) {
+                        setColumnState({ type: 'idle' });
+                    }
+                },
+                onDrop: () => setColumnState(idle),
             }),
             autoScrollForElements({
                 canScroll: ({ source }) => settings.isOverElementAutoScrollEnabled && isDraggingACard({ source }),
@@ -243,75 +275,85 @@ export function Column(props: ColumnProps) {
     }, [column.projectId, currentColumn.cards.length, createTaskMutation]);
 
     return (
-        <ColumnWrapper
-            className={cc(
-                'bg-gray-50 text-gray-900 rounded-2xl p-4 border border-gray-200 max-h-[calc(100vh-160px)] flex flex-col gap-4',
-                stateStyles[state.type]
-            )}
-            ref={outerFullHeightRef}>
-            <ColumnHeader
-                columnTitle={columnTitle}
-                isEditingTitle={isEditingTitle}
-                titleInputRef={titleInputRef}
-                onTitleChange={setColumnTitle}
-                onEditingChange={setIsEditingTitle}
-                onTitleSave={handleTitleSave}
-                onTitleCancel={handleTitleCancel}
-                onDelete={handleDelete}
-            />
 
-            <div className="flex flex-col gap-3 overflow-y-auto scrollbar-thin [&:not(:hover)]:scrollbar-transparent hover:scrollbar-gray-300 flex-grow min-h-0" ref={scrollableRef}>
-                <DisplayCard columnId={column.id} cards={currentColumn.cards} state={state} columnTitle={columnTitle} />
-            </div>
-            <div>
-                {isAddingCard ? (
-                    <div ref={addCardRef} className="flex flex-col gap-2">
-                        <Input
-                            ref={newCardInputRef}
-                            className="text-sm font-medium"
-                            value={newCardTitle}
-                            onChange={(e) => setNewCardTitle(e.target.value)}
-                            onKeyDown={(e) => {
-                                if (e.key === 'Enter' && newCardTitle.trim()) {
-                                    addCard(column.id, newCardTitle.trim());
-                                }
-                                if (e.key === 'Escape') {
-                                    setIsAddingCard(false);
-                                    setNewCardTitle('');
-                                }
-                            }}
-                            placeholder="Enter a title or paste a link"
-                        />
-                        <div className="flex justify-between gap-3">
-                            <Button
-                                variant="primary"
-                                onClick={() => addCard(column.id, newCardTitle.trim())}
-                                disabled={!newCardTitle.trim()}>
-                                Add card
-                            </Button>
-                            <Button
-                                onClick={() => {
-                                    setIsAddingCard(false);
-                                    setNewCardTitle('');
-                                }}
-                                variant="ghost"
-                                size="sm"
-                                aria-label="Cancel adding card"
-                            >
-                                <X />
-                            </Button>
-                        </div>
-                    </div>
-                ) : (
-                    <Button
-                        variant="primary"
-                        onClick={() => setIsAddingCard(true)}
-                    >
-                        Add a card
-                    </Button>
+        <>
+            {columnState.type === 'is-column-over' && columnState.closestEdge === 'left' && (
+                <ColumnShadow dragging={columnState.dragging} />
+            )}
+            <ColumnWrapper
+                className={cc(
+                    'bg-gray-50 text-gray-900 rounded-2xl p-4 border border-gray-200 max-h-[calc(100vh-160px)] flex flex-col gap-4',
+                    stateStyles[columnState.type]
                 )}
-            </div>
-        </ColumnWrapper>
+                ref={outerFullHeightRef}>
+                <ColumnHeader
+                    columnTitle={columnTitle}
+                    isEditingTitle={isEditingTitle}
+                    titleInputRef={titleInputRef}
+                    onTitleChange={setColumnTitle}
+                    onEditingChange={setIsEditingTitle}
+                    onTitleSave={handleTitleSave}
+                    onTitleCancel={handleTitleCancel}
+                    onDelete={handleDelete}
+                />
+
+                <div className="flex flex-col gap-3 overflow-y-auto scrollbar-thin [&:not(:hover)]:scrollbar-transparent hover:scrollbar-gray-300 flex-grow min-h-0" ref={scrollableRef}>
+                    <DisplayCard columnId={column.id} cards={currentColumn.cards} state={columnState} columnTitle={columnTitle} />
+                </div>
+                <div>
+                    {isAddingCard ? (
+                        <div ref={addCardRef} className="flex flex-col gap-2">
+                            <Input
+                                ref={newCardInputRef}
+                                className="text-sm font-medium"
+                                value={newCardTitle}
+                                onChange={(e) => setNewCardTitle(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' && newCardTitle.trim()) {
+                                        addCard(column.id, newCardTitle.trim());
+                                    }
+                                    if (e.key === 'Escape') {
+                                        setIsAddingCard(false);
+                                        setNewCardTitle('');
+                                    }
+                                }}
+                                placeholder="Enter a title or paste a link"
+                            />
+                            <div className="flex justify-between gap-3">
+                                <Button
+                                    variant="primary"
+                                    onClick={() => addCard(column.id, newCardTitle.trim())}
+                                    disabled={!newCardTitle.trim()}>
+                                    Add card
+                                </Button>
+                                <Button
+                                    onClick={() => {
+                                        setIsAddingCard(false);
+                                        setNewCardTitle('');
+                                    }}
+                                    variant="ghost"
+                                    size="sm"
+                                    aria-label="Cancel adding card"
+                                >
+                                    <X />
+                                </Button>
+                            </div>
+                        </div>
+                    ) : (
+                        <Button
+                            variant="primary"
+                            onClick={() => setIsAddingCard(true)}
+                        >
+                            Add a card
+                        </Button>
+                    )}
+                </div>
+            </ColumnWrapper>
+
+            {columnState.type === 'is-column-over' && columnState.closestEdge === 'right' && (
+                <ColumnShadow dragging={columnState.dragging} />
+            )}
+        </>
     );
 }
 
@@ -415,4 +457,9 @@ function DisplayCard({ cards, columnId, state, columnTitle }: DisplayCardProps) 
             ))}
         </>
     );
+}
+
+
+export function ColumnShadow({ dragging }: { dragging: DOMRect }) {
+    return <div className="flex-shrink-0 rounded-md bg-slate-900" style={{ height: dragging.height, width: dragging.width }} />;
 }

@@ -1,7 +1,7 @@
 "use client"
 
 import '@/app/board.css';
-import { Column } from '@/components/column/column';
+import { Column, ColumnShadow } from '@/components/column/column';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useCreateColumn, useDeleteColumn, useReorderColumns } from '@/hooks/mutations/use-column-mutations';
@@ -627,6 +627,7 @@ export function Board(props: BoardProps) {
                 </div>
 
                 <div ref={scrollableRef} className="board-columns-container pb-4 snap-x snap-mandatory flex-1 px-6">
+                    
                     {projectState.columns.map((column) => (
                         <Column
                             key={column.id}

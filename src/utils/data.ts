@@ -71,12 +71,14 @@ const columnKey = Symbol('column');
 export type TColumnData = {
     [columnKey]: true;
     column: TColumn;
+    rect: DOMRect;
 };
 
-export function getColumnData({ column }: Omit<TColumnData, typeof columnKey>): TColumnData {
+export function getColumnData({ column, rect }: Omit<TColumnData, typeof columnKey>): TColumnData {
     return {
         [columnKey]: true,
         column,
+        rect,
     };
 }
 
