@@ -27,10 +27,7 @@ import { CleanupFn } from '@atlaskit/pragmatic-drag-and-drop/dist/types/internal
 import invariant from 'tiny-invariant';
 import { bindAll } from 'bind-event-listener';
 import { blockBoardPanningAttr } from '@/utils/data-attributes';
-import { CleanupFn } from '@atlaskit/pragmatic-drag-and-drop/dist/types/internal-types';
-import invariant from 'tiny-invariant';
-import { bindAll } from 'bind-event-listener';
-import { blockBoardPanningAttr } from '@/utils/data-attributes';
+
 interface BoardProps {
     project: TProject
 }
@@ -496,16 +493,10 @@ export function Board(props: BoardProps) {
                 getConfiguration: ({ source }) => ({
                     maxScrollSpeed: isDraggingAColumn({ source }) ? 'fast' : settings.boardScrollSpeed
                 }),
-                getConfiguration: ({ source }) => ({
-                    maxScrollSpeed: isDraggingAColumn({ source }) ? 'fast' : settings.boardScrollSpeed
-                }),
                 element,
             }),
             unsafeOverflowAutoScrollForElements({
                 element,
-                getConfiguration: ({ source }) => ({
-                    maxScrollSpeed: isDraggingAColumn({ source }) ? 'fast' : settings.boardScrollSpeed
-                }),
                 getConfiguration: ({ source }) => ({
                     maxScrollSpeed: isDraggingAColumn({ source }) ? 'fast' : settings.boardScrollSpeed
                 }),
