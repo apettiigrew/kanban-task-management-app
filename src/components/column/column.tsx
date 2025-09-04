@@ -36,6 +36,10 @@ import invariant from 'tiny-invariant';
 import { setCustomNativeDragPreview } from '@atlaskit/pragmatic-drag-and-drop/element/set-custom-native-drag-preview';
 import { preserveOffsetOnSource } from '@atlaskit/pragmatic-drag-and-drop/element/preserve-offset-on-source';
 import { isSafari } from '@/utils/is-safari';
+import invariant from 'tiny-invariant';
+import { setCustomNativeDragPreview } from '@atlaskit/pragmatic-drag-and-drop/element/set-custom-native-drag-preview';
+import { preserveOffsetOnSource } from '@atlaskit/pragmatic-drag-and-drop/element/preserve-offset-on-source';
+import { isSafari } from '@/utils/is-safari';
 
 type TColumnState =
     | { type: 'is-card-over'; isOverChildCard: boolean; dragging: DOMRect }
@@ -214,6 +218,16 @@ export function Column(props: ColumnProps) {
                         },
                     };
                 },
+                getOverflow() {
+                    return {
+                        forTopEdge: {
+                            top: 1000,
+                        },
+                        forBottomEdge: {
+                            bottom: 1000,
+                        },
+                    };
+                },
             })
         );
     }, [column, currentColumn.cards, settings]);
@@ -258,6 +272,7 @@ export function Column(props: ColumnProps) {
 
         console.log("currentColumn.cards", currentColumn.cards)
         const order = currentColumn.cards.length > 0 ? (currentColumn.cards.length - 1) + 1 : 0;
+
 
 
         console.log("add Cardorder", order)

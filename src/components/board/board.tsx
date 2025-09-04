@@ -27,6 +27,10 @@ import { CleanupFn } from '@atlaskit/pragmatic-drag-and-drop/dist/types/internal
 import invariant from 'tiny-invariant';
 import { bindAll } from 'bind-event-listener';
 import { blockBoardPanningAttr } from '@/utils/data-attributes';
+import { CleanupFn } from '@atlaskit/pragmatic-drag-and-drop/dist/types/internal-types';
+import invariant from 'tiny-invariant';
+import { bindAll } from 'bind-event-listener';
+import { blockBoardPanningAttr } from '@/utils/data-attributes';
 interface BoardProps {
     project: TProject
 }
@@ -156,6 +160,7 @@ export function Board(props: BoardProps) {
         if (!element) {
             return;
         }
+
 
         return combine(
             monitorForElements({
@@ -491,10 +496,16 @@ export function Board(props: BoardProps) {
                 getConfiguration: ({ source }) => ({
                     maxScrollSpeed: isDraggingAColumn({ source }) ? 'fast' : settings.boardScrollSpeed
                 }),
+                getConfiguration: ({ source }) => ({
+                    maxScrollSpeed: isDraggingAColumn({ source }) ? 'fast' : settings.boardScrollSpeed
+                }),
                 element,
             }),
             unsafeOverflowAutoScrollForElements({
                 element,
+                getConfiguration: ({ source }) => ({
+                    maxScrollSpeed: isDraggingAColumn({ source }) ? 'fast' : settings.boardScrollSpeed
+                }),
                 getConfiguration: ({ source }) => ({
                     maxScrollSpeed: isDraggingAColumn({ source }) ? 'fast' : settings.boardScrollSpeed
                 }),
@@ -525,6 +536,7 @@ export function Board(props: BoardProps) {
                 },
             }),
         );
+    }, [projectState, settings.boardScrollSpeed, settings.isOverElementAutoScrollEnabled, settings.isOverflowScrollingEnabled, isDraggingColumn]);
     }, [projectState, settings.boardScrollSpeed, settings.isOverElementAutoScrollEnabled, settings.isOverflowScrollingEnabled, isDraggingColumn]);
 
     // Track column dragging state
@@ -619,7 +631,102 @@ export function Board(props: BoardProps) {
             cleanupActive?.();
         };
     }, []);
+    // Track column dragging state
+    // useEffect(() => {
+    //     const handleDragStart = (event: DragEvent) => {
+    //         const target = event.target as HTMLElement;
+    //         if (target.closest('[data-draggable-column]')) {
+    //             setIsDraggingColumn(true);
+    //         }
+    //     };
+
+    //     const handleDragEnd = () => {
+    //         setIsDraggingColumn(false);
+    //     };
+
+    //     document.addEventListener('dragstart', handleDragStart);
+    //     document.addEventListener('dragend', handleDragEnd);
+
+    //     return () => {
+    //         document.removeEventListener('dragstart', handleDragStart);
+    //         document.removeEventListener('dragend', handleDragEnd);
+    //     };
+    // }, []);
+
+
+    // Panning the board
+    useEffect(() => {
+        let cleanupActive: CleanupFn | null = null;
+        const scrollable = scrollableRef.current;
+        invariant(scrollable);
+
+        function begin({ startX }: { startX: number }) {
+            let lastX = startX;
+
+            const cleanupEvents = bindAll(
+                window,
+                [
+                    {
+                        type: 'pointermove',
+                        listener(event) {
+                            const currentX = event.clientX;
+                            const diffX = lastX - currentX;
+
+                            lastX = currentX;
+                            scrollable?.scrollBy({ left: diffX });
+                        },
+                    },
+                    // stop panning if we see any of these events
+                    ...(
+                        [
+                            'pointercancel',
+                            'pointerup',
+                            'pointerdown',
+                            'keydown',
+                            'resize',
+                            'click',
+                            'visibilitychange',
+                        ] as const
+                    ).map((eventName) => ({ type: eventName, listener: () => cleanupEvents() })),
+                ],
+                // need to make sure we are not after the "pointerdown" on the scrollable
+                // Also this is helpful to make sure we always hear about events from this point
+                { capture: true },
+            );
+
+            cleanupActive = cleanupEvents;
+        }
+
+        const cleanupStart = bindAll(scrollable, [
+            {
+                type: 'pointerdown',
+                listener(event) {
+                    if (!(event.target instanceof HTMLElement)) {
+                        return;
+                    }
+                    // ignore interactive elements
+                    if (event.target.closest(`[${blockBoardPanningAttr}]`)) {
+                        return;
+                    }
+                    // disable panning when dragging a column
+                    if (isDraggingColumn) {
+                        return;
+                    }
+
+                    begin({ startX: event.clientX });
+                },
+            },
+        ]);
+
+        return function cleanupAll() {
+            cleanupStart();
+            cleanupActive?.();
+        };
+    }, []);
     return (
+        <div className="board-container flex flex-col">
+            <div className="board-content flex-1 flex flex-col">
+                <div className="flex items-center justify-between mb-6 mt-6 flex-shrink-0 px-6">
         <div className="board-container flex flex-col">
             <div className="board-content flex-1 flex flex-col">
                 <div className="flex items-center justify-between mb-6 mt-6 flex-shrink-0 px-6">
