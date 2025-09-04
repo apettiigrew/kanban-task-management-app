@@ -20,9 +20,13 @@ import { reorderWithEdge } from '@atlaskit/pragmatic-drag-and-drop-hitbox/util/r
 import { combine } from '@atlaskit/pragmatic-drag-and-drop/combine';
 import { monitorForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
 import { reorder } from '@atlaskit/pragmatic-drag-and-drop/reorder';
-import { PlusCircle } from 'lucide-react';
+import { PlusCircle, FolderOpen } from 'lucide-react';
 import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { ProjectDialog } from '@/components/project-dialog';
+import { useProjects, useCreateProject } from '@/hooks/queries/use-projects';
+import { useRouter } from 'next/navigation';
+import { useKeyboardShortcut } from '@/hooks/use-keyboard-shortcut';
 import { CleanupFn } from '@atlaskit/pragmatic-drag-and-drop/dist/types/internal-types';
 import invariant from 'tiny-invariant';
 import { bindAll } from 'bind-event-listener';
@@ -36,6 +40,23 @@ export function Board(props: BoardProps) {
     const { project } = props;
     const [projectState, setProjectState] = useState<TProject>(project);
     const [isDraggingColumn, setIsDraggingColumn] = useState(false);
+    
+    const { isDialogOpen: isProjectDialogOpen, setIsDialogOpen: setIsProjectDialogOpen } = useKeyboardShortcut({
+        key: 'b'
+    });
+    
+    const router = useRouter();
+    const { data: projects = [], isLoading: isLoadingProjects } = useProjects();
+    const createProjectMutation = useCreateProject({
+        onSuccess: (newProject) => {
+            toast.success('Project created successfully!');
+            router.push(`/board/${newProject.id}`);
+        },
+        onError: (error) => {
+            toast.error('Failed to create project');
+            console.error('Error creating project:', error);
+        }
+    });
 
     useEffect(() => {
         setProjectState(project)
@@ -53,6 +74,19 @@ export function Board(props: BoardProps) {
     const reorderTasksMutation = useReorderTasks();
     const reorderColumnsMutation = useReorderColumns();
     const deleteColumnMutation = useDeleteColumn();
+
+    const handleProjectSelect = useCallback((selectedProject: { id: string; name: string }) => {
+        if (selectedProject.id !== projectState.id) {
+            router.push(`/board/${selectedProject.id}`);
+        }
+    }, [projectState.id, router]);
+
+    const handleCreateProject = useCallback((projectName: string) => {
+        createProjectMutation.mutate({
+            title: projectName,
+            description: null
+        });
+    }, [createProjectMutation]);
 
     const handleDeleteColumn = useCallback((columnId: string) => {
 
@@ -746,6 +780,35 @@ export function Board(props: BoardProps) {
                     )}
                 </div>
             </div>
+            
+            {/* Fixed bottom button */}
+            <div className="flex justify-center pb-4">
+                <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsProjectDialogOpen(true)}
+                    className="flex items-center gap-2"
+                >
+                    <FolderOpen className="h-4 w-4" />
+                    Switch Project
+                </Button>
+            </div>
+            
+            <ProjectDialog
+                open={isProjectDialogOpen}
+                onOpenChange={setIsProjectDialogOpen}
+                title="Switch Project"
+                searchPlaceholder="Search projects..."
+                createButtonText="Create"
+                createInputPlaceholder="Project title"
+                projects={projects.map(project => ({
+                    id: project.id,
+                    name: project.title
+                }))}
+                onProjectSelect={handleProjectSelect}
+                onCreateProject={handleCreateProject}
+                isLoading={isLoadingProjects || createProjectMutation.isPending}
+            />
         </div>
     );
 }
