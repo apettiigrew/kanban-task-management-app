@@ -23,7 +23,7 @@ import { reorder } from '@atlaskit/pragmatic-drag-and-drop/reorder';
 import { PlusCircle, FolderOpen } from 'lucide-react';
 import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { ProjectDialog } from '@/components/project-dialog';
+import { ProjectDialog, ProjectDialogRef } from '@/components/project-dialog';
 import { useProjects, useCreateProject } from '@/hooks/queries/use-projects';
 import { useRouter } from 'next/navigation';
 import { useKeyboardShortcut } from '@/hooks/use-keyboard-shortcut';
@@ -40,7 +40,7 @@ export function Board(props: BoardProps) {
     const { project } = props;
     const [projectState, setProjectState] = useState<TProject>(project);
     const [isDraggingColumn, setIsDraggingColumn] = useState(false);
-
+    const createProjectMutation = useCreateProject();
     const {
         isDialogOpen: isProjectDialogOpen,
         setIsDialogOpen: setIsProjectDialogOpen
@@ -50,11 +50,7 @@ export function Board(props: BoardProps) {
 
     const router = useRouter();
     const { data: projects = [], isLoading: isLoadingProjects } = useProjects();
-    const createProjectMutation = useCreateProject({
-        onSuccess: (newProject) => {
-           console.log("newProject", newProject)
-        },
-    });
+    const projectDialogRef = useRef<ProjectDialogRef>(null);
 
     useEffect(() => {
         setProjectState(project)
@@ -83,7 +79,13 @@ export function Board(props: BoardProps) {
         createProjectMutation.mutate({
             title: projectName,
             description: null
-        });
+        }), {
+            onSuccess: (newProject: TProject) => {
+                projectDialogRef.current?.resetForm();
+                router.push(`/board/${newProject.id}`);
+                setIsProjectDialogOpen(false);
+            }
+        };
     }, [createProjectMutation]);
 
     const handleDeleteColumn = useCallback((columnId: string) => {
@@ -324,8 +326,8 @@ export function Board(props: BoardProps) {
                             totalCompletedChecklistItems: card.totalCompletedChecklistItems,
                         }));
 
-                        console.log("reorderedDestinationCards", reorderedDestinationCards)
-                        console.log("reorderedHomeCards", reorderedHomeCards)
+                        // console.log("reorderedDestinationCards", reorderedDestinationCards)
+                        // console.log("reorderedHomeCards", reorderedHomeCards)
 
                         const columns = Array.from(projectState.columns);
                         columns[homeColumnIndex] = {
@@ -771,6 +773,7 @@ export function Board(props: BoardProps) {
             </div>
 
             <ProjectDialog
+                ref={projectDialogRef}
                 open={isProjectDialogOpen}
                 onOpenChange={setIsProjectDialogOpen}
                 title="Switch Project"

@@ -40,6 +40,7 @@ interface UpdateProjectData {
 }
 
 const createProject = async (data: CreateProjectData): Promise<TProject> => {
+  console.log("data inside createProject", data)
   return apiRequest<TProject>('/api/projects', {
     method: 'POST',
     body: JSON.stringify(data),
@@ -142,6 +143,12 @@ interface UseDeleteProjectOptions {
 export const useCreateProject = (options: UseCreateProjectOptions = {}) => {
   return useMutation({
     mutationFn: createProject,
+    onSuccess: (data) => {
+      options.onSuccess?.(data)
+    },
+    onError: (error) => {
+      options.onError?.(error as FormError)
+    },
   })
 }
 

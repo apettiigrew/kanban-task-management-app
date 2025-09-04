@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useImperativeHandle, forwardRef, useCallback } from "react"
 import { Search, Plus } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
@@ -23,10 +23,15 @@ interface ProjectDialogProps {
   projects?: ProjectItem[]
   onProjectSelect?: (project: ProjectItem) => void
   onCreateProject?: (name: string) => void
+  onProjectCreated?: () => void
   isLoading?: boolean
 }
 
-export function ProjectDialog({ 
+export interface ProjectDialogRef {
+  resetForm: () => void
+}
+
+export const ProjectDialog = forwardRef<ProjectDialogRef, ProjectDialogProps>(({ 
   open, 
   onOpenChange,
   title = "Select Project",
@@ -37,7 +42,7 @@ export function ProjectDialog({
   onProjectSelect,
   onCreateProject,
   isLoading = false
-}: ProjectDialogProps) {
+}, ref) => {
   const [searchQuery, setSearchQuery] = useState("")
   const [createPopoverOpen, setCreatePopoverOpen] = useState(false)
   const [newProjectName, setNewProjectName] = useState("")
@@ -46,13 +51,27 @@ export function ProjectDialog({
     project.name.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
-  const handleCreateProject = () => {
-    if (newProjectName.trim() && onCreateProject) {
-      onCreateProject(newProjectName.trim())
-      setNewProjectName("")
-      setCreatePopoverOpen(false)
-    }
+  // Reset form when project is successfully created
+  const resetForm = () => {
+    setNewProjectName("")
+    setCreatePopoverOpen(false)
   }
+
+  useImperativeHandle(ref, () => ({
+    resetForm
+  }))
+
+  // console.log("ProjectDialog")
+  const handleCreateProject = useCallback((event: React.MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault()
+    event.stopPropagation()
+
+    // console.log("Clicking")
+    if (newProjectName.trim() && onCreateProject) {
+      console.log("newProjectName inside handleCreateProject", newProjectName)
+      onCreateProject(newProjectName.trim())
+    }
+  }, [newProjectName, onCreateProject])
 
   const handleProjectSelect = (project: ProjectItem) => {
     if (onProjectSelect) {
@@ -112,17 +131,12 @@ export function ProjectDialog({
                           placeholder={createInputPlaceholder}
                           value={newProjectName}
                           onChange={(e) => setNewProjectName(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                              handleCreateProject()
-                            }
-                          }}
                           disabled={isLoading}
                         />
                         <Button 
                           onClick={handleCreateProject} 
                           className="w-full" 
-                          disabled={!newProjectName.trim() || isLoading}
+                          disabled={newProjectName.trim().length == 0}
                         >
                           {createButtonText}
                         </Button>
@@ -158,4 +172,6 @@ export function ProjectDialog({
       </DialogContent>
     </Dialog>
   )
-}
+})
+
+ProjectDialog.displayName = "ProjectDialog"
