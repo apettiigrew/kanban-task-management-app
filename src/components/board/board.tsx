@@ -40,22 +40,20 @@ export function Board(props: BoardProps) {
     const { project } = props;
     const [projectState, setProjectState] = useState<TProject>(project);
     const [isDraggingColumn, setIsDraggingColumn] = useState(false);
-    
-    const { isDialogOpen: isProjectDialogOpen, setIsDialogOpen: setIsProjectDialogOpen } = useKeyboardShortcut({
+
+    const {
+        isDialogOpen: isProjectDialogOpen,
+        setIsDialogOpen: setIsProjectDialogOpen
+    } = useKeyboardShortcut({
         key: 'b'
     });
-    
+
     const router = useRouter();
     const { data: projects = [], isLoading: isLoadingProjects } = useProjects();
     const createProjectMutation = useCreateProject({
         onSuccess: (newProject) => {
-            toast.success('Project created successfully!');
-            router.push(`/board/${newProject.id}`);
+           console.log("newProject", newProject)
         },
-        onError: (error) => {
-            toast.error('Failed to create project');
-            console.error('Error creating project:', error);
-        }
     });
 
     useEffect(() => {
@@ -563,28 +561,6 @@ export function Board(props: BoardProps) {
         );
     }, [projectState, settings.boardScrollSpeed, settings.isOverElementAutoScrollEnabled, settings.isOverflowScrollingEnabled, isDraggingColumn]);
 
-    // Track column dragging state
-    // useEffect(() => {
-    //     const handleDragStart = (event: DragEvent) => {
-    //         const target = event.target as HTMLElement;
-    //         if (target.closest('[data-draggable-column]')) {
-    //             setIsDraggingColumn(true);
-    //         }
-    //     };
-
-    //     const handleDragEnd = () => {
-    //         setIsDraggingColumn(false);
-    //     };
-
-    //     document.addEventListener('dragstart', handleDragStart);
-    //     document.addEventListener('dragend', handleDragEnd);
-
-    //     return () => {
-    //         document.removeEventListener('dragstart', handleDragStart);
-    //         document.removeEventListener('dragend', handleDragEnd);
-    //     };
-    // }, []);
-
 
     // Panning the board
     useEffect(() => {
@@ -755,7 +731,7 @@ export function Board(props: BoardProps) {
                 </div>
 
                 <div ref={scrollableRef} className="board-columns-container pb-4 snap-x snap-mandatory flex-1 px-6">
-                    
+
                     {projectState.columns.map((column) => (
                         <Column
                             key={column.id}
@@ -780,7 +756,7 @@ export function Board(props: BoardProps) {
                     )}
                 </div>
             </div>
-            
+
             {/* Fixed bottom button */}
             <div className="flex justify-center pb-4">
                 <Button
@@ -793,7 +769,7 @@ export function Board(props: BoardProps) {
                     Switch Project
                 </Button>
             </div>
-            
+
             <ProjectDialog
                 open={isProjectDialogOpen}
                 onOpenChange={setIsProjectDialogOpen}
