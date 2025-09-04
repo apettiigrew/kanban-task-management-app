@@ -86,51 +86,51 @@ export function ProjectDialog({
         <div className="flex-1 overflow-y-auto px-6 pb-6">
           <Accordion type="single" collapsible className="w-full">
             <AccordionItem value="projects" className="border-none">
-              <AccordionTrigger className="hover:no-underline py-3">
-                <div className="flex items-center justify-between w-full">
+              <div className="flex items-center justify-between w-full py-3">
+                <AccordionTrigger className="hover:no-underline flex-1 text-left">
                   <span className="text-sm font-medium">Projects</span>
-                  {onCreateProject && (
-                    <Popover open={createPopoverOpen} onOpenChange={setCreatePopoverOpen}>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-6 w-6 p-0 hover:bg-accent"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setCreatePopoverOpen(true)
+                </AccordionTrigger>
+                {onCreateProject && (
+                  <Popover open={createPopoverOpen} onOpenChange={setCreatePopoverOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 w-6 p-0 hover:bg-accent ml-2"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setCreatePopoverOpen(true)
+                        }}
+                        disabled={isLoading}
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-64 p-4" align="end">
+                      <div className="space-y-3">
+                        <Input
+                          placeholder={createInputPlaceholder}
+                          value={newProjectName}
+                          onChange={(e) => setNewProjectName(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              handleCreateProject()
+                            }
                           }}
                           disabled={isLoading}
+                        />
+                        <Button 
+                          onClick={handleCreateProject} 
+                          className="w-full" 
+                          disabled={!newProjectName.trim() || isLoading}
                         >
-                          <Plus className="h-4 w-4" />
+                          {createButtonText}
                         </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-64 p-4" align="end">
-                        <div className="space-y-3">
-                          <Input
-                            placeholder={createInputPlaceholder}
-                            value={newProjectName}
-                            onChange={(e) => setNewProjectName(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") {
-                                handleCreateProject()
-                              }
-                            }}
-                            disabled={isLoading}
-                          />
-                          <Button 
-                            onClick={handleCreateProject} 
-                            className="w-full" 
-                            disabled={!newProjectName.trim() || isLoading}
-                          >
-                            {createButtonText}
-                          </Button>
-                        </div>
-                      </PopoverContent>
-                    </Popover>
-                  )}
-                </div>
-              </AccordionTrigger>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                )}
+              </div>
               <AccordionContent className="pb-0">
                 <div className="space-y-2 max-h-64 overflow-y-auto">
                   {isLoading ? (
