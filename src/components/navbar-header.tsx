@@ -115,7 +115,7 @@ export function NavbarHeader({ className }: NavbarHeaderProps) {
     >
       {/* App Name - Left Side */}
       <div className="flex items-center">
-        <h1 onClick={homeLogoClick} className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight">
+        <h1 onClick={homeLogoClick} className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight cursor-pointer">
           Mello
         </h1>
       </div>
@@ -124,7 +124,7 @@ export function NavbarHeader({ className }: NavbarHeaderProps) {
         <DropdownMenu open={isDropdownOpen} onOpenChange={setIsDropdownOpen}>
           <DropdownMenuTrigger asChild>
             <button
-              className="flex items-center gap-2 p-1 rounded-full hover:bg-gray-100 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+              className="flex items-center gap-2 p-1 rounded-full hover:bg-gray-100 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 cursor-pointer"
               aria-label="User menu"
             >
               <Avatar className="h-8 w-8">
