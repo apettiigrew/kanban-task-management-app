@@ -1,31 +1,25 @@
 "use client"
 
-import { useState } from "react"
-import { Search, Plus, ChevronDown, Archive } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
-
-// Mock data for boards
-const mockBoards = [
-  { id: 1, name: "Try Boards", isArchived: false },
-  { id: 2, name: "Project one", isArchived: false },
-  { id: 3, name: "Marketing Campaign", isArchived: false },
-  { id: 4, name: "Product Development", isArchived: false },
-  { id: 5, name: "Team Planning", isArchived: true },
-  { id: 6, name: "Q4 Goals", isArchived: false },
-  { id: 7, name: "Research & Analysis", isArchived: false },
-  { id: 8, name: "Client Onboarding", isArchived: false },
-]
+import { useProjects } from "@/hooks/queries/use-projects"
+import { TBoard } from "@/models/board"
+import { Archive, ChevronDown, Plus, Search } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { useCallback, useState } from "react"
 
 export default function HomePage() {
+
+  const { data: boards = [], isLoading, error } = useProjects()
+  const router = useRouter()
   const [searchQuery, setSearchQuery] = useState("")
   const [showArchivedOnly, setShowArchivedOnly] = useState(false)
 
   // Filter boards based on search and archive status
-  const filteredBoards = mockBoards.filter(board => {
-    const matchesSearch = board.name.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredBoards = boards.filter((board) => {
+    const matchesSearch = board.title.toLowerCase().includes(searchQuery.toLowerCase())
     const matchesArchiveFilter = showArchivedOnly ? board.isArchived : !board.isArchived
     return matchesSearch && matchesArchiveFilter
   })
@@ -37,6 +31,10 @@ export default function HomePage() {
   const handleToggleArchived = (checked: boolean) => {
     setShowArchivedOnly(checked)
   }
+
+  const navigateToBoard = useCallback((board: TBoard) => {
+    router.push(`/board/${board.id}`)
+  }, [router])
 
   return (
     <div className="px-4 sm:px-6 py-6 sm:py-8">
@@ -100,8 +98,8 @@ export default function HomePage() {
             aria-live="polite">
             {filteredBoards.length > 0 ? (
               <div className="space-y-2 sm:space-y-3" role="list">
-                {filteredBoards.map((board) => (
-                  <BoardItem key={board.id} board={board} />
+                {filteredBoards.map((board: TBoard) => (
+                  <BoardItem onClick={navigateToBoard} key={board.id} board={board} />
                 ))}
               </div>
             ) : (
@@ -117,34 +115,34 @@ export default function HomePage() {
   )
 }
 
-// Board Item Component
+
 interface BoardItemProps {
-  board: {
-    id: number
-    name: string
-    isArchived: boolean
-  }
+  board: TBoard
+  onClick: (board: TBoard) => void
 }
 
-const BoardItem = ({ board }: BoardItemProps) => {
+const BoardItem = ({ board, onClick }: BoardItemProps) => {
+  const handleClick = () => {
+    onClick(board)
+  }
   return (
     <div
       className="flex items-center p-3 sm:p-4 bg-white border border-gray-200 rounded-lg hover:border-gray-300 hover:shadow-sm transition-all duration-200 cursor-pointer group"
       role="listitem"
       tabIndex={0}
-      aria-label={`Open board: ${board.name}${board.isArchived ? ' (archived)' : ''}`}
+      aria-label={`Open board: ${board.title}${board.isArchived ? ' (archived)' : ''}`}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault()
           // Handle board click
-          console.log('Opening board:', board.name)
+          console.log('Opening board:', board.title)
         }
       }}
     >
       <div className="flex items-center space-x-2 sm:space-x-3 min-w-0 flex-1">
         <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0" aria-hidden="true"></div>
-        <span className="text-base sm:text-lg font-medium text-gray-900 group-hover:text-blue-600 transition-colors truncate">
-          #{board.name}
+        <span onClick={handleClick} className="text-base sm:text-lg font-medium text-gray-900 group-hover:text-blue-600 transition-colors truncate">
+          {board.title}
         </span>
         {board.isArchived && (
           <Archive className="w-4 h-4 text-gray-400 flex-shrink-0" aria-label="Archived project" />
@@ -154,7 +152,6 @@ const BoardItem = ({ board }: BoardItemProps) => {
   )
 }
 
-// Empty State Component
 interface EmptyStateProps {
   isArchivedFilter: boolean
   hasSearchQuery: boolean
