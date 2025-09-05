@@ -116,7 +116,7 @@ export const ProjectDialog = forwardRef<ProjectDialogRef, ProjectDialogProps>(({
 
         {/* Scrollable Accordion Container */}
         <div className="flex-1 overflow-y-auto px-6 pb-6">
-          <Accordion type="single" collapsible className="w-full">
+          <Accordion type="single" collapsible defaultValue="projects" className="w-full">
             <AccordionItem value="projects" className="border-none">
               <div className="flex items-center justify-between w-full py-3">
                 <AccordionTrigger className="hover:no-underline flex-1 text-left">

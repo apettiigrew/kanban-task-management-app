@@ -42,11 +42,11 @@
   - [x] 1.3 Add proper success handling in create project mutation to trigger navigation
   - [x] 1.4 Ensure dialog only closes after successful project creation and navigation
 
-- [ ] 2.0 Improve Project Dialog Form UX
-  - [ ] 2.1 Add proper label above the project name input field in the popover
-  - [ ] 2.2 Implement form validation to prevent empty project names from being submitted
-  - [ ] 2.3 Update create button to be disabled when input is empty or only whitespace
-  - [ ] 2.4 Add visual feedback for form validation states
+- [x] 2.0 Improve Project Dialog Form UX
+  - [x] 2.1 Add proper label above the project name input field in the popover
+  - [x] 2.2 Implement form validation to prevent empty project names from being submitted
+  - [x] 2.3 Update create button to be disabled when input is empty or only whitespace
+  - [x] 2.4 Add visual feedback for form validation states
 
 - [ ] 3.0 Fix Accordion Default State
   - [ ] 3.1 Modify accordion component to be expanded by default instead of collapsed
