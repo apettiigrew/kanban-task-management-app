@@ -65,4 +65,7 @@ export function ComponentName(props: Prop) {
     );
 }
 
+## Tanstack Query & Mutation
+- For tanstack query do not create optimistic UI updates pattern using tanstack. This should be done at the component level.
+
 - Any action that requires a side effect (like API calls) should be handled using tanstack query

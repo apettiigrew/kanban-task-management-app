@@ -341,7 +341,4 @@ export const useInvalidateProject = () => {
     }
   }
 }
-
-// Re-export the key types for convenience
 export type { CreateProjectData, UpdateProjectData }
-// 

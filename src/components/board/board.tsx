@@ -56,9 +56,7 @@ export function Board(props: BoardProps) {
     useEffect(() => {
         setProjectState(project)
     }, [project.columns])
-    // const currentProject = useMemo (() => merge({}, project, optimisticUpdates), [project.columns, optimisticUpdates?.columns])
-
-    // console.log("currentProject inside Board", currentProject)
+    
     const [isAddingList, setIsAddingList] = useState(false);
     const [newListTitle, setNewListTitle] = useState('');
     const { settings } = useContext(SettingsContext);
@@ -77,7 +75,6 @@ export function Board(props: BoardProps) {
     }, [projectState.id, router]);
 
     const handleCreateProject = useCallback((projectName: string) => {
-        console.log("handleCreateProject called with projectName", projectName)
         createProjectMutation.mutate({
             title: projectName,
             description: null

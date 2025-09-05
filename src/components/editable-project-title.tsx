@@ -18,28 +18,14 @@ export const EditableProjectTitle = ({
   title,
   className = '',
   placeholder = 'Enter project title',
-  maxLength = 100
 }: EditableProjectTitleProps) => {
   const [isEditing, setIsEditing] = useState(false)
-  const [editValue, setEditValue] = useState(title)
+  const [boardTitle, setBoardTitle] = useState(title)
   const [isLoading, setIsLoading] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const measureRef = useRef<HTMLSpanElement>(null)
 
-  const updateProjectMutation = useUpdateProjectTitle({
-    onSuccess: () => {
-      toast.success('Project title updated successfully')
-      setIsEditing(false)
-      setIsLoading(false)
-    },
-    onError: (error) => {
-      console.error('Failed to update project title:', error)
-      toast.error('Failed to update project title')
-      setIsLoading(false)
-      // Revert to original title on error
-      setEditValue(title)
-    }
-  })
+  const updateProjectMutation = useUpdateProjectTitle();
 
   // Focus input when editing starts
   useEffect(() => {
@@ -49,10 +35,10 @@ export const EditableProjectTitle = ({
     }
   }, [isEditing])
 
-  // Update editValue when title prop changes
-  useEffect(() => {
-    setEditValue(title)
-  }, [title])
+  // // Update editValue when title prop changes
+  // useEffect(() => {
+  //   setEditValue(title)
+  // }, [title])
 
   const handleClick = () => {
     if (!isLoading) {
@@ -63,25 +49,38 @@ export const EditableProjectTitle = ({
   const handleBlur = async () => {
     if (isLoading) return
 
-    const trimmedValue = editValue.trim()
-    
+    const trimmedValue = boardTitle.trim()
+
     // Don't save if empty or unchanged
     if (!trimmedValue || trimmedValue === title) {
-      setEditValue(title)
+      setBoardTitle(title)
       setIsEditing(false)
       return
     }
 
-    setIsLoading(true)
-    
+
+    console.log("trimmedValue", trimmedValue)
+    setBoardTitle(trimmedValue)
+
     try {
-      await updateProjectMutation.mutateAsync({
+      updateProjectMutation.mutate({
         id: projectId,
         data: { title: trimmedValue }
+      }, {
+        onSuccess: () => {
+          setIsEditing(false)
+          setIsLoading(false)
+        },
+        onError: (error) => {
+          console.error('Failed to update project title:', error)
+          toast.error('Failed to update project title')
+          setIsLoading(false)
+          setBoardTitle(title)
+        }
       })
     } catch (error) {
-      // Error handling is done in the mutation callbacks
       console.error('Error updating project title:', error)
+      setBoardTitle(title)
     }
   }
 
@@ -91,22 +90,19 @@ export const EditableProjectTitle = ({
       handleBlur()
     } else if (e.key === 'Escape') {
       e.preventDefault()
-      setEditValue(title)
+      setBoardTitle(title)
       setIsEditing(false)
     }
   }
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value
-    if (value.length <= maxLength) {
-      setEditValue(value)
-    }
+    setBoardTitle(e.target.value)
   }
 
   // Calculate dynamic width based on text content
   const getInputWidth = () => {
     if (!measureRef.current) return 'auto'
-    const text = editValue || placeholder
+    const text = boardTitle || placeholder
     measureRef.current.textContent = text
     const width = measureRef.current.offsetWidth
     return `${Math.max(width + 20, 100)}px` // Add padding and minimum width
@@ -117,15 +113,14 @@ export const EditableProjectTitle = ({
       <>
         <Input
           ref={inputRef}
-          value={editValue}
+          value={boardTitle}
           onChange={handleInputChange}
           onBlur={handleBlur}
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
-          maxLength={maxLength}
           disabled={isLoading}
           className={`inline-block ${className}`}
-          style={{ 
+          style={{
             width: getInputWidth(),
             fontSize: 'inherit',
             fontWeight: 'inherit',
@@ -137,7 +132,7 @@ export const EditableProjectTitle = ({
         <span
           ref={measureRef}
           className={`absolute opacity-0 pointer-events-none whitespace-nowrap ${className}`}
-          style={{ 
+          style={{
             fontSize: 'inherit',
             fontWeight: 'inherit',
             lineHeight: 'inherit'
@@ -154,7 +149,7 @@ export const EditableProjectTitle = ({
       title="Click to edit project title"
       data-testid="editable-project-title-display"
     >
-      {title}
+      {boardTitle}
     </span>
   )
 }
