@@ -65,8 +65,7 @@ function BoardContent({ projectId }: BoardContentProps) {
       </div>
     )
   }
-  
-  console.log("project inside BoardContent", project)
+
   return (
     <div className="h-screen bg-background bg-gradient-to-br from-blue-100 via-sky-100 to-indigo-200 overflow-hidden">
       {/* <ProjectHeader

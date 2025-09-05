@@ -20,17 +20,19 @@ import { reorderWithEdge } from '@atlaskit/pragmatic-drag-and-drop-hitbox/util/r
 import { combine } from '@atlaskit/pragmatic-drag-and-drop/combine';
 import { monitorForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
 import { reorder } from '@atlaskit/pragmatic-drag-and-drop/reorder';
-import { PlusCircle } from 'lucide-react';
+import { PlusCircle, FolderOpen } from 'lucide-react';
 import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { ProjectDialog, ProjectDialogRef } from '@/components/project-dialog';
+import { EditableProjectTitle } from '@/components/editable-project-title';
+import { useProjects, useCreateProject } from '@/hooks/queries/use-projects';
+import { useRouter } from 'next/navigation';
+import { useKeyboardShortcut } from '@/hooks/use-keyboard-shortcut';
 import { CleanupFn } from '@atlaskit/pragmatic-drag-and-drop/dist/types/internal-types';
 import invariant from 'tiny-invariant';
 import { bindAll } from 'bind-event-listener';
 import { blockBoardPanningAttr } from '@/utils/data-attributes';
-import { CleanupFn } from '@atlaskit/pragmatic-drag-and-drop/dist/types/internal-types';
-import invariant from 'tiny-invariant';
-import { bindAll } from 'bind-event-listener';
-import { blockBoardPanningAttr } from '@/utils/data-attributes';
+
 interface BoardProps {
     project: TProject
 }
@@ -39,13 +41,22 @@ export function Board(props: BoardProps) {
     const { project } = props;
     const [projectState, setProjectState] = useState<TProject>(project);
     const [isDraggingColumn, setIsDraggingColumn] = useState(false);
+    const createProjectMutation = useCreateProject();
+    const {
+        isDialogOpen: isProjectDialogOpen,
+        setIsDialogOpen: setIsProjectDialogOpen
+    } = useKeyboardShortcut({
+        key: 'b'
+    });
+
+    const router = useRouter();
+    const { data: projects = [], isLoading: isLoadingProjects } = useProjects();
+    const projectDialogRef = useRef<ProjectDialogRef>(null);
 
     useEffect(() => {
         setProjectState(project)
     }, [project.columns])
-    // const currentProject = useMemo (() => merge({}, project, optimisticUpdates), [project.columns, optimisticUpdates?.columns])
-
-    // console.log("currentProject inside Board", currentProject)
+    
     const [isAddingList, setIsAddingList] = useState(false);
     const [newListTitle, setNewListTitle] = useState('');
     const { settings } = useContext(SettingsContext);
@@ -56,6 +67,26 @@ export function Board(props: BoardProps) {
     const reorderTasksMutation = useReorderTasks();
     const reorderColumnsMutation = useReorderColumns();
     const deleteColumnMutation = useDeleteColumn();
+
+    const handleProjectSelect = useCallback((selectedProject: { id: string; name: string }) => {
+        if (selectedProject.id !== projectState.id) {
+            router.push(`/board/${selectedProject.id}`);
+        }
+    }, [projectState.id, router]);
+
+    const handleCreateProject = useCallback((projectName: string) => {
+        createProjectMutation.mutate({
+            title: projectName,
+            description: null
+        }, {
+            onSuccess: (newProject: TProject) => {
+                console.log("Successfully created project", newProject)
+                projectDialogRef.current?.resetForm();
+                setIsProjectDialogOpen(false);
+                router.push(`/board/${newProject.id}`);
+            }
+        });
+    }, [createProjectMutation]);
 
     const handleDeleteColumn = useCallback((columnId: string) => {
 
@@ -295,8 +326,8 @@ export function Board(props: BoardProps) {
                             totalCompletedChecklistItems: card.totalCompletedChecklistItems,
                         }));
 
-                        console.log("reorderedDestinationCards", reorderedDestinationCards)
-                        console.log("reorderedHomeCards", reorderedHomeCards)
+                        // console.log("reorderedDestinationCards", reorderedDestinationCards)
+                        // console.log("reorderedHomeCards", reorderedHomeCards)
 
                         const columns = Array.from(projectState.columns);
                         columns[homeColumnIndex] = {
@@ -496,16 +527,10 @@ export function Board(props: BoardProps) {
                 getConfiguration: ({ source }) => ({
                     maxScrollSpeed: isDraggingAColumn({ source }) ? 'fast' : settings.boardScrollSpeed
                 }),
-                getConfiguration: ({ source }) => ({
-                    maxScrollSpeed: isDraggingAColumn({ source }) ? 'fast' : settings.boardScrollSpeed
-                }),
                 element,
             }),
             unsafeOverflowAutoScrollForElements({
                 element,
-                getConfiguration: ({ source }) => ({
-                    maxScrollSpeed: isDraggingAColumn({ source }) ? 'fast' : settings.boardScrollSpeed
-                }),
                 getConfiguration: ({ source }) => ({
                     maxScrollSpeed: isDraggingAColumn({ source }) ? 'fast' : settings.boardScrollSpeed
                 }),
@@ -537,28 +562,6 @@ export function Board(props: BoardProps) {
             }),
         );
     }, [projectState, settings.boardScrollSpeed, settings.isOverElementAutoScrollEnabled, settings.isOverflowScrollingEnabled, isDraggingColumn]);
-
-    // Track column dragging state
-    // useEffect(() => {
-    //     const handleDragStart = (event: DragEvent) => {
-    //         const target = event.target as HTMLElement;
-    //         if (target.closest('[data-draggable-column]')) {
-    //             setIsDraggingColumn(true);
-    //         }
-    //     };
-
-    //     const handleDragEnd = () => {
-    //         setIsDraggingColumn(false);
-    //     };
-
-    //     document.addEventListener('dragstart', handleDragStart);
-    //     document.addEventListener('dragend', handleDragEnd);
-
-    //     return () => {
-    //         document.removeEventListener('dragstart', handleDragStart);
-    //         document.removeEventListener('dragend', handleDragEnd);
-    //     };
-    // }, []);
 
 
     // Panning the board
@@ -726,11 +729,15 @@ export function Board(props: BoardProps) {
         <div className="board-container flex flex-col">
             <div className="board-content flex-1 flex flex-col">
                 <div className="flex items-center justify-between mb-6 mt-6 flex-shrink-0 px-6">
-                    <h1 className="text-3xl font-bold">{projectState.title}</h1>
+                    <EditableProjectTitle 
+                        projectId={projectState.id} 
+                        title={projectState.title} 
+                        className="text-3xl font-bold" 
+                    />
                 </div>
 
                 <div ref={scrollableRef} className="board-columns-container pb-4 snap-x snap-mandatory flex-1 px-6">
-                    
+
                     {projectState.columns.map((column) => (
                         <Column
                             key={column.id}
@@ -755,6 +762,36 @@ export function Board(props: BoardProps) {
                     )}
                 </div>
             </div>
+
+            {/* Fixed bottom button */}
+            <div className="flex justify-center pb-4">
+                <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsProjectDialogOpen(true)}
+                    className="flex items-center gap-2"
+                >
+                    <FolderOpen className="h-4 w-4" />
+                    Switch Project
+                </Button>
+            </div>
+
+            <ProjectDialog
+                ref={projectDialogRef}
+                open={isProjectDialogOpen}
+                onOpenChange={setIsProjectDialogOpen}
+                title="Switch Project"
+                searchPlaceholder="Search projects..."
+                createButtonText="Create"
+                createInputPlaceholder="Project title"
+                projects={projects.map(project => ({
+                    id: project.id,
+                    name: project.title
+                }))}
+                onProjectSelect={handleProjectSelect}
+                onCreateProject={handleCreateProject}
+                isLoading={isLoadingProjects || createProjectMutation.isPending}
+            />
         </div>
     );
 }

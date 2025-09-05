@@ -927,7 +927,7 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
           Edit card details including title, description, and checklists
         </DialogDescription>
         <div className="flex flex-col gap-4 w-full max-w-full">
-          <div className="flex w-full max-w-full gap-4 items-baseline">
+          <div className="flex w-full max-w-full items-start justify-between">
             <div className="flex flex-col gap-1 flex-[1_1_auto] w-full max-w-full overflow-hidden">
               <div className="flex items-start gap-2 w-full">
                 {isEditingTitle ? (
@@ -982,7 +982,7 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
             <button
               type="button"
               onClick={onClose}
-              className="flex-[1_1_auto] p-2 hover:bg-accent rounded-sm transition-colors max-h-[min-content]"
+              className="p-2 hover:bg-accent rounded-sm transition-colors flex-shrink-0"
               aria-label="Close dialog">
               <X className="h-4 w-4" />
             </button>

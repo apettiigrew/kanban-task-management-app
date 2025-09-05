@@ -6,8 +6,6 @@ const client = new OpenAI({
 });
 
 export async function handleImproveWritingOpenAI(input: string) {
-
-    console.log(`input = ${input}`)
     const response = await client.responses.create({
         model: "gpt-4o-mini",
         instructions:
