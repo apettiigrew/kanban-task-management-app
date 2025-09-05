@@ -2,6 +2,7 @@
 
 import { useProjects } from "@/hooks/queries/use-projects"
 import { useMemo, useState } from "react"
+import { NavbarHeader } from "@/components/navbar-header"
 
 export default function AppLayout({
   children,
@@ -33,20 +34,17 @@ export default function AppLayout({
   }
 
   return (
-    // <SidebarProvider>
-    //   <DashboardSidebar
-    //     projects={filteredProjects}
-    //     searchQuery={searchQuery}
-    //     onSearchChange={handleSearchChange}
-    //     showAllProjects={showAllProjects}
-    //     onToggleShowAll={handleToggleShowAll}
-    //   />
-    //   <SidebarInset>
-    //     {children}
-    //   </SidebarInset>
-    // </SidebarProvider>
-    <>
-    {children}
-    </>
+    <div className="min-h-screen bg-white">
+      <NavbarHeader 
+        user={{
+          name: "Andrew Pettigrew",
+          email: "pettigrewhere@gmail.com",
+          avatar: undefined,
+        }}
+      />
+      <main className="flex-1">
+        {children}
+      </main>
+    </div>
   )
 }
