@@ -1,9 +1,9 @@
 'use client'
 
-import React from 'react'
-import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query'
 import { apiRequest, FormError } from '@/lib/form-error-handler'
 import { TProject } from '@/models/project'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import React from 'react'
 
 // Query key factory for projects
 export const projectKeys = {
@@ -40,6 +40,7 @@ interface UpdateProjectData {
 }
 
 const createProject = async (data: CreateProjectData): Promise<TProject> => {
+  console.log("data inside createProject", data)
   return apiRequest<TProject>('/api/projects', {
     method: 'POST',
     body: JSON.stringify(data),
@@ -139,108 +140,9 @@ interface UseDeleteProjectOptions {
   onError?: (error: FormError) => void
 }
 
-export const useCreateProject = (options: UseCreateProjectOptions = {}) => {
-  const queryClient = useQueryClient()
-
+export const useCreateProject = () => {
   return useMutation({
     mutationFn: createProject,
-    onMutate: async (newProject) => {
-      // Cancel any outgoing refetches
-      await queryClient.cancelQueries({ queryKey: projectKeys.lists() })
-      await queryClient.cancelQueries({ queryKey: projectKeys.stats() })
-
-      // Snapshot the previous values
-      const previousProjects = queryClient.getQueryData(projectKeys.lists())
-      const previousProjectsWithStats = queryClient.getQueryData(projectKeys.stats())
-
-      // Create optimistic project with temporary ID
-      const optimisticProject: TProject = {
-        id: `temp-${Date.now()}`,
-        title: newProject.title,
-        description: newProject.description || '',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        columns: [],
-      }
-
-      // Optimistically add the new project to the list
-      queryClient.setQueryData(projectKeys.lists(), (oldData: TProject[] | undefined) => {
-        if (oldData) {
-          return [...oldData, optimisticProject]
-        }
-        return [optimisticProject]
-      })
-
-      // Optimistically add to stats queries if they exist
-      queryClient.setQueryData(projectKeys.stats(), (oldData: TProject[] | undefined) => {
-        if (oldData) {
-          const optimisticProjectWithStats: TProject = {
-            ...optimisticProject
-          }
-          return [...oldData, optimisticProjectWithStats]
-        }
-        return undefined // Don't create stats data if it doesn't exist
-      })
-
-      // Return a context object with the snapshotted values
-      return { previousProjects, previousProjectsWithStats, optimisticProject }
-    },
-    onError: (error: FormError, newProject, context) => {
-      // If the mutation fails, use the context to roll back
-      if (context?.previousProjects) {
-        queryClient.setQueryData(projectKeys.lists(), context.previousProjects)
-      }
-      if (context?.previousProjectsWithStats) {
-        queryClient.setQueryData(projectKeys.stats(), context.previousProjectsWithStats)
-      }
-
-      console.error('Error in useCreateProject:', error)
-
-      // Handle field errors separately if callback provided
-      if (options.onFieldErrors && error instanceof FormError && Object.keys(error.fieldErrors).length > 0) {
-        options.onFieldErrors(error.fieldErrors)
-      }
-
-      options.onError?.(error)
-    },
-    onSuccess: (data, newProject, context) => {
-      // Replace optimistic project with real data
-      queryClient.setQueryData(projectKeys.lists(), (oldData: TProject[] | undefined) => {
-        if (oldData && context?.optimisticProject) {
-          return oldData.map(project =>
-            project.id === context.optimisticProject.id ? data : project
-          )
-        }
-        return oldData
-      })
-
-      // Update stats queries with real data
-      queryClient.setQueryData(projectKeys.stats(), (oldData: TProject[] | undefined) => {
-        if (oldData && context?.optimisticProject) {
-          const projectWithStats: TProject = {
-            ...data,
-          }
-          return oldData.map(project =>
-            project.id === context.optimisticProject.id ? projectWithStats : project
-          )
-        }
-        return oldData
-      })
-
-      // Invalidate and refetch to ensure data consistency
-      queryClient.invalidateQueries({ queryKey: projectKeys.lists() })
-      queryClient.invalidateQueries({ queryKey: projectKeys.stats() })
-
-      // Call custom onSuccess callback if provided
-      options.onSuccess?.(data)
-    },
-    retry: (failureCount, error) => {
-      // Don't retry on form validation errors
-      if (error instanceof FormError) {
-        return false
-      }
-      return failureCount < 2
-    },
   })
 }
 
@@ -439,7 +341,4 @@ export const useInvalidateProject = () => {
     }
   }
 }
-
-// Re-export the key types for convenience
 export type { CreateProjectData, UpdateProjectData }
-// 

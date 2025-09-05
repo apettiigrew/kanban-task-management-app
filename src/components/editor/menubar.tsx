@@ -28,18 +28,18 @@ export const MenuBar = memo(({ editor, card }: EditorToolbarProps) => {
 
     const handleMakeSMART = useCallback(async () => {
         const description = editor.getHTML()
-        console.log(description)
+        
         if (description === "") return
         setIsAIProcessing(true)
         const improvedDescription = await handleMakeSMARTDescriptoinOpenAI(description)
-        console.log(improvedDescription)
+        
         editor.chain().focus().setContent(improvedDescription).run()
         setIsAIProcessing(false)
     }, [editor.getHTML()]);
 
     const handleImproveWriting = useCallback(async () => {
         const description = editor.getHTML()
-        console.log(description)
+        
         if (description === "") return
         setIsAIProcessing(true)
         const improvedDescription = await handleImproveWritingDescriptionOpenAI(description)
@@ -49,7 +49,7 @@ export const MenuBar = memo(({ editor, card }: EditorToolbarProps) => {
 
     const handleMakeLonger = useCallback(async () => {
         const description = editor.getHTML()
-        console.log(description)
+        
         if (description === "") return
         setIsAIProcessing(true)
         const improvedDescription = await handleMakeLongerDescriptionOpenAI(description)
@@ -60,7 +60,7 @@ export const MenuBar = memo(({ editor, card }: EditorToolbarProps) => {
 
     const handleMakeShorter = useCallback(async () => {
         const description = editor.getHTML()
-        console.log(description)
+        
         if (description === "") return
         setIsAIProcessing(true)
         const improvedDescription = await handleMakeShorterDescriptionOpenAI(description)
@@ -70,7 +70,7 @@ export const MenuBar = memo(({ editor, card }: EditorToolbarProps) => {
 
     const handleMakeSoftwareTicket = useCallback(async () => {
         const description = editor.getHTML()
-        console.log(description)
+        
         if (description === "") return
         setIsAIProcessing(true)
         const improvedDescription = await handleMakeSoftwareTicketDescriptionOpenAI(description)

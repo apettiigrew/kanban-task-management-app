@@ -1,9 +1,7 @@
 "use client"
 
-import { useState, useMemo } from "react"
-import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar"
-import { DashboardSidebar } from "@/components/dashboard-sidebar"
 import { useProjects } from "@/hooks/queries/use-projects"
+import { useMemo, useState } from "react"
 
 export default function AppLayout({
   children,

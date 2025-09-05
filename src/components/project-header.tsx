@@ -4,6 +4,7 @@ import { ArrowLeft, Settings, MoreHorizontal } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Breadcrumb } from "@/components/breadcrumb"
+import { EditableProjectTitle } from "@/components/editable-project-title"
 import { TProject } from '@/models/project'
 import {
   DropdownMenu,
@@ -44,14 +45,18 @@ export function ProjectHeader({ project, isLoading = false }: ProjectHeaderProps
           
           <Breadcrumb 
             items={[
-              { label: project.title }
+              { label: <EditableProjectTitle projectId={project.id} title={project.title} className="text-sm" /> }
             ]} 
           />
         </div>
 
         <div className="flex items-center space-x-2">
           <div className="flex items-center space-x-2">
-            <h1 className="text-lg font-semibold">{project.title}</h1>
+            <EditableProjectTitle 
+              projectId={project.id} 
+              title={project.title} 
+              className="text-lg font-semibold" 
+            />
           </div>
           
           <DropdownMenu>
