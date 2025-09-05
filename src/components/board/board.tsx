@@ -24,6 +24,7 @@ import { PlusCircle, FolderOpen } from 'lucide-react';
 import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { ProjectDialog, ProjectDialogRef } from '@/components/project-dialog';
+import { EditableProjectTitle } from '@/components/editable-project-title';
 import { useProjects, useCreateProject } from '@/hooks/queries/use-projects';
 import { useRouter } from 'next/navigation';
 import { useKeyboardShortcut } from '@/hooks/use-keyboard-shortcut';
@@ -731,7 +732,11 @@ export function Board(props: BoardProps) {
         <div className="board-container flex flex-col">
             <div className="board-content flex-1 flex flex-col">
                 <div className="flex items-center justify-between mb-6 mt-6 flex-shrink-0 px-6">
-                    <h1 className="text-3xl font-bold">{projectState.title}</h1>
+                    <EditableProjectTitle 
+                        projectId={projectState.id} 
+                        title={projectState.title} 
+                        className="text-3xl font-bold" 
+                    />
                 </div>
 
                 <div ref={scrollableRef} className="board-columns-container pb-4 snap-x snap-mandatory flex-1 px-6">

@@ -3,9 +3,10 @@
 import Link from "next/link"
 import { ChevronRight, Home } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { ReactNode } from "react"
 
 interface BreadcrumbItem {
-  label: string
+  label: string | ReactNode
   href?: string
 }
 
