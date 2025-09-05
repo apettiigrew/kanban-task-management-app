@@ -160,7 +160,7 @@ export function NavbarHeader({
     >
       {/* App Name - Left Side */}
       <div className="flex items-center">
-        <h1 className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight">
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight cursor-pointer">
           Mello
         </h1>
       </div>
