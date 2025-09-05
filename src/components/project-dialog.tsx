@@ -44,7 +44,6 @@ export const ProjectDialog = forwardRef<ProjectDialogRef, ProjectDialogProps>(({
   isLoading = false
 }, ref) => {
   const [searchQuery, setSearchQuery] = useState("")
-  const [createPopoverOpen, setCreatePopoverOpen] = useState(false)
   const [newProjectName, setNewProjectName] = useState("")
 
   const filteredProjects = projects.filter((project) => 
@@ -54,7 +53,6 @@ export const ProjectDialog = forwardRef<ProjectDialogRef, ProjectDialogProps>(({
   // Reset form when project is successfully created
   const resetForm = () => {
     setNewProjectName("")
-    setCreatePopoverOpen(false)
   }
 
   useImperativeHandle(ref, () => ({
@@ -110,18 +108,13 @@ export const ProjectDialog = forwardRef<ProjectDialogRef, ProjectDialogProps>(({
                   <span className="text-sm font-medium">Projects</span>
                 </AccordionTrigger>
                 {onCreateProject && (
-                  <Popover open={createPopoverOpen} onOpenChange={setCreatePopoverOpen}>
+                  <Popover>
                     <PopoverTrigger asChild>
                       <Button
                         variant="ghost"
                         size="sm"
                         className="h-6 w-6 p-0 hover:bg-accent ml-2"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setCreatePopoverOpen(true)
-                        }}
-                        disabled={isLoading}
-                      >
+                        disabled={isLoading}>
                         <Plus className="h-4 w-4" />
                       </Button>
                     </PopoverTrigger>
@@ -146,7 +139,7 @@ export const ProjectDialog = forwardRef<ProjectDialogRef, ProjectDialogProps>(({
                 )}
               </div>
               <AccordionContent className="pb-0">
-                <div className="space-y-2 max-h-64 overflow-y-auto">
+                <div className="space-y-2 max-h-48 overflow-y-auto">
                   {isLoading ? (
                     <div className="p-3 text-center text-muted-foreground text-sm">Loading...</div>
                   ) : filteredProjects.length > 0 ? (

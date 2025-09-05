@@ -1,5 +1,21 @@
 # Task List: Board Creation Improvements
 
+
+## ⚠️ IMPORTANT: PERMISSION REQUIRED
+
+**ALWAYS ask for PERMISSION before starting any new task. NEVER start a new task without explicit user approval.**
+
+## 📋 TASK COMPLETION WORKFLOW
+
+**When completing tasks, follow this workflow:**
+1. Complete the implementation work for the task
+2. **WAIT** for the user to confirm the task is completed to their satisfaction
+3. **ONLY AFTER** user confirmation, mark the task as completed with `[x]` in this document
+4. **ONLY AFTER** marking as completed, create the git commit with an appropriate commit message
+5. **NEVER** mark tasks as completed or create git commits without explicit user confirmation
+
+
+
 ## Relevant Files
 
 - `src/components/project-dialog.tsx` - Main dialog component for project selection and creation
@@ -21,7 +37,7 @@
 ## Tasks
 
 - [ ] 1.0 Fix Project Creation Navigation and Dialog Behavior
-  - [ ] 1.1 Update `handleCreateProject` in board component to navigate to newly created project automatically
+  - [x] 1.1 Update `handleCreateProject` in board component to navigate to newly created project automatically
   - [ ] 1.2 Prevent the create project pop over from closing when clicking inside the box
   - [ ] 1.3 Add proper success handling in create project mutation to trigger navigation
   - [ ] 1.4 Ensure dialog only closes after successful project creation and navigation

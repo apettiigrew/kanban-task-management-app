@@ -76,16 +76,18 @@ export function Board(props: BoardProps) {
     }, [projectState.id, router]);
 
     const handleCreateProject = useCallback((projectName: string) => {
+        console.log("handleCreateProject called with projectName", projectName)
         createProjectMutation.mutate({
             title: projectName,
             description: null
-        }), {
+        }, {
             onSuccess: (newProject: TProject) => {
+                console.log("Successfully created project", newProject)
                 projectDialogRef.current?.resetForm();
-                router.push(`/board/${newProject.id}`);
                 setIsProjectDialogOpen(false);
+                router.push(`/board/${newProject.id}`);
             }
-        };
+        });
     }, [createProjectMutation]);
 
     const handleDeleteColumn = useCallback((columnId: string) => {

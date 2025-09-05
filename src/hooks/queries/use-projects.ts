@@ -140,15 +140,9 @@ interface UseDeleteProjectOptions {
   onError?: (error: FormError) => void
 }
 
-export const useCreateProject = (options: UseCreateProjectOptions = {}) => {
+export const useCreateProject = () => {
   return useMutation({
     mutationFn: createProject,
-    onSuccess: (data) => {
-      options.onSuccess?.(data)
-    },
-    onError: (error) => {
-      options.onError?.(error as FormError)
-    },
   })
 }
 
