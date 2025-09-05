@@ -12,5 +12,6 @@ export interface TProject {
   columns: TColumn[];
   createdAt: Date;
   updatedAt: Date;
+  isArchived: boolean;
 }
 

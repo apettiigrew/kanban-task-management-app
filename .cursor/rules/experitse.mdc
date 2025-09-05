@@ -65,6 +65,8 @@ export function ComponentName(props: Prop) {
     );
 }
 
+- Do not create comments in react or any code that you generate
+
 ## Tanstack Query & Mutation
 - For tanstack query do not create optimistic UI updates pattern using tanstack. This should be done at the component level.
 
