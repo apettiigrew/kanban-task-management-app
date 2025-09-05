@@ -109,7 +109,7 @@ export function NavbarHeader({ className }: NavbarHeaderProps) {
   return (
     <header
       className={cn(
-        "flex items-center justify-between w-full px-4 sm:px-6 lg:px-8 py-3 backdrop-blur-sm border-b border-blue-200/30 shadow-sm",
+        "flex items-center justify-between w-full px-4 sm:px-6 lg:px-8 py-2 backdrop-blur-sm border-b border-blue-200/30 shadow-sm",
         className
       )}
     >
