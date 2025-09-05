@@ -38,9 +38,9 @@
 
 - [ ] 1.0 Fix Project Creation Navigation and Dialog Behavior
   - [x] 1.1 Update `handleCreateProject` in board component to navigate to newly created project automatically
-  - [ ] 1.2 Prevent the create project pop over from closing when clicking inside the box
-  - [ ] 1.3 Add proper success handling in create project mutation to trigger navigation
-  - [ ] 1.4 Ensure dialog only closes after successful project creation and navigation
+  - [x] 1.2 Prevent the create project pop over from closing when clicking inside the box
+  - [x] 1.3 Add proper success handling in create project mutation to trigger navigation
+  - [x] 1.4 Ensure dialog only closes after successful project creation and navigation
 
 - [ ] 2.0 Improve Project Dialog Form UX
   - [ ] 2.1 Add proper label above the project name input field in the popover

@@ -7,6 +7,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Label } from "@/components/ui/label"
 
 interface ProjectItem {
   id: string
@@ -45,31 +46,45 @@ export const ProjectDialog = forwardRef<ProjectDialogRef, ProjectDialogProps>(({
 }, ref) => {
   const [searchQuery, setSearchQuery] = useState("")
   const [newProjectName, setNewProjectName] = useState("")
+  const [isFormValid, setIsFormValid] = useState(false)
+  const [hasValidationError, setHasValidationError] = useState(false)
 
   const filteredProjects = projects.filter((project) => 
     project.name.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
+  // Form validation function
+  const validateProjectName = (name: string) => {
+    const trimmedName = name.trim()
+    return trimmedName.length > 0 && trimmedName.length <= 100
+  }
+
+  // Update form validation when project name changes
+  useEffect(() => {
+    const isValid = validateProjectName(newProjectName)
+    setIsFormValid(isValid)
+    setHasValidationError(newProjectName.length > 0 && !isValid)
+  }, [newProjectName])
+
   // Reset form when project is successfully created
   const resetForm = () => {
     setNewProjectName("")
+    setIsFormValid(false)
+    setHasValidationError(false)
   }
 
   useImperativeHandle(ref, () => ({
     resetForm
   }))
 
-  // console.log("ProjectDialog")
   const handleCreateProject = useCallback((event: React.MouseEvent<HTMLButtonElement>) => {
     event.preventDefault()
     event.stopPropagation()
 
-    // console.log("Clicking")
-    if (newProjectName.trim() && onCreateProject) {
-      console.log("newProjectName inside handleCreateProject", newProjectName)
+    if (isFormValid && onCreateProject) {
       onCreateProject(newProjectName.trim())
     }
-  }, [newProjectName, onCreateProject])
+  }, [isFormValid, newProjectName, onCreateProject])
 
   const handleProjectSelect = (project: ProjectItem) => {
     if (onProjectSelect) {
@@ -120,18 +135,30 @@ export const ProjectDialog = forwardRef<ProjectDialogRef, ProjectDialogProps>(({
                     </PopoverTrigger>
                     <PopoverContent className="w-64 p-4" align="end">
                       <div className="space-y-3">
-                        <Input
-                          placeholder={createInputPlaceholder}
-                          value={newProjectName}
-                          onChange={(e) => setNewProjectName(e.target.value)}
-                          disabled={isLoading}
-                        />
+                        <div className="space-y-2">
+                          <Label htmlFor="project-name-input" className="text-sm font-medium">
+                            Project Name
+                          </Label>
+                          <Input
+                            id="project-name-input"
+                            placeholder={createInputPlaceholder}
+                            value={newProjectName}
+                            onChange={(e) => setNewProjectName(e.target.value)}
+                            disabled={isLoading}
+                            className={hasValidationError ? "border-red-500 focus:border-red-500" : ""}
+                          />
+                          {hasValidationError && (
+                            <p className="text-xs text-red-500">
+                              Project name must be between 1 and 100 characters
+                            </p>
+                          )}
+                        </div>
                         <Button 
                           onClick={handleCreateProject} 
                           className="w-full" 
-                          disabled={newProjectName.trim().length == 0}
+                          disabled={!isFormValid || isLoading}
                         >
-                          {createButtonText}
+                          {isLoading ? "Creating..." : createButtonText}
                         </Button>
                       </div>
                     </PopoverContent>
