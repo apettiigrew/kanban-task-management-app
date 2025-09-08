@@ -16,12 +16,12 @@ export const taskSchema = z.object({
 
 // Schema for creating a new task
 export const createTaskSchema = z.object({
-
   title: z.string().min(1, 'Task title is required').max(200, 'Task title must be less than 200 characters'),
   description: z.string().max(1000, 'Description must be less than 1000 characters').optional().nullable(),
   projectId: z.string().cuid(),
   columnId: z.string().cuid(),
   order: z.number().int().min(0, 'Order must be a non-negative integer'),
+  position: z.enum(['top', 'bottom']).optional(),
 })
 
 

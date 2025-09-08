@@ -1,3 +1,4 @@
+import { AddCardForm } from '@/components/add-card-form';
 import { CardShadow, CardTask } from '@/components/card';
 import { ColumnWrapper } from '@/components/column-wrapper';
 import { Button } from '@/components/ui/button';
@@ -11,7 +12,6 @@ import {
 import { Input } from '@/components/ui/input';
 import { useUpdateColumn } from '@/hooks/mutations/use-column-mutations';
 import { useCreateTask } from '@/hooks/mutations/use-task-mutations';
-import { useOutsideClick } from '@/hooks/use-outside-click';
 import { TCard } from '@/models/card';
 import { TColumn } from '@/models/column';
 import { SettingsContext } from '@/providers/settings-context';
@@ -30,12 +30,13 @@ import {
     draggable,
     dropTargetForElements
 } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
-import { MoreHorizontal, Trash2, X } from 'lucide-react';
+import { MoreHorizontal, Trash2, Plus, Copy, Move, Users, ChevronRight, Archive } from 'lucide-react';
 import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import invariant from 'tiny-invariant';
 import { setCustomNativeDragPreview } from '@atlaskit/pragmatic-drag-and-drop/element/set-custom-native-drag-preview';
 import { preserveOffsetOnSource } from '@atlaskit/pragmatic-drag-and-drop/element/preserve-offset-on-source';
 import { isSafari } from '@/utils/is-safari';
+import { RenderIf } from '@/utils/render-if';
 
 type TColumnState =
     | { type: 'is-card-over'; isOverChildCard: boolean; dragging: DOMRect }
@@ -69,25 +70,13 @@ export function Column(props: ColumnProps) {
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [columnTitle, setColumnTitle] = useState(currentColumn.title);
     const [isAddingCard, setIsAddingCard] = useState(false);
-    const [newCardTitle, setNewCardTitle] = useState('');
-
+    const [addCardPosition, setAddCardPosition] = useState<'top' | 'bottom'>('bottom');
     const outerFullHeightRef = useRef<HTMLDivElement>(null);
     const titleInputRef = useRef<HTMLInputElement>(null);
-    const newCardInputRef = useRef<HTMLInputElement>(null);
     const scrollableRef = useRef<HTMLDivElement | null>(null);
 
     const [columnState, setColumnState] = useState<TColumnState>(idle);
     const { settings } = useContext(SettingsContext);
-
-    // Handle outside click for card creation cancellation
-    const handleOutsideClick = useCallback(() => {
-        if (isAddingCard && !newCardTitle.trim()) {
-            setIsAddingCard(false);
-            setNewCardTitle('');
-        }
-    }, [isAddingCard, newCardTitle]);
-
-    const addCardRef = useOutsideClick(handleOutsideClick);
 
     const createTaskMutation = useCreateTask();
     const updateColumnMutation = useUpdateColumn();
@@ -99,11 +88,6 @@ export function Column(props: ColumnProps) {
         }
     }, [isEditingTitle]);
 
-    useEffect(() => {
-        if (isAddingCard && newCardInputRef.current) {
-            newCardInputRef.current.focus();
-        }
-    }, [isAddingCard]);
 
     useEffect(() => {
         const outer = outerFullHeightRef.current;
@@ -214,16 +198,6 @@ export function Column(props: ColumnProps) {
                         },
                     };
                 },
-                getOverflow() {
-                    return {
-                        forTopEdge: {
-                            top: 1000,
-                        },
-                        forBottomEdge: {
-                            bottom: 1000,
-                        },
-                    };
-                },
             })
         );
     }, [column, currentColumn.cards, settings]);
@@ -262,28 +236,38 @@ export function Column(props: ColumnProps) {
 
     }, [onDelete]);
 
-    const addCard = useCallback((columnId: string, title: string) => {
-        setIsAddingCard(false);
-        setNewCardTitle('');
+    const handleDisplayAddCardForm = useCallback((position: 'top' | 'bottom') => {
+        setIsAddingCard(true);
+        setAddCardPosition(position);
+    }, []);
 
-        console.log("currentColumn.cards", currentColumn.cards)
-        const order = currentColumn.cards.length > 0 ? (currentColumn.cards.length - 1) + 1 : 0;
+    const onAddCard = useCallback((card: { title: string, position: 'top' | 'bottom' }) => {
 
 
+        const order = card.position === 'top' ? 0 : (currentColumn.cards.length + 1) - 1;
 
-        console.log("add Cardorder", order)
+        console.log('order', order);
         createTaskMutation.mutate({
             projectId: column.projectId,
-            columnId: columnId,
-            title: title,
+            columnId: column.id,
+            title: card.title,
             order: order,
+            position: card.position,
         }, {
-            onSuccess: () => {
+            onError: () => {
                 setIsAddingCard(true);
-                setNewCardTitle('');
+                setAddCardPosition(card.position);
             }
         });
-    }, [column.projectId, currentColumn.cards.length, createTaskMutation]);
+
+        setIsAddingCard(false);
+        setAddCardPosition('bottom');
+    }, [column.projectId, column.id, createTaskMutation]);
+
+    const handleCancelAddCard = useCallback(() => {
+        setIsAddingCard(false);
+        setAddCardPosition('bottom');
+    }, [isAddingCard]);
 
     return (
 
@@ -306,58 +290,40 @@ export function Column(props: ColumnProps) {
                     onTitleSave={handleTitleSave}
                     onTitleCancel={handleTitleCancel}
                     onDelete={handleDelete}
+                    onDisplayAddCardForm={handleDisplayAddCardForm}
                 />
 
                 <div className="flex flex-col gap-3 overflow-y-auto scrollbar-thin [&:not(:hover)]:scrollbar-transparent hover:scrollbar-gray-300 flex-grow min-h-0" ref={scrollableRef}>
-                    <DisplayCard columnId={column.id} cards={currentColumn.cards} state={columnState} columnTitle={columnTitle} />
+                    {isAddingCard && addCardPosition === 'top' ?
+                        <AddCardForm
+                            onAddCard={onAddCard}
+                            position="top"
+                            onCancel={handleCancelAddCard}
+                            placeholder="top"
+                        /> : null}
+
+                    <DisplayCards columnId={column.id} cards={currentColumn.cards} state={columnState} columnTitle={columnTitle} />
                 </div>
                 <div>
-                    {isAddingCard ? (
-                        <div ref={addCardRef} className="flex flex-col gap-2">
-                            <Input
-                                ref={newCardInputRef}
-                                className="text-sm font-medium"
-                                value={newCardTitle}
-                                onChange={(e) => setNewCardTitle(e.target.value)}
-                                onKeyDown={(e) => {
-                                    if (e.key === 'Enter' && newCardTitle.trim()) {
-                                        addCard(column.id, newCardTitle.trim());
-                                    }
-                                    if (e.key === 'Escape') {
-                                        setIsAddingCard(false);
-                                        setNewCardTitle('');
-                                    }
-                                }}
-                                placeholder="Enter a title or paste a link"
-                            />
-                            <div className="flex justify-between gap-3">
+                    {
+                        isAddingCard && addCardPosition === 'bottom' ?
+                            <AddCardForm
+                                onAddCard={onAddCard}
+                                position="bottom"
+                                onCancel={handleCancelAddCard}
+                                placeholder="bottom"
+                            /> :
+                            <RenderIf
+                                condition={!isAddingCard && addCardPosition != 'top'}
+                            >
                                 <Button
                                     variant="primary"
-                                    onClick={() => addCard(column.id, newCardTitle.trim())}
-                                    disabled={!newCardTitle.trim()}>
-                                    Add card
+                                    onClick={() => handleDisplayAddCardForm('bottom')}>
+                                    Add a card
                                 </Button>
-                                <Button
-                                    onClick={() => {
-                                        setIsAddingCard(false);
-                                        setNewCardTitle('');
-                                    }}
-                                    variant="ghost"
-                                    size="sm"
-                                    aria-label="Cancel adding card"
-                                >
-                                    <X />
-                                </Button>
-                            </div>
-                        </div>
-                    ) : (
-                        <Button
-                            variant="primary"
-                            onClick={() => setIsAddingCard(true)}
-                        >
-                            Add a card
-                        </Button>
-                    )}
+                            </RenderIf>
+
+                    }
                 </div>
             </ColumnWrapper>
 
@@ -377,6 +343,7 @@ interface ColumnHeaderProps {
     onTitleSave: () => void;
     onTitleCancel: () => void;
     onDelete: () => void;
+    onDisplayAddCardForm: (position: 'top' | 'bottom') => void;
 }
 
 function ColumnHeader({
@@ -387,8 +354,10 @@ function ColumnHeader({
     onEditingChange,
     onTitleSave,
     onTitleCancel,
-    onDelete
+    onDelete,
+    onDisplayAddCardForm
 }: ColumnHeaderProps) {
+    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     return (
         <div className="flex justify-between items-center">
             <div className="flex items-center gap-2 flex-1">
@@ -422,17 +391,82 @@ function ColumnHeader({
             </div>
 
             {!isEditingTitle && (
-                <DropdownMenu>
+                <DropdownMenu open={isDropdownOpen} onOpenChange={setIsDropdownOpen}>
                     <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
                             <MoreHorizontal className="h-4 w-4" />
                             <span className="sr-only">Open column menu</span>
                         </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-48">
-                        <DropdownMenuItem className="center">
+                    <DropdownMenuContent align="end" className="w-56"
+                        onCloseAutoFocus={(e) => e.preventDefault()}
+                    >
+                        <DropdownMenuItem className="font-medium text-gray-600 cursor-default" onSelect={(e) => e.preventDefault()}>
                             List actions
                         </DropdownMenuItem>
+
+                        <DropdownMenuItem
+                            onSelect={(e) => e.preventDefault()}
+                            onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setIsDropdownOpen(false);
+                                onDisplayAddCardForm('top');
+                            }}>
+                            <Plus className="h-4 w-4 mr-2" />
+                            Add card
+                        </DropdownMenuItem>
+
+                        <DropdownMenuItem>
+                            <Copy className="h-4 w-4 mr-2" />
+                            Copy list
+                        </DropdownMenuItem>
+
+                        <DropdownMenuItem>
+                            <Move className="h-4 w-4 mr-2" />
+                            Move list
+                        </DropdownMenuItem>
+
+                        <DropdownMenuItem>
+                            <Move className="h-4 w-4 mr-2" />
+                            Move all cards in this list
+                        </DropdownMenuItem>
+
+                        <DropdownMenuItem>
+                            <Users className="h-4 w-4 mr-2" />
+                            Watch
+                        </DropdownMenuItem>
+
+                        <DropdownMenuSeparator />
+
+                        <DropdownMenuItem className="text-blue-600">
+                            <div className="h-4 w-4 mr-2 bg-blue-500 rounded flex items-center justify-center">
+                                <div className="text-white text-xs font-bold">J</div>
+                            </div>
+                            Add list from Jira work items
+                        </DropdownMenuItem>
+
+                        <DropdownMenuSeparator />
+
+                        <DropdownMenuItem className="justify-between">
+                            <span>Automation</span>
+                            <ChevronRight className="h-4 w-4" />
+                        </DropdownMenuItem>
+
+                        <DropdownMenuSeparator />
+
+                        <DropdownMenuItem>
+                            <Archive className="h-4 w-4 mr-2" />
+                            Archive this list
+                        </DropdownMenuItem>
+
+                        <DropdownMenuItem>
+                            <Archive className="h-4 w-4 mr-2" />
+                            Archive all cards in this list
+                        </DropdownMenuItem>
+
+                        <DropdownMenuSeparator />
+
                         <DropdownMenuItem
                             className="text-red-600 focus:text-red-600"
                             onSelect={(e) => e.preventDefault()}
@@ -441,7 +475,6 @@ function ColumnHeader({
                             <Trash2 className="h-4 w-4 mr-2" />
                             Delete column
                         </DropdownMenuItem>
-                        <DropdownMenuSeparator />
                     </DropdownMenuContent>
                 </DropdownMenu>
             )}
@@ -456,7 +489,7 @@ interface DisplayCardProps {
     columnTitle: string;
 }
 
-function DisplayCard({ cards, columnId, state, columnTitle }: DisplayCardProps) {
+function DisplayCards({ cards, columnId, state, columnTitle }: DisplayCardProps) {
     if (!cards || cards.length === 0) {
         return state.type === 'is-card-over' ? <CardShadow dragging={state.dragging} /> : null;
     }
