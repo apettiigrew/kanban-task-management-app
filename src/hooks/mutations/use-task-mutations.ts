@@ -72,15 +72,35 @@ export const useCreateTask = () => {
                     totalCompletedChecklistItems: 0,
                 }
 
+
                 return {
                     ...oldData,
-                    columns: oldData.columns.map(column => 
-                        column.id === newTask.columnId 
-                            ? { ...column, cards: [...column.cards, optimisticTask] }
-                            : column
-                    )
+                    columns: oldData.columns.map(column => {
+                        if (column.id === newTask.columnId) {
+                            // Copy cards to avoid mutation
+                            const updatedCards = [...column.cards]
+
+                            // Insert new card at the desired position
+                            updatedCards.splice(newTask.order, 0, optimisticTask)
+
+                            // Reassign order to every card
+                            const reOrderedCards = updatedCards.map((card, index) => ({
+                                ...card,
+                                order: index
+                            }))
+
+                            return {
+                                ...column,
+                                cards: reOrderedCards
+                            }
+                        }
+
+                        // All other columns remain unchanged
+                        return column
+                    })
                 }
             })
+            
             return { previousProject, projectId: newTask.projectId }
         },
         onError: (error: FormError, newTask, context) => {
