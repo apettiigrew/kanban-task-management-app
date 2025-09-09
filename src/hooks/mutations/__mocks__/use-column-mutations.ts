@@ -4,6 +4,7 @@ const mockCreateColumn = jest.fn()
 const mockUpdateColumn = jest.fn()
 const mockDeleteColumn = jest.fn()
 const mockReorderColumns = jest.fn()
+const mockCopyColumn = jest.fn()
 
 // Mock mutation return type
 interface MockMutation<TData = any, TVariables = any> {
@@ -21,7 +22,7 @@ interface MockMutation<TData = any, TVariables = any> {
 const createMockMutation = <TData = any, TVariables = any>(
   mutationFn = jest.fn()
 ): MockMutation<TData, TVariables> => ({
-  mutate: mutationFn,
+  mutate: jest.fn(),
   mutateAsync: jest.fn(),
   isPending: false,
   isError: false,
@@ -111,23 +112,69 @@ export const useReorderColumns = jest.fn((options: any = {}) => {
   return mutation
 })
 
+export const useCopyColumn = jest.fn((options: any = {}) => {
+  const mutation = createMockMutation(mockCopyColumn)
+  
+  mutation.mutate.mockImplementation((variables) => {
+    // Set pending state
+    mutation.isPending = true
+    mutation.isError = false
+    mutation.isSuccess = false
+    
+    const mockResult = {
+      id: 'copied-column-id',
+      title: variables.title,
+      projectId: variables.projectId,
+      order: 0,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      cards: [],
+      taskCount: 0,
+    }
+    
+    setTimeout(() => {
+      // Set success state
+      mutation.isPending = false
+      mutation.isSuccess = true
+      mutation.data = mockResult
+      
+      if (options.onSuccess) {
+        options.onSuccess(mockResult)
+      }
+    }, 0)
+  })
+  
+  return mutation
+})
+
 export const useColumnMutationStates = jest.fn(() => ({
   isCreating: false,
   isUpdating: false,
   isDeleting: false,
   isReordering: false,
+  isCopying: false,
 }))
 
 // Helper functions to control mock behavior in tests
 export const __setMockError = (hookName: string, error: any) => {
-  const hooks = { useCreateColumn, useUpdateColumn, useDeleteColumn, useReorderColumns }
+  const hooks = { useCreateColumn, useUpdateColumn, useDeleteColumn, useReorderColumns, useCopyColumn }
   const hook = hooks[hookName as keyof typeof hooks]
   
   if (hook) {
     hook.mockImplementation((options: any = {}) => {
       const mutation = createMockMutation()
       mutation.mutate.mockImplementation(() => {
+        // Set pending state
+        mutation.isPending = true
+        mutation.isError = false
+        mutation.isSuccess = false
+        
         setTimeout(() => {
+          // Set error state
+          mutation.isPending = false
+          mutation.isError = true
+          mutation.error = error
+          
           if (options.onError) {
             options.onError(error)
           }
@@ -139,7 +186,7 @@ export const __setMockError = (hookName: string, error: any) => {
 }
 
 export const __setMockFieldErrors = (hookName: string, fieldErrors: Record<string, string>) => {
-  const hooks = { useCreateColumn, useUpdateColumn }
+  const hooks = { useCreateColumn, useUpdateColumn, useCopyColumn }
   const hook = hooks[hookName as keyof typeof hooks]
   
   if (hook) {
@@ -162,9 +209,11 @@ export const __resetAllMocks = () => {
   useUpdateColumn.mockClear()
   useDeleteColumn.mockClear()
   useReorderColumns.mockClear()
+  useCopyColumn.mockClear()
   useColumnMutationStates.mockClear()
   mockCreateColumn.mockClear()
   mockUpdateColumn.mockClear()
   mockDeleteColumn.mockClear()
   mockReorderColumns.mockClear()
+  mockCopyColumn.mockClear()
 }

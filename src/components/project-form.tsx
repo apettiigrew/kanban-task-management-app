@@ -10,7 +10,6 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { Loader2 } from "lucide-react"
 import React from "react"
 import { useForm } from "react-hook-form"
-import { toast } from "sonner"
 import { FieldError, FormStateDisplay, useFormErrorState } from "./ui/form-error"
 import { Textarea } from "./ui/textarea"
 
@@ -77,14 +76,12 @@ export function ProjectForm({
 
   const createProjectMutation = useCreateProject({
     onSuccess: (data) => {
-      toast.success("Project created successfully")
       reset()
       clearFormErrors()
       onSuccess?.()
     },
     onError: (error) => {
       handleFormErrors(error)
-      toast.error("Failed to create project")
     },
     onFieldErrors: (errors) => {
       setFormErrors<CreateProject | UpdateProject>(setError, errors)
@@ -94,7 +91,6 @@ export function ProjectForm({
 
   const updateProjectMutation = useUpdateProject({
     onSuccess: (data) => {
-      toast.success("Project updated successfully")
       reset()
       clearFormErrors()
       onSuccess?.()
@@ -102,7 +98,6 @@ export function ProjectForm({
     onError: (error) => {
       console.error('Update project error:', error)
       handleFormErrors(error)
-      toast.error("Failed to update project")
     },
     onFieldErrors: (errors) => {
       setFormErrors<CreateProject | UpdateProject>(setError, errors)
@@ -117,24 +112,14 @@ export function ProjectForm({
 
     try {
       if (mode === 'create') {
-        toast.loading("Creating project...", { id: 'project-create' })
         await createProjectMutation.mutateAsync(data as CreateProjectData)
-        toast.dismiss('project-create')
       } else if (mode === 'update' && projectId) {
-        toast.loading("Updating project...", { id: 'project-update' })
         await updateProjectMutation.mutateAsync({
           id: projectId,
           data: data as UpdateProjectData
         })
-        toast.dismiss('project-update')
       }
     } catch (error) {
-      if (mode === 'create') {
-        toast.dismiss('project-create')
-      } else {
-        toast.dismiss('project-update')
-      }
-      
       // Error handling is done in the mutation callbacks
       console.error(`Failed to ${mode} project:`, error)
     }

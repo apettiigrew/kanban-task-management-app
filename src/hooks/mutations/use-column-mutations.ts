@@ -26,6 +26,12 @@ interface ReorderColumnsData {
   }>
 }
 
+interface CopyColumnData {
+  title: string
+  columnId: string
+  projectId: string
+}
+
 // API client functions for mutations
 const createColumn = async (data: CreateColumnData): Promise<TColumn & { taskCount: number }> => {
   return apiRequest<TColumn & { taskCount: number }>('/api/columns', {
@@ -50,6 +56,13 @@ const deleteColumn = async (data: { id: string, projectId: string }): Promise<vo
 const reorderColumns = async (data: ReorderColumnsData): Promise<void> => {
   return apiRequest<void>('/api/columns', {
     method: 'PUT',
+    body: JSON.stringify(data),
+  })
+}
+
+const copyColumn = async (data: CopyColumnData): Promise<TColumn> => {
+  return apiRequest<TColumn & { taskCount: number }>(`/api/columns/${data.columnId}/copy`, {
+    method: 'POST',
     body: JSON.stringify(data),
   })
 }
@@ -88,6 +101,56 @@ export const useReorderColumns = () => {
   })
 }
 
+export const useCopyColumn = () => {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationKey: ['copyColumn'],
+    mutationFn: copyColumn,
+    onMutate: async (variables) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: projectKeys.detail(variables.projectId) })
+
+      // Snapshot the previous value
+      const previousProject = queryClient.getQueryData(projectKeys.detail(variables.projectId))
+
+      // Optimistically update the cache with a temporary column
+      queryClient.setQueryData(projectKeys.detail(variables.projectId), (oldProject: any) => {
+        if (!oldProject) return oldProject
+
+        const maxOrder = Math.max(...oldProject.columns.map((col: TColumn) => col.order), -1)
+        const tempColumn: TColumn = {
+          id: `temp-${Date.now()}`,
+          title: variables.title,
+          projectId: variables.projectId,
+          order: maxOrder + 1,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          cards: oldProject.columns.find((col: TColumn) => col.id === variables.columnId)?.cards || [],
+        }
+
+        return {
+          ...oldProject,
+          columns: [...oldProject.columns, tempColumn]
+        }
+      })
+
+      // Return a context object with the snapshotted value
+      return { previousProject, projectId: variables.projectId, columnId: variables.columnId }
+    },
+    onError: (err, variables, context) => {
+      // If the mutation fails, use the context returned from onMutate to roll back
+      if (context?.previousProject) {
+        queryClient.setQueryData(projectKeys.detail(variables.projectId), context.previousProject)
+      }
+    },
+    onSettled: (data, error, variables) => {
+      // Always refetch after error or success to ensure we have the latest data
+      queryClient.invalidateQueries({ queryKey: projectKeys.detail(variables.projectId) })
+    }
+  })
+}
+
 // Utility hooks for mutation states
 export const useColumnMutationStates = () => {
   const queryClient = useQueryClient()
@@ -97,6 +160,7 @@ export const useColumnMutationStates = () => {
     isUpdating: queryClient.isMutating({ mutationKey: ['updateColumn'] }) > 0,
     isDeleting: queryClient.isMutating({ mutationKey: ['deleteColumn'] }) > 0,
     isReordering: queryClient.isMutating({ mutationKey: ['reorderColumns'] }) > 0,
+    isCopying: queryClient.isMutating({ mutationKey: ['copyColumn'] }) > 0,
   }
 }
 

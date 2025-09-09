@@ -106,12 +106,6 @@ jest.mock('@atlaskit/pragmatic-drag-and-drop-auto-scroll/unsafe-overflow/element
   unsafeOverflowAutoScrollForElements: jest.fn(() => jest.fn()),
 }))
 
-// Mock toast
-jest.mock('sonner', () => ({
-  toast: {
-    error: jest.fn(),
-  },
-}))
 
 // Mock OpenAI service
 jest.mock('@/service/openai-service', () => ({

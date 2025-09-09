@@ -22,7 +22,6 @@ import { monitorForElements } from '@atlaskit/pragmatic-drag-and-drop/element/ad
 import { reorder } from '@atlaskit/pragmatic-drag-and-drop/reorder';
 import { PlusCircle, FolderOpen } from 'lucide-react';
 import { useCallback, useContext, useEffect, useRef, useState } from 'react';
-import { toast } from 'sonner';
 import { ProjectDialog, ProjectDialogRef } from '@/components/project-dialog';
 import { EditableProjectTitle } from '@/components/editable-project-title';
 import { useProjects, useCreateProject } from '@/hooks/queries/use-projects';
@@ -127,7 +126,6 @@ export function Board(props: BoardProps) {
         const trimmedTitle = newListTitle.trim();
 
         if (!trimmedTitle) {
-            toast.error('Column title cannot be empty');
             return;
         }
 

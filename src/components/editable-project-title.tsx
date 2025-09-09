@@ -3,7 +3,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { Input } from '@/components/ui/input'
 import { useUpdateProjectTitle } from '@/hooks/mutations/use-project-mutations'
-import { toast } from 'sonner'
 
 interface EditableProjectTitleProps {
   projectId: string
@@ -73,7 +72,6 @@ export const EditableProjectTitle = ({
         },
         onError: (error) => {
           console.error('Failed to update project title:', error)
-          toast.error('Failed to update project title')
           setIsLoading(false)
           setBoardTitle(title)
         }

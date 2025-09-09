@@ -72,15 +72,6 @@ jest.mock('@atlaskit/pragmatic-drag-and-drop-auto-scroll/unsafe-overflow/element
   unsafeOverflowAutoScrollForElements: jest.fn(),
 }))
 
-// Mock sonner toast notifications
-jest.mock('sonner', () => ({
-  toast: {
-    success: jest.fn(),
-    error: jest.fn(),
-    info: jest.fn(),
-    warning: jest.fn(),
-  },
-}))
 
 // Suppress console.log in tests for cleaner output
 global.console.log = jest.fn()
