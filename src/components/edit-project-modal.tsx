@@ -5,7 +5,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { ProjectForm } from "@/components/project-form"
 import { useUpdateProject } from "@/hooks/queries/use-projects"
 import { TProject } from '@/models/project'
-import { toast } from "sonner"
 import { FormError } from "@/lib/form-error-handler"
 
 interface EditProjectModalProps {
@@ -17,7 +16,6 @@ interface EditProjectModalProps {
 export function EditProjectModal({ project, open, onOpenChange }: EditProjectModalProps) {
   const updateProjectMutation = useUpdateProject({
     onSuccess: () => {
-      toast.success("Project updated successfully")
       onOpenChange(false)
     },
     onError: (error: FormError) => {

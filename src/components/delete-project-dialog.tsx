@@ -13,7 +13,6 @@ import {
 } from "@/components/ui/alert-dialog"
 import { useDeleteProject } from "@/hooks/queries/use-projects"
 import { TProject } from "@/models/project"
-import { toast } from "sonner"
 import { FormError } from "@/lib/form-error-handler"
 
 interface DeleteProjectDialogProps {
@@ -25,12 +24,10 @@ interface DeleteProjectDialogProps {
 export function DeleteProjectDialog({ project, open, onOpenChange }: DeleteProjectDialogProps) {
   const deleteProjectMutation = useDeleteProject({
     onSuccess: () => {
-      toast.success(`Project "${project.title}" deleted successfully`)
       onOpenChange(false)
     },
     onError: (error: FormError) => {
       console.error("Failed to delete project:", error)
-      toast.error(error.message || "Failed to delete project")
     }
   })
 

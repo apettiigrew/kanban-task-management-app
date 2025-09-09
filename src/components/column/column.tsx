@@ -1,6 +1,7 @@
 import { AddCardForm } from '@/components/add-card-form';
 import { CardShadow, CardTask } from '@/components/card';
 import { ColumnWrapper } from '@/components/column-wrapper';
+import { CopyListForm } from '@/components/column/copy-list-form';
 import { Button } from '@/components/ui/button';
 import {
     DropdownMenu,
@@ -10,7 +11,7 @@ import {
     DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
-import { useUpdateColumn } from '@/hooks/mutations/use-column-mutations';
+import { useCopyColumn, useUpdateColumn } from '@/hooks/mutations/use-column-mutations';
 import { useCreateTask } from '@/hooks/mutations/use-task-mutations';
 import { TCard } from '@/models/card';
 import { TColumn } from '@/models/column';
@@ -26,17 +27,17 @@ import {
 } from '@atlaskit/pragmatic-drag-and-drop-hitbox/closest-edge';
 import { combine } from '@atlaskit/pragmatic-drag-and-drop/combine';
 
+import { isSafari } from '@/utils/is-safari';
+import { RenderIf } from '@/utils/render-if';
 import {
     draggable,
     dropTargetForElements
 } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
-import { MoreHorizontal, Trash2, Plus, Copy, Move, Users, ChevronRight, Archive } from 'lucide-react';
+import { preserveOffsetOnSource } from '@atlaskit/pragmatic-drag-and-drop/element/preserve-offset-on-source';
+import { setCustomNativeDragPreview } from '@atlaskit/pragmatic-drag-and-drop/element/set-custom-native-drag-preview';
+import { Archive, ChevronRight, Copy, MoreHorizontal, Move, Plus, Trash2, Users } from 'lucide-react';
 import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import invariant from 'tiny-invariant';
-import { setCustomNativeDragPreview } from '@atlaskit/pragmatic-drag-and-drop/element/set-custom-native-drag-preview';
-import { preserveOffsetOnSource } from '@atlaskit/pragmatic-drag-and-drop/element/preserve-offset-on-source';
-import { isSafari } from '@/utils/is-safari';
-import { RenderIf } from '@/utils/render-if';
 
 type TColumnState =
     | { type: 'is-card-over'; isOverChildCard: boolean; dragging: DOMRect }
@@ -71,6 +72,7 @@ export function Column(props: ColumnProps) {
     const [columnTitle, setColumnTitle] = useState(currentColumn.title);
     const [isAddingCard, setIsAddingCard] = useState(false);
     const [addCardPosition, setAddCardPosition] = useState<'top' | 'bottom'>('bottom');
+    const [isCopyingList, setIsCopyingList] = useState(false);
     const outerFullHeightRef = useRef<HTMLDivElement>(null);
     const titleInputRef = useRef<HTMLInputElement>(null);
     const scrollableRef = useRef<HTMLDivElement | null>(null);
@@ -79,6 +81,7 @@ export function Column(props: ColumnProps) {
     const { settings } = useContext(SettingsContext);
 
     const createTaskMutation = useCreateTask();
+    const copylistMutation = useCopyColumn();
     const updateColumnMutation = useUpdateColumn();
 
     useEffect(() => {
@@ -87,7 +90,6 @@ export function Column(props: ColumnProps) {
             titleInputRef.current.select();
         }
     }, [isEditingTitle]);
-
 
     useEffect(() => {
         const outer = outerFullHeightRef.current;
@@ -242,8 +244,6 @@ export function Column(props: ColumnProps) {
     }, []);
 
     const onAddCard = useCallback((card: { title: string, position: 'top' | 'bottom' }) => {
-
-
         const order = card.position === 'top' ? 0 : (currentColumn.cards.length + 1) - 1;
 
         console.log('order', order);
@@ -269,8 +269,23 @@ export function Column(props: ColumnProps) {
         setAddCardPosition('bottom');
     }, [isAddingCard]);
 
-    return (
+    const handleCopyList = useCallback((title: string, columnId: string) => {
+        setIsCopyingList(true);    
+        copylistMutation.mutate({
+            title: title,
+            columnId: columnId,
+            projectId: column.projectId,
+        },{
+            onSuccess: () => {
+                setIsCopyingList(false);
+            },
+            onError: () => {
+                setIsCopyingList(false);
+            }
+        });
+    }, []);
 
+    return (
         <>
             {columnState.type === 'is-column-over' && columnState.closestEdge === 'left' && (
                 <ColumnShadow dragging={columnState.dragging} />
@@ -282,6 +297,7 @@ export function Column(props: ColumnProps) {
                 )}
                 ref={outerFullHeightRef}>
                 <ColumnHeader
+                    columnId={column.id}
                     columnTitle={columnTitle}
                     isEditingTitle={isEditingTitle}
                     titleInputRef={titleInputRef}
@@ -291,8 +307,9 @@ export function Column(props: ColumnProps) {
                     onTitleCancel={handleTitleCancel}
                     onDelete={handleDelete}
                     onDisplayAddCardForm={handleDisplayAddCardForm}
+                    onCopyList={handleCopyList}
+                    isCopyingList={isCopyingList}
                 />
-
                 <div className="flex flex-col gap-3 overflow-y-auto scrollbar-thin [&:not(:hover)]:scrollbar-transparent hover:scrollbar-gray-300 flex-grow min-h-0" ref={scrollableRef}>
                     {isAddingCard && addCardPosition === 'top' ?
                         <AddCardForm
@@ -335,6 +352,7 @@ export function Column(props: ColumnProps) {
 }
 
 interface ColumnHeaderProps {
+    columnId: string;
     columnTitle: string;
     isEditingTitle: boolean;
     titleInputRef: React.RefObject<HTMLInputElement | null>;
@@ -344,9 +362,12 @@ interface ColumnHeaderProps {
     onTitleCancel: () => void;
     onDelete: () => void;
     onDisplayAddCardForm: (position: 'top' | 'bottom') => void;
+    onCopyList: (title: string, columnId: string) => void;
+    isCopyingList?: boolean;
 }
 
 function ColumnHeader({
+    columnId,
     columnTitle,
     isEditingTitle,
     titleInputRef,
@@ -355,9 +376,34 @@ function ColumnHeader({
     onTitleSave,
     onTitleCancel,
     onDelete,
-    onDisplayAddCardForm
+    onDisplayAddCardForm,
+    onCopyList,
+    isCopyingList = false
 }: ColumnHeaderProps) {
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+    const [dropdownView, setDropdownView] = useState<'menu' | 'copy-form'>('menu');
+
+    const handleCopyListClick = useCallback(() => {
+        setDropdownView('copy-form');
+    }, []);
+
+    const handleCopyListCancel = useCallback(() => {
+        setDropdownView('menu');
+    }, []);
+
+    const handleCopyListSubmit = useCallback((title: string) => {
+        onCopyList(title, columnId);
+        setDropdownView('menu');
+        setIsDropdownOpen(false);
+    }, [onCopyList]);
+
+    const handleDropdownOpenChange = useCallback((open: boolean) => {
+        setIsDropdownOpen(open);
+        if (!open) {
+            setDropdownView('menu');
+        }
+    }, []);
+
     return (
         <div className="flex justify-between items-center">
             <div className="flex items-center gap-2 flex-1">
@@ -391,7 +437,7 @@ function ColumnHeader({
             </div>
 
             {!isEditingTitle && (
-                <DropdownMenu open={isDropdownOpen} onOpenChange={setIsDropdownOpen}>
+                <DropdownMenu open={isDropdownOpen} onOpenChange={handleDropdownOpenChange}>
                     <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
                             <MoreHorizontal className="h-4 w-4" />
@@ -401,80 +447,96 @@ function ColumnHeader({
                     <DropdownMenuContent align="end" className="w-56"
                         onCloseAutoFocus={(e) => e.preventDefault()}
                     >
-                        <DropdownMenuItem className="font-medium text-gray-600 cursor-default" onSelect={(e) => e.preventDefault()}>
-                            List actions
-                        </DropdownMenuItem>
+                        {dropdownView === 'menu' ? (
+                            <>
+                                <DropdownMenuItem className="font-medium text-gray-600 cursor-default" onSelect={(e) => e.preventDefault()}>
+                                    List actions
+                                </DropdownMenuItem>
 
-                        <DropdownMenuItem
-                            onSelect={(e) => e.preventDefault()}
-                            onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                setIsDropdownOpen(false);
-                                onDisplayAddCardForm('top');
-                            }}>
-                            <Plus className="h-4 w-4 mr-2" />
-                            Add card
-                        </DropdownMenuItem>
+                                <DropdownMenuItem
+                                    onSelect={(e) => e.preventDefault()}
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        setIsDropdownOpen(false);
+                                        onDisplayAddCardForm('top');
+                                    }}>
+                                    <Plus className="h-4 w-4 mr-2" />
+                                    Add card
+                                </DropdownMenuItem>
 
-                        <DropdownMenuItem>
-                            <Copy className="h-4 w-4 mr-2" />
-                            Copy list
-                        </DropdownMenuItem>
+                                <DropdownMenuItem
+                                    onSelect={(e) => e.preventDefault()}
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        handleCopyListClick();
+                                    }}>
+                                    <Copy className="h-4 w-4 mr-2" />
+                                    Copy list
+                                </DropdownMenuItem>
 
-                        <DropdownMenuItem>
-                            <Move className="h-4 w-4 mr-2" />
-                            Move list
-                        </DropdownMenuItem>
+                                <DropdownMenuItem>
+                                    <Move className="h-4 w-4 mr-2" />
+                                    Move list
+                                </DropdownMenuItem>
 
-                        <DropdownMenuItem>
-                            <Move className="h-4 w-4 mr-2" />
-                            Move all cards in this list
-                        </DropdownMenuItem>
+                                <DropdownMenuItem>
+                                    <Move className="h-4 w-4 mr-2" />
+                                    Move all cards in this list
+                                </DropdownMenuItem>
 
-                        <DropdownMenuItem>
-                            <Users className="h-4 w-4 mr-2" />
-                            Watch
-                        </DropdownMenuItem>
+                                <DropdownMenuItem>
+                                    <Users className="h-4 w-4 mr-2" />
+                                    Watch
+                                </DropdownMenuItem>
 
-                        <DropdownMenuSeparator />
+                                <DropdownMenuSeparator />
 
-                        <DropdownMenuItem className="text-blue-600">
-                            <div className="h-4 w-4 mr-2 bg-blue-500 rounded flex items-center justify-center">
-                                <div className="text-white text-xs font-bold">J</div>
-                            </div>
-                            Add list from Jira work items
-                        </DropdownMenuItem>
+                                <DropdownMenuItem className="text-blue-600">
+                                    <div className="h-4 w-4 mr-2 bg-blue-500 rounded flex items-center justify-center">
+                                        <div className="text-white text-xs font-bold">J</div>
+                                    </div>
+                                    Add list from Jira work items
+                                </DropdownMenuItem>
 
-                        <DropdownMenuSeparator />
+                                <DropdownMenuSeparator />
 
-                        <DropdownMenuItem className="justify-between">
-                            <span>Automation</span>
-                            <ChevronRight className="h-4 w-4" />
-                        </DropdownMenuItem>
+                                <DropdownMenuItem className="justify-between">
+                                    <span>Automation</span>
+                                    <ChevronRight className="h-4 w-4" />
+                                </DropdownMenuItem>
 
-                        <DropdownMenuSeparator />
+                                <DropdownMenuSeparator />
 
-                        <DropdownMenuItem>
-                            <Archive className="h-4 w-4 mr-2" />
-                            Archive this list
-                        </DropdownMenuItem>
+                                <DropdownMenuItem>
+                                    <Archive className="h-4 w-4 mr-2" />
+                                    Archive this list
+                                </DropdownMenuItem>
 
-                        <DropdownMenuItem>
-                            <Archive className="h-4 w-4 mr-2" />
-                            Archive all cards in this list
-                        </DropdownMenuItem>
+                                <DropdownMenuItem>
+                                    <Archive className="h-4 w-4 mr-2" />
+                                    Archive all cards in this list
+                                </DropdownMenuItem>
 
-                        <DropdownMenuSeparator />
+                                <DropdownMenuSeparator />
 
-                        <DropdownMenuItem
-                            className="text-red-600 focus:text-red-600"
-                            onSelect={(e) => e.preventDefault()}
-                            onClick={onDelete}
-                        >
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Delete column
-                        </DropdownMenuItem>
+                                <DropdownMenuItem
+                                    className="text-red-600 focus:text-red-600"
+                                    onSelect={(e) => e.preventDefault()}
+                                    onClick={onDelete}
+                                >
+                                    <Trash2 className="h-4 w-4 mr-2" />
+                                    Delete column
+                                </DropdownMenuItem>
+                            </>
+                        ) : (
+                            <CopyListForm
+                                originalTitle={columnTitle}
+                                onCopyList={handleCopyListSubmit}
+                                onCancel={handleCopyListCancel}
+                            />
+                        )}
                     </DropdownMenuContent>
                 </DropdownMenu>
             )}

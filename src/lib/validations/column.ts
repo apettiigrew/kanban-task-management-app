@@ -31,6 +31,13 @@ export const reorderColumnsSchema = z.object({
   })).min(1, 'At least one column order must be provided'),
 })
 
+// Schema for copying a column
+export const copyColumnSchema = z.object({
+  title: z.string().min(1, 'List title is required').max(50, 'List title must be less than 50 characters'),
+  columnId: z.string().cuid(),
+  projectId: z.string().cuid(),
+})
+
 // Schema for column with tasks
 export const columnWithTasksSchema = columnSchema.extend({
   tasks: z.array(z.object({
@@ -50,4 +57,5 @@ export type Column = z.infer<typeof columnSchema>
 export type CreateColumn = z.infer<typeof createColumnSchema>
 export type UpdateColumn = z.infer<typeof updateColumnSchema>
 export type ReorderColumns = z.infer<typeof reorderColumnsSchema>
+export type CopyColumn = z.infer<typeof copyColumnSchema>
 export type ColumnWithTasks = z.infer<typeof columnWithTasksSchema>

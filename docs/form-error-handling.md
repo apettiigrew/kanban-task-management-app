@@ -179,7 +179,6 @@ export function ProjectForm({ mode = 'create', projectId }: ProjectFormProps) {
   // Enhanced mutation with error handling
   const createProjectMutation = useCreateProject({
     onSuccess: (data) => {
-      toast.success("Project created successfully")
       clearFormErrors()
       onSuccess?.()
     },

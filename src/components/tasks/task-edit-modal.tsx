@@ -49,7 +49,6 @@ import {
   X
 } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { toast } from 'sonner'
 import { AddChecklistButton } from '../add-checklist-button'
 
 import { useTaskDialog } from '@/contexts/task-dialog-context'
@@ -301,7 +300,6 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
                 onError: () => {
                   // Revert on error
                   setChecklists(checklists);
-                  toast.error('Failed to reorder checklist items');
                 }
               });
             } else {
@@ -347,7 +345,6 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
                 onError: () => {
                   // Revert on error
                   setChecklists(checklists);
-                  toast.error('Failed to move checklist item');
                 }
               });
             }
@@ -409,7 +406,6 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
               onError: () => {
                 // Revert on error
                 setChecklists(checklists);
-                toast.error('Failed to move checklist item');
               }
             });
           }
@@ -472,7 +468,6 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
             onError: () => {
               // Revert on error
               setChecklists(checklists);
-              toast.error('Failed to reorder checklists');
             }
           });
         }
@@ -628,7 +623,6 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
               ? { ...checklist, items: checklist.items.filter(item => item.id !== tempId) }
               : checklist
           ))
-          toast.error('Failed to add checklist item')
         }
       }
     )
@@ -710,7 +704,6 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
               }
               : checklist
           ))
-          toast.error('Failed to update checklist item')
         }
       }
     )
@@ -752,7 +745,6 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
               }
               : checklist
           ))
-          toast.error('Failed to update checklist item text')
         }
       }
     )
@@ -795,7 +787,6 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
     } catch (_error) {
       setTitle(oldTitle);
       setIsAIProcessing(false);
-      toast.error('Failed to improve writing');
     }
   }, [title]);
 
@@ -835,7 +826,6 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
     } catch (_error) {
       setTitle(oldTitle);
       setIsAIProcessing(false);
-      toast.error('Failed to make longer');
     }
   }, [title]);
 
@@ -875,7 +865,6 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
     } catch (_error) {
       setTitle(oldTitle);
       setIsAIProcessing(false);
-      toast.error('Failed to make shorter');
     }
   }, [title]);
 
@@ -915,7 +904,6 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
     } catch (_error) {
       setTitle(oldTitle);
       setIsAIProcessing(false);
-      toast.error('Failed to make SMART');
     }
   }, [title]);
 
