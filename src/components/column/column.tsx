@@ -4,7 +4,7 @@ import { ColumnWrapper } from '@/components/column-wrapper';
 import { ColumnHeader } from '@/components/column/column-header';
 import { Button } from '@/components/ui/button';
 import { useCopyColumn, useMoveColumn, useRepositionColumn, useUpdateColumn } from '@/hooks/mutations/use-column-mutations';
-import { useCreateTask } from '@/hooks/mutations/use-task-mutations';
+import { useCreateTask, useMoveAllCards } from '@/hooks/mutations/use-task-mutations';
 import { TCard } from '@/models/card';
 import { TColumn } from '@/models/column';
 import { SettingsContext } from '@/providers/settings-context';
@@ -68,6 +68,7 @@ export function Column(props: ColumnProps) {
     const [addCardPosition, setAddCardPosition] = useState<'top' | 'bottom'>('bottom');
     const [isCopyingList, setIsCopyingList] = useState(false);
     const [isMovingList, setIsMovingList] = useState(false);
+    const [isMovingAllCards, setIsMovingAllCards] = useState(false);
     const outerFullHeightRef = useRef<HTMLDivElement>(null);
     const titleInputRef = useRef<HTMLInputElement>(null);
     const scrollableRef = useRef<HTMLDivElement | null>(null);
@@ -80,6 +81,7 @@ export function Column(props: ColumnProps) {
     const updateColumnMutation = useUpdateColumn();
     const moveColumnMutation = useMoveColumn();
     const repositionColumnMutation = useRepositionColumn();
+    const moveAllCardsMutation = useMoveAllCards();
 
     useEffect(() => {
         if (isEditingTitle && titleInputRef.current) {
@@ -316,6 +318,24 @@ export function Column(props: ColumnProps) {
         }
     }, [moveColumnMutation, repositionColumnMutation]);
 
+    const handleMoveAllCards = useCallback((data: { columnId: string; targetColumnId: string }) => {
+        setIsMovingAllCards(true);
+        
+        moveAllCardsMutation.mutate({
+            sourceColumnId: data.columnId,
+            targetColumnId: data.targetColumnId,
+            projectId: column.projectId
+        }, {
+            onSuccess: () => {
+                setIsMovingAllCards(false);
+            },
+            onError: (error) => {
+                console.error('Error moving all cards:', error);
+                setIsMovingAllCards(false);
+            }
+        });
+    }, [moveAllCardsMutation, column.projectId]);
+
     return (
         <>
             {columnState.type === 'is-column-over' && columnState.closestEdge === 'left' && (
@@ -342,6 +362,8 @@ export function Column(props: ColumnProps) {
                     isCopyingList={isCopyingList}
                     onMoveList={handleMoveList}
                     isMovingList={isMovingList}
+                    onMoveAllCards={handleMoveAllCards}
+                    isMovingAllCards={isMovingAllCards}
                     currentProjectId={column.projectId}
                     totalColumns={totalColumns}
                     currentPosition={currentPosition}

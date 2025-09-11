@@ -2,7 +2,7 @@
 
 import { projectKeys } from '@/hooks/queries/use-projects'
 import { apiRequest, FormError } from '@/lib/form-error-handler'
-import { CreateTask, DeleteTask, MoveTask, ReorderTasks, Task, UpdateTask } from '@/lib/validations/task'
+import { CreateTask, DeleteTask, MoveTask, MoveAllCards, ReorderTasks, Task, UpdateTask } from '@/lib/validations/task'
 import { TCard } from '@/models/card'
 import { TProject } from '@/models/project'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
@@ -37,6 +37,13 @@ const moveTask = async (data: MoveTask): Promise<void> => {
 
 const reorderTasks = async (data: ReorderTasks): Promise<void> => {
     return apiRequest<void>('/api/tasks', {
+        method: 'PUT',
+        body: JSON.stringify(data),
+    })
+}
+
+const moveAllCards = async (data: MoveAllCards): Promise<{ movedCount: number; sourceColumnId: string; targetColumnId: string; movedCards: Task[] }> => {
+    return apiRequest<{ movedCount: number; sourceColumnId: string; targetColumnId: string; movedCards: Task[] }>('/api/tasks/move-all', {
         method: 'PUT',
         body: JSON.stringify(data),
     })
@@ -207,6 +214,75 @@ export const useReorderTasks = () => {
         onSettled: (data, error, reorderData) => {
             // Always refetch after error or success to ensure consistency
             queryClient.invalidateQueries({ queryKey: projectKeys.detail(reorderData.projectId) })
+        },
+    })
+}
+
+export const useMoveAllCards = () => {
+    const queryClient = useQueryClient()
+
+    return useMutation({
+        mutationKey: ['moveAllCards'],
+        mutationFn: moveAllCards,
+        onMutate: async (moveData: MoveAllCards) => {
+            // Cancel any outgoing refetches to avoid overwriting our optimistic update
+            await queryClient.cancelQueries({ queryKey: projectKeys.detail(moveData.projectId) })
+
+            // Snapshot the previous value for rollback
+            const previousProject = queryClient.getQueryData(projectKeys.detail(moveData.projectId))
+
+            // Optimistically move all cards from source to target column
+            queryClient.setQueryData(projectKeys.detail(moveData.projectId), (oldData: TProject | undefined) => {
+                if (!oldData) return oldData
+
+                return {
+                    ...oldData,
+                    columns: oldData.columns.map(column => {
+                        if (column.id === moveData.sourceColumnId) {
+                            // Remove all cards from source column
+                            return {
+                                ...column,
+                                cards: []
+                            }
+                        } else if (column.id === moveData.targetColumnId) {
+                            // Get cards from source column
+                            const sourceColumn = oldData.columns.find(col => col.id === moveData.sourceColumnId)
+                            const sourceCards = sourceColumn?.cards || []
+                            
+                            // Get current highest order in target column
+                            const targetCards = column.cards || []
+                            const maxOrder = targetCards.length > 0 
+                                ? Math.max(...targetCards.map(card => card.order))
+                                : -1
+
+                            // Add source cards to target column with updated orders
+                            const movedCards = sourceCards.map((card, index) => ({
+                                ...card,
+                                columnId: moveData.targetColumnId,
+                                order: maxOrder + 1 + index
+                            }))
+
+                            return {
+                                ...column,
+                                cards: [...targetCards, ...movedCards]
+                            }
+                        }
+                        return column
+                    })
+                }
+            })
+
+            return { previousProject, projectId: moveData.projectId }
+        },
+        onError: (error: FormError, moveData, context) => {
+            // Revert to previous state on error
+            if (context?.previousProject && context?.projectId) {
+                queryClient.setQueryData(projectKeys.detail(context.projectId), context.previousProject)
+            }
+        },
+        onSettled: (data, error, moveData) => {
+            // Always refetch after error or success to ensure consistency
+            queryClient.invalidateQueries({ queryKey: projectKeys.detail(moveData.projectId) })
         },
     })
 }

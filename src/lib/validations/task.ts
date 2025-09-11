@@ -88,6 +88,13 @@ export const taskWithRelationsSchema = taskSchema.extend({
   }).optional(),
 })
 
+// Schema for moving all cards from one column to another
+export const moveAllCardsSchema = z.object({
+  sourceColumnId: z.string().cuid(),
+  targetColumnId: z.string().cuid(),
+  projectId: z.string().cuid(),
+})
+
 // Type exports 
 export type Task = z.infer<typeof taskSchema>
 export type CreateTask = z.infer<typeof createTaskSchema>
@@ -95,4 +102,5 @@ export type UpdateTask = z.infer<typeof updateTaskSchema>
 export type DeleteTask = z.infer<typeof deleteTaskSchema>
 export type MoveTask = z.infer<typeof moveTaskSchema>
 export type ReorderTasks = z.infer<typeof reorderTasksSchema>
+export type MoveAllCards = z.infer<typeof moveAllCardsSchema>
 export type TaskWithRelations = z.infer<typeof taskWithRelationsSchema>

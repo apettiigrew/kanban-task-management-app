@@ -507,9 +507,6 @@ describe('Card Component - Card Creation', () => {
       // The dropdown menu items might not render in test environment
       // This test would need proper dropdown menu mocking to work correctly
       expect(dropdownTrigger).toBeInTheDocument()
-
-      // Note: The actual dropdown menu interaction would need to be tested
-      // in an integration test or with proper dropdown menu mocking
     })
   })
 });
