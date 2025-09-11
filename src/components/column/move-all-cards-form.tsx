@@ -21,7 +21,6 @@ export function MoveAllCardsForm({
     // Fetch columns for the current project
     const { data: columns = [], isLoading } = useColumns({ 
         projectId: currentProjectId,
-        includeTasks: false 
     });
 
     // Focus the first selectable column when component mounts

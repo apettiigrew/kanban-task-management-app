@@ -1,9 +1,9 @@
 'use client'
 
-import React from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { Column, ColumnWithTasks } from '../../types/column'
 import { apiRequest, FormError } from '@/lib/form-error-handler'
+import { ColumnWithTasks } from '@/lib/validations'
+import { TColumn } from '@/models/column'
+import { useQuery } from '@tanstack/react-query'
 
 // Query key factory for columns
 export const columnKeys = {
@@ -17,13 +17,13 @@ export const columnKeys = {
 }
 
 // API client functions with enhanced error handling
-const fetchColumns = async (projectId?: string): Promise<(Column & { taskCount: number })[]> => {
+const fetchColumns = async (projectId?: string): Promise<(TColumn & { taskCount: number })[]> => {
   const url = projectId ? `/api/columns?projectId=${projectId}` : '/api/columns'
-  return apiRequest<(Column & { taskCount: number })[]>(url)
+  return apiRequest<(TColumn & { taskCount: number })[]>(url)
 }
 
-const fetchColumn = async (id: string): Promise<Column & { taskCount: number }> => {
-  return apiRequest<Column & { taskCount: number }>(`/api/columns/${id}`)
+const fetchColumn = async (id: string): Promise<TColumn & { taskCount: number }> => {
+  return apiRequest<TColumn & { taskCount: number }>(`/api/columns/${id}`)
 }
 
 const fetchColumnsWithTasks = async (projectId: string): Promise<ColumnWithTasks[]> => {

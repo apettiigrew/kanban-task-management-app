@@ -322,7 +322,6 @@ describe('MoveAllCardsForm', () => {
       // Should call useColumns with the correct project ID
       expect(mockUseColumns).toHaveBeenCalledWith({
         projectId: 'project-2',
-        includeTasks: false,
       })
     })
 
@@ -331,7 +330,6 @@ describe('MoveAllCardsForm', () => {
 
       expect(mockUseColumns).toHaveBeenCalledWith({
         projectId: 'project-1',
-        includeTasks: false,
       })
     })
   })
