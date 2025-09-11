@@ -242,3 +242,10 @@ Built with modern web technologies and a focus on developer experience and user 
 ---
 
 **Made with ❤️ for productivity enthusiasts and individual professionals**
+
+
+Run test
+
+```
+npm test -- --testPathPatterns="move-list-form" --verbose                                                         
+```

@@ -17,7 +17,7 @@ To guide an AI assistant in creating a detailed, step-by-step task list in Markd
 ## Output
 
 - **Format:** Markdown (`.md`)
-- **Location:** `/tasks/`
+- **Location:** `src/tasks/`
 - **Filename:** `tasks-[prd-file-name].md` (e.g., `tasks-prd-user-profile-editing.md`)
 
 ## Process
@@ -67,3 +67,15 @@ The process explicitly requires a pause after generating parent tasks to get use
 ## Target Audience
 
 Assume the primary reader of the task list is a **junior developer** who will implement the feature.
+
+
+## Rules to add 
+## Follow my lead
+- !!!!!! VERY IMPORTANT !!!!!!!!!
+- Ask for permission before moving on to the next task
+- You wait for my approval before moving on to the next task 
+- You will work on each task one a time. 
+- You will wait for my approval after completing each task!!!
+- NEVER BREAK THE ABOVE RULES.....NEVER !!!
+- After each task, mark the task with an x to signal it was completed by you .
+- !!!!!! VERY IMPORTANT !!!!!!!!!

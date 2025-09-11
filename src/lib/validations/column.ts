@@ -38,6 +38,19 @@ export const copyColumnSchema = z.object({
   projectId: z.string().cuid(),
 })
 
+// Schema for moving a column to a different board
+export const moveColumnSchema = z.object({
+  columnId: z.string().cuid(),
+  targetProjectId: z.string().cuid(),
+  position: z.number().int().min(1, 'Position must be at least 1'),
+})
+
+// Schema for repositioning a column within the same board
+export const repositionColumnSchema = z.object({
+  columnId: z.string().cuid(),
+  position: z.number().int().min(1, 'Position must be at least 1'),
+})
+
 // Schema for column with tasks
 export const columnWithTasksSchema = columnSchema.extend({
   tasks: z.array(z.object({
@@ -58,4 +71,6 @@ export type CreateColumn = z.infer<typeof createColumnSchema>
 export type UpdateColumn = z.infer<typeof updateColumnSchema>
 export type ReorderColumns = z.infer<typeof reorderColumnsSchema>
 export type CopyColumn = z.infer<typeof copyColumnSchema>
+export type MoveColumn = z.infer<typeof moveColumnSchema>
+export type RepositionColumn = z.infer<typeof repositionColumnSchema>
 export type ColumnWithTasks = z.infer<typeof columnWithTasksSchema>

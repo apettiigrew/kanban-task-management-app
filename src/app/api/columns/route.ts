@@ -29,6 +29,9 @@ export async function GET(request: NextRequest) {
           }
         }
       },
+      orderBy: {
+        order: 'asc'
+      }
     })
 
     return createSuccessResponse(columns, 'Columns fetched successfully')

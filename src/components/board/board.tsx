@@ -1,16 +1,21 @@
 "use client"
 
 import '@/app/board.css';
-import { Column, ColumnShadow } from '@/components/column/column';
+import { Column } from '@/components/column/column';
+import { EditableProjectTitle } from '@/components/editable-project-title';
+import { ProjectDialog, ProjectDialogRef } from '@/components/project-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useCreateColumn, useDeleteColumn, useReorderColumns } from '@/hooks/mutations/use-column-mutations';
 import { useMoveTask, useReorderTasks } from '@/hooks/mutations/use-task-mutations';
+import { useCreateProject, useProjects } from '@/hooks/queries/use-projects';
+import { useKeyboardShortcut } from '@/hooks/use-keyboard-shortcut';
 import { TCard } from '@/models/card';
 import { TColumn } from '@/models/column';
 import { TProject } from '@/models/project';
 import { SettingsContext } from '@/providers/settings-context';
 import { isCardData, isCardDropTargetData, isColumnData, isDraggingACard, isDraggingAColumn } from '@/utils/data';
+import { blockBoardPanningAttr } from '@/utils/data-attributes';
 import { autoScrollForElements } from '@atlaskit/pragmatic-drag-and-drop-auto-scroll/element';
 import { unsafeOverflowAutoScrollForElements } from '@atlaskit/pragmatic-drag-and-drop-auto-scroll/unsafe-overflow/element';
 import {
@@ -18,28 +23,22 @@ import {
 } from '@atlaskit/pragmatic-drag-and-drop-hitbox/closest-edge';
 import { reorderWithEdge } from '@atlaskit/pragmatic-drag-and-drop-hitbox/util/reorder-with-edge';
 import { combine } from '@atlaskit/pragmatic-drag-and-drop/combine';
+import { CleanupFn } from '@atlaskit/pragmatic-drag-and-drop/dist/types/internal-types';
 import { monitorForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
 import { reorder } from '@atlaskit/pragmatic-drag-and-drop/reorder';
-import { PlusCircle, FolderOpen } from 'lucide-react';
-import { useCallback, useContext, useEffect, useRef, useState } from 'react';
-import { ProjectDialog, ProjectDialogRef } from '@/components/project-dialog';
-import { EditableProjectTitle } from '@/components/editable-project-title';
-import { useProjects, useCreateProject } from '@/hooks/queries/use-projects';
-import { useRouter } from 'next/navigation';
-import { useKeyboardShortcut } from '@/hooks/use-keyboard-shortcut';
-import { CleanupFn } from '@atlaskit/pragmatic-drag-and-drop/dist/types/internal-types';
-import invariant from 'tiny-invariant';
 import { bindAll } from 'bind-event-listener';
-import { blockBoardPanningAttr } from '@/utils/data-attributes';
+import { FolderOpen, PlusCircle } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useCallback, useContext, useEffect, useRef, useState } from 'react';
+import invariant from 'tiny-invariant';
 
 interface BoardProps {
-    project: TProject
+    project: TProject | null
 }
 
 export function Board(props: BoardProps) {
     const { project } = props;
-    const [projectState, setProjectState] = useState<TProject>(project);
-    const [isDraggingColumn, setIsDraggingColumn] = useState(false);
+    const [projectState, setProjectState] = useState<TProject | null>(project || null);
     const createProjectMutation = useCreateProject();
     const {
         isDialogOpen: isProjectDialogOpen,
@@ -53,13 +52,15 @@ export function Board(props: BoardProps) {
     const projectDialogRef = useRef<ProjectDialogRef>(null);
 
     useEffect(() => {
-        setProjectState(project)
-    }, [project.columns])
+        if (project) {
+            setProjectState(project)
+        }
+    }, [project])
     
     const [isAddingList, setIsAddingList] = useState(false);
     const [newListTitle, setNewListTitle] = useState('');
     const { settings } = useContext(SettingsContext);
-    const scrollableRef = useRef<HTMLDivElement | null>(null);
+    const scrollableRef = useRef<HTMLDivElement>(null);
 
     const createColumnMutation = useCreateColumn();
     const moveTaskMutation = useMoveTask();
@@ -68,10 +69,10 @@ export function Board(props: BoardProps) {
     const deleteColumnMutation = useDeleteColumn();
 
     const handleProjectSelect = useCallback((selectedProject: { id: string; name: string }) => {
-        if (selectedProject.id !== projectState.id) {
+        if (projectState && selectedProject.id !== projectState.id) {
             router.push(`/board/${selectedProject.id}`);
         }
-    }, [projectState.id, router]);
+    }, [projectState?.id, router]);
 
     const handleCreateProject = useCallback((projectName: string) => {
         createProjectMutation.mutate({
@@ -88,6 +89,7 @@ export function Board(props: BoardProps) {
     }, [createProjectMutation]);
 
     const handleDeleteColumn = useCallback((columnId: string) => {
+        if (!projectState) return;
 
         const optimisticColumn = projectState.columns.find(col => col.id === columnId);
         const filteredColumns = projectState.columns.filter(col => col.id !== columnId);
@@ -97,6 +99,7 @@ export function Board(props: BoardProps) {
             order: index
         }));
         setProjectState((prev) => {
+            if (!prev) return prev;
             return {
                 ...prev,
                 columns: reorderedColumns
@@ -113,6 +116,7 @@ export function Board(props: BoardProps) {
                 const oldColumns = [...projectState.columns]
 
                 setProjectState((prev) => {
+                    if (!prev) return prev;
                     return {
                         ...prev,
                         columns: oldColumns
@@ -123,6 +127,8 @@ export function Board(props: BoardProps) {
     }, [projectState, deleteColumnMutation]);
 
     const handleAddList = useCallback(() => {
+        if (!projectState) return;
+        
         const trimmedTitle = newListTitle.trim();
 
         if (!trimmedTitle) {
@@ -158,35 +164,41 @@ export function Board(props: BoardProps) {
         }, {
             onSuccess: (data) => {
 
-                setProjectState((prev) => ({
-                    ...prev,
-                    columns: prev!.columns.map((column: TColumn) =>
-                        column.id === optimisticColumn.id ? {
-                            id: data.id,
-                            title: data.title,
-                            projectId: data.projectId,
-                            order: data.order,
-                            createdAt: data.createdAt,
-                            updatedAt: data.updatedAt,
-                            cards: []
-                        } : column
-                    ) as TColumn[]
-                }) as TProject);
+                setProjectState((prev) => {
+                    if (!prev) return prev;
+                    return ({
+                        ...prev,
+                        columns: prev.columns.map((column: TColumn) =>
+                            column.id === optimisticColumn.id ? {
+                                id: data.id,
+                                title: data.title,
+                                projectId: data.projectId,
+                                order: data.order,
+                                createdAt: data.createdAt,
+                                updatedAt: data.updatedAt,
+                                cards: []
+                            } : column
+                        ) as TColumn[]
+                    }) as TProject;
+                });
             },
             onError: () => {
-                setProjectState((prev) => ({
-                    ...prev,
-                    columns: prev!.columns.filter(column =>
-                        column.id !== optimisticColumn.id
-                    ) as TColumn[]
-                }) as TProject);
+                setProjectState((prev) => {
+                    if (!prev) return prev;
+                    return ({
+                        ...prev,
+                        columns: prev.columns.filter(column =>
+                            column.id !== optimisticColumn.id
+                        ) as TColumn[]
+                    }) as TProject;
+                });
             }
         });
     }, [projectState, createColumnMutation, newListTitle]);
 
     useEffect(() => {
         const element = scrollableRef.current;
-        if (!element) {
+        if (!element || !projectState) {
             return;
         }
 
@@ -559,13 +571,18 @@ export function Board(props: BoardProps) {
                 },
             }),
         );
-    }, [projectState, settings.boardScrollSpeed, settings.isOverElementAutoScrollEnabled, settings.isOverflowScrollingEnabled, isDraggingColumn]);
+    }, [projectState, settings.boardScrollSpeed, settings.isOverElementAutoScrollEnabled, settings.isOverflowScrollingEnabled]);
 
 
     // Panning the board
     useEffect(() => {
         let cleanupActive: CleanupFn | null = null;
         const scrollable = scrollableRef.current;
+
+        if(!scrollable) {
+            return;
+        }
+
         invariant(scrollable);
 
         function begin({ startX }: { startX: number }) {
@@ -616,10 +633,7 @@ export function Board(props: BoardProps) {
                     if (event.target.closest(`[${blockBoardPanningAttr}]`)) {
                         return;
                     }
-                    // disable panning when dragging a column
-                    if (isDraggingColumn) {
-                        return;
-                    }
+                    
 
                     begin({ startX: event.clientX });
                 },
@@ -631,98 +645,19 @@ export function Board(props: BoardProps) {
             cleanupActive?.();
         };
     }, []);
-    // Track column dragging state
-    // useEffect(() => {
-    //     const handleDragStart = (event: DragEvent) => {
-    //         const target = event.target as HTMLElement;
-    //         if (target.closest('[data-draggable-column]')) {
-    //             setIsDraggingColumn(true);
-    //         }
-    //     };
 
-    //     const handleDragEnd = () => {
-    //         setIsDraggingColumn(false);
-    //     };
+    // Don't render if project data is not available
+    if (!projectState) {
+        return (
+            <div className="flex items-center justify-center h-full">
+                <div className="text-center p-4">
+                    <h2 className="text-xl font-medium mb-2">Loading board...</h2>
+                    <p className="text-muted-foreground">Please wait while we load your project data.</p>
+                </div>
+            </div>
+        );
+    }
 
-    //     document.addEventListener('dragstart', handleDragStart);
-    //     document.addEventListener('dragend', handleDragEnd);
-
-    //     return () => {
-    //         document.removeEventListener('dragstart', handleDragStart);
-    //         document.removeEventListener('dragend', handleDragEnd);
-    //     };
-    // }, []);
-
-
-    // Panning the board
-    useEffect(() => {
-        let cleanupActive: CleanupFn | null = null;
-        const scrollable = scrollableRef.current;
-        invariant(scrollable);
-
-        function begin({ startX }: { startX: number }) {
-            let lastX = startX;
-
-            const cleanupEvents = bindAll(
-                window,
-                [
-                    {
-                        type: 'pointermove',
-                        listener(event) {
-                            const currentX = event.clientX;
-                            const diffX = lastX - currentX;
-
-                            lastX = currentX;
-                            scrollable?.scrollBy({ left: diffX });
-                        },
-                    },
-                    // stop panning if we see any of these events
-                    ...(
-                        [
-                            'pointercancel',
-                            'pointerup',
-                            'pointerdown',
-                            'keydown',
-                            'resize',
-                            'click',
-                            'visibilitychange',
-                        ] as const
-                    ).map((eventName) => ({ type: eventName, listener: () => cleanupEvents() })),
-                ],
-                // need to make sure we are not after the "pointerdown" on the scrollable
-                // Also this is helpful to make sure we always hear about events from this point
-                { capture: true },
-            );
-
-            cleanupActive = cleanupEvents;
-        }
-
-        const cleanupStart = bindAll(scrollable, [
-            {
-                type: 'pointerdown',
-                listener(event) {
-                    if (!(event.target instanceof HTMLElement)) {
-                        return;
-                    }
-                    // ignore interactive elements
-                    if (event.target.closest(`[${blockBoardPanningAttr}]`)) {
-                        return;
-                    }
-                    // disable panning when dragging a column
-                    if (isDraggingColumn) {
-                        return;
-                    }
-
-                    begin({ startX: event.clientX });
-                },
-            },
-        ]);
-
-        return function cleanupAll() {
-            cleanupStart();
-            cleanupActive?.();
-        };
-    }, []);
     return (
         <div className="flex flex-col h-full" style={{ overflow: 'visible' }}>
             <div className="flex-1 flex flex-col min-h-0" style={{ overflow: 'hidden' }}>
@@ -736,11 +671,13 @@ export function Board(props: BoardProps) {
 
                 <div ref={scrollableRef} className="board-columns-container pb-4 snap-x snap-mandatory flex-1 px-6">
 
-                    {projectState.columns.map((column) => (
+                    {projectState.columns.map((column, index) => (
                         <Column
                             key={column.id}
                             column={column}
                             onDelete={() => handleDeleteColumn(column.id)}
+                            totalColumns={projectState.columns.length}
+                            currentPosition={index + 1}
                         />
                     ))}
 
