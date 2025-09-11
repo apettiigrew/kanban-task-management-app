@@ -5,6 +5,7 @@ const mockUpdateTask = jest.fn()
 const mockDeleteTask = jest.fn()
 const mockMoveTask = jest.fn()
 const mockReorderTasks = jest.fn()
+const mockMoveAllCards = jest.fn()
 
 // Mock mutation return type
 interface MockMutation<TData = any, TVariables = any> {
@@ -126,6 +127,27 @@ export const useReorderTasks = jest.fn((options: any = {}) => {
   return mutation
 })
 
+export const useMoveAllCards = jest.fn((options: any = {}) => {
+  const mutation = createMockMutation(mockMoveAllCards)
+  
+  mutation.mutate.mockImplementation((variables) => {
+    const mockResult = {
+      movedCount: 2,
+      sourceColumnId: variables.sourceColumnId,
+      targetColumnId: variables.targetColumnId,
+      movedCards: []
+    }
+    
+    setTimeout(() => {
+      if (options.onSuccess) {
+        options.onSuccess(mockResult)
+      }
+    }, 0)
+  })
+  
+  return mutation
+})
+
 export const useTaskMutationStates = jest.fn(() => ({
   isCreating: false,
   isMoving: false,
@@ -134,7 +156,7 @@ export const useTaskMutationStates = jest.fn(() => ({
 
 // Helper functions to control mock behavior in tests
 export const __setTaskMockError = (hookName: string, error: any) => {
-  const hooks = { useCreateTask, useUpdateTask, useDeleteTask, useMoveTask, useReorderTasks }
+  const hooks = { useCreateTask, useUpdateTask, useDeleteTask, useMoveTask, useReorderTasks, useMoveAllCards }
   const hook = hooks[hookName as keyof typeof hooks]
   
   if (hook) {
@@ -158,10 +180,12 @@ export const __resetTaskMocks = () => {
   useDeleteTask.mockClear()
   useMoveTask.mockClear()
   useReorderTasks.mockClear()
+  useMoveAllCards.mockClear()
   useTaskMutationStates.mockClear()
   mockCreateTask.mockClear()
   mockUpdateTask.mockClear()
   mockDeleteTask.mockClear()
   mockMoveTask.mockClear()
   mockReorderTasks.mockClear()
+  mockMoveAllCards.mockClear()
 }

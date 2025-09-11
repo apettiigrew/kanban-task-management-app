@@ -7,6 +7,7 @@ import { Archive, ChevronRight, Copy, MoreHorizontal, Move, Plus, Trash2, Users 
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { CopyListForm } from "./copy-list-form";
 import { MoveListForm } from "./move-list-form";
+import { MoveAllCardsForm } from "./move-all-cards-form";
 
 interface MenuIconProps {
     icon: React.ComponentType<{ className?: string }>;
@@ -32,6 +33,8 @@ interface ColumnHeaderProps {
     isCopyingList?: boolean;
     onMoveList: (data: { columnId: string; targetProjectId: string; position: number } | { columnId: string; position: number }) => void;
     isMovingList?: boolean;
+    onMoveAllCards: (data: { columnId: string; targetColumnId: string }) => void;
+    isMovingAllCards?: boolean;
     currentProjectId: string;
     totalColumns?: number;
     currentPosition?: number;
@@ -52,12 +55,14 @@ export function ColumnHeader({
     isCopyingList = false,
     onMoveList,
     isMovingList = false,
+    onMoveAllCards,
+    isMovingAllCards = false,
     currentProjectId,
     totalColumns = 1,
     currentPosition = 1,
 }: ColumnHeaderProps) {
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-    const [dropdownView, setDropdownView] = useState<'menu' | 'copy-form' | 'move-form'>('menu');
+    const [dropdownView, setDropdownView] = useState<'menu' | 'copy-form' | 'move-form' | 'move-all-cards-form'>('menu');
 
     const handleCopyListClick = useCallback(() => {
         setDropdownView('copy-form');
@@ -86,6 +91,20 @@ export function ColumnHeader({
         setDropdownView('menu');
         setIsDropdownOpen(false);
     }, [onMoveList]);
+
+    const handleMoveAllCardsClick = useCallback(() => {
+        setDropdownView('move-all-cards-form');
+    }, []);
+
+    const handleMoveAllCardsCancel = useCallback(() => {
+        setDropdownView('menu');
+    }, []);
+
+    const handleMoveAllCardsSubmit = useCallback((data: { columnId: string; targetColumnId: string }) => {
+        onMoveAllCards(data);
+        setDropdownView('menu');
+        setIsDropdownOpen(false);
+    }, [onMoveAllCards]);
 
     const handleDropdownOpenChange = useCallback((open: boolean) => {
         setIsDropdownOpen(open);
@@ -175,7 +194,9 @@ export function ColumnHeader({
                                     Move list
                                 </DropdownMenuItem>
 
-                                <DropdownMenuItem>
+                                <DropdownMenuItem
+                                    onSelect={(e) => e.preventDefault()}
+                                    onClick={handleDropdownItemClick(handleMoveAllCardsClick)}>
                                     <MenuIcon icon={Move} />
                                     Move all cards in this list
                                 </DropdownMenuItem>
@@ -230,13 +251,20 @@ export function ColumnHeader({
                                 onCopyList={handleCopyListSubmit}
                                 onCancel={handleCopyListCancel}
                             />
-                        ) : (
+                        ) : dropdownView === 'move-form' ? (
                             <MoveListForm
                                 columnId={columnId}
                                 currentProjectId={currentProjectId}
                                 currentColumnPosition={currentPosition}
                                 onMoveList={handleMoveListSubmit}
                                 onCancel={handleMoveListCancel}
+                            />
+                        ) : (
+                            <MoveAllCardsForm
+                                columnId={columnId}
+                                currentProjectId={currentProjectId}
+                                onMoveAllCards={handleMoveAllCardsSubmit}
+                                onCancel={handleMoveAllCardsCancel}
                             />
                         )}
                     </DropdownMenuContent>
