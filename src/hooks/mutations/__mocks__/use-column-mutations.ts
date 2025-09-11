@@ -5,6 +5,8 @@ const mockUpdateColumn = jest.fn()
 const mockDeleteColumn = jest.fn()
 const mockReorderColumns = jest.fn()
 const mockCopyColumn = jest.fn()
+const mockMoveColumn = jest.fn()
+const mockRepositionColumn = jest.fn()
 
 // Mock mutation return type
 interface MockMutation<TData = any, TVariables = any> {
@@ -147,17 +149,89 @@ export const useCopyColumn = jest.fn((options: any = {}) => {
   return mutation
 })
 
+export const useMoveColumn = jest.fn((options: any = {}) => {
+  const mutation = createMockMutation(mockMoveColumn)
+  
+  mutation.mutate.mockImplementation((variables) => {
+    // Set pending state
+    mutation.isPending = true
+    mutation.isError = false
+    mutation.isSuccess = false
+    
+    const mockResult = {
+      id: variables.columnId,
+      title: 'Moved Column',
+      projectId: variables.targetProjectId,
+      order: variables.position - 1, // Convert 1-based position to 0-based order
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      cards: [],
+      taskCount: 0,
+    }
+    
+    setTimeout(() => {
+      // Set success state
+      mutation.isPending = false
+      mutation.isSuccess = true
+      mutation.data = mockResult
+      
+      if (options.onSuccess) {
+        options.onSuccess(mockResult)
+      }
+    }, 0)
+  })
+  
+  return mutation
+})
+
+export const useRepositionColumn = jest.fn((options: any = {}) => {
+  const mutation = createMockMutation(mockRepositionColumn)
+  
+  mutation.mutate.mockImplementation((variables) => {
+    // Set pending state
+    mutation.isPending = true
+    mutation.isError = false
+    mutation.isSuccess = false
+    
+    const mockResult = {
+      id: variables.columnId,
+      title: 'Repositioned Column',
+      projectId: 'project-1', // Same project
+      order: variables.position - 1, // Convert 1-based position to 0-based order
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      cards: [],
+      taskCount: 0,
+    }
+    
+    setTimeout(() => {
+      // Set success state
+      mutation.isPending = false
+      mutation.isSuccess = true
+      mutation.data = mockResult
+      
+      if (options.onSuccess) {
+        options.onSuccess(mockResult)
+      }
+    }, 0)
+  })
+  
+  return mutation
+})
+
 export const useColumnMutationStates = jest.fn(() => ({
   isCreating: false,
   isUpdating: false,
   isDeleting: false,
   isReordering: false,
   isCopying: false,
+  isMoving: false,
+  isRepositioning: false,
 }))
 
 // Helper functions to control mock behavior in tests
 export const __setMockError = (hookName: string, error: any) => {
-  const hooks = { useCreateColumn, useUpdateColumn, useDeleteColumn, useReorderColumns, useCopyColumn }
+  const hooks = { useCreateColumn, useUpdateColumn, useDeleteColumn, useReorderColumns, useCopyColumn, useMoveColumn, useRepositionColumn }
   const hook = hooks[hookName as keyof typeof hooks]
   
   if (hook) {
@@ -186,7 +260,7 @@ export const __setMockError = (hookName: string, error: any) => {
 }
 
 export const __setMockFieldErrors = (hookName: string, fieldErrors: Record<string, string>) => {
-  const hooks = { useCreateColumn, useUpdateColumn, useCopyColumn }
+  const hooks = { useCreateColumn, useUpdateColumn, useCopyColumn, useMoveColumn, useRepositionColumn }
   const hook = hooks[hookName as keyof typeof hooks]
   
   if (hook) {
@@ -210,10 +284,14 @@ export const __resetAllMocks = () => {
   useDeleteColumn.mockClear()
   useReorderColumns.mockClear()
   useCopyColumn.mockClear()
+  useMoveColumn.mockClear()
+  useRepositionColumn.mockClear()
   useColumnMutationStates.mockClear()
   mockCreateColumn.mockClear()
   mockUpdateColumn.mockClear()
   mockDeleteColumn.mockClear()
   mockReorderColumns.mockClear()
   mockCopyColumn.mockClear()
+  mockMoveColumn.mockClear()
+  mockRepositionColumn.mockClear()
 }

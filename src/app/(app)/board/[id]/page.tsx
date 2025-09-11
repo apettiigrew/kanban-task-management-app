@@ -71,7 +71,7 @@ function BoardContent({ projectId }: BoardContentProps) {
     <div className="h-[calc(100vh-4rem)] bg-background bg-gradient-to-br from-blue-100 via-sky-100 to-indigo-200 flex flex-col overflow-hidden">
       <main className="flex-1">
         <Suspense fallback={<RouteLoading message="Loading board..." />}>
-          {project && <Board project={project} />}
+          <Board project={project || null} />
         </Suspense>
       </main>
     </div>

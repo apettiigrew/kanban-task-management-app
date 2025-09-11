@@ -1,17 +1,9 @@
 import { AddCardForm } from '@/components/add-card-form';
 import { CardShadow, CardTask } from '@/components/card';
 import { ColumnWrapper } from '@/components/column-wrapper';
-import { CopyListForm } from '@/components/column/copy-list-form';
+import { ColumnHeader } from '@/components/column/column-header';
 import { Button } from '@/components/ui/button';
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuSeparator,
-    DropdownMenuTrigger
-} from '@/components/ui/dropdown-menu';
-import { Input } from '@/components/ui/input';
-import { useCopyColumn, useUpdateColumn } from '@/hooks/mutations/use-column-mutations';
+import { useCopyColumn, useMoveColumn, useRepositionColumn, useUpdateColumn } from '@/hooks/mutations/use-column-mutations';
 import { useCreateTask } from '@/hooks/mutations/use-task-mutations';
 import { TCard } from '@/models/card';
 import { TColumn } from '@/models/column';
@@ -27,6 +19,7 @@ import {
 } from '@atlaskit/pragmatic-drag-and-drop-hitbox/closest-edge';
 import { combine } from '@atlaskit/pragmatic-drag-and-drop/combine';
 
+import { MoveColumn, RepositionColumn } from '@/lib/validations';
 import { isSafari } from '@/utils/is-safari';
 import { RenderIf } from '@/utils/render-if';
 import {
@@ -35,7 +28,6 @@ import {
 } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
 import { preserveOffsetOnSource } from '@atlaskit/pragmatic-drag-and-drop/element/preserve-offset-on-source';
 import { setCustomNativeDragPreview } from '@atlaskit/pragmatic-drag-and-drop/element/set-custom-native-drag-preview';
-import { Archive, ChevronRight, Copy, MoreHorizontal, Move, Plus, Trash2, Users } from 'lucide-react';
 import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import invariant from 'tiny-invariant';
 
@@ -64,15 +56,18 @@ const stateStyles: { [Key in TColumnState['type']]: string } = {
 interface ColumnProps {
     column: TColumn;
     onDelete: () => void;
+    totalColumns?: number;
+    currentPosition?: number;
 }
 export function Column(props: ColumnProps) {
-    const { column, onDelete } = props;
+    const { column, onDelete, totalColumns = 1, currentPosition = 1 } = props;
     const currentColumn = column;
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [columnTitle, setColumnTitle] = useState(currentColumn.title);
     const [isAddingCard, setIsAddingCard] = useState(false);
     const [addCardPosition, setAddCardPosition] = useState<'top' | 'bottom'>('bottom');
     const [isCopyingList, setIsCopyingList] = useState(false);
+    const [isMovingList, setIsMovingList] = useState(false);
     const outerFullHeightRef = useRef<HTMLDivElement>(null);
     const titleInputRef = useRef<HTMLInputElement>(null);
     const scrollableRef = useRef<HTMLDivElement | null>(null);
@@ -83,6 +78,8 @@ export function Column(props: ColumnProps) {
     const createTaskMutation = useCreateTask();
     const copylistMutation = useCopyColumn();
     const updateColumnMutation = useUpdateColumn();
+    const moveColumnMutation = useMoveColumn();
+    const repositionColumnMutation = useRepositionColumn();
 
     useEffect(() => {
         if (isEditingTitle && titleInputRef.current) {
@@ -285,6 +282,40 @@ export function Column(props: ColumnProps) {
         });
     }, []);
 
+    const handleMoveList = useCallback((data: MoveColumn | RepositionColumn) => {
+        setIsMovingList(true);
+        
+        if ('targetProjectId' in data) {
+            // Moving to different board
+            moveColumnMutation.mutate({
+                ...data,
+                sourceProjectId: column.projectId
+            }, {
+                onSuccess: () => {
+                    setIsMovingList(false);
+                },
+                onError: (error) => {
+                    console.error('Error moving column to different board:', error);
+                    setIsMovingList(false);
+                }
+            });
+        } else {
+            // Repositioning within same board
+            repositionColumnMutation.mutate({
+                ...data,
+                projectId: column.projectId
+            }, {
+                onSuccess: () => {
+                    setIsMovingList(false);
+                },
+                onError: (error) => {
+                    console.error('Error repositioning column:', error);
+                    setIsMovingList(false);
+                }
+            });
+        }
+    }, [moveColumnMutation, repositionColumnMutation]);
+
     return (
         <>
             {columnState.type === 'is-column-over' && columnState.closestEdge === 'left' && (
@@ -309,6 +340,11 @@ export function Column(props: ColumnProps) {
                     onDisplayAddCardForm={handleDisplayAddCardForm}
                     onCopyList={handleCopyList}
                     isCopyingList={isCopyingList}
+                    onMoveList={handleMoveList}
+                    isMovingList={isMovingList}
+                    currentProjectId={column.projectId}
+                    totalColumns={totalColumns}
+                    currentPosition={currentPosition}
                 />
                 <div className="flex flex-col gap-3 overflow-y-auto scrollbar-thin [&:not(:hover)]:scrollbar-transparent hover:scrollbar-gray-300 flex-grow min-h-0" ref={scrollableRef}>
                     {isAddingCard && addCardPosition === 'top' ?
@@ -351,198 +387,6 @@ export function Column(props: ColumnProps) {
     );
 }
 
-interface ColumnHeaderProps {
-    columnId: string;
-    columnTitle: string;
-    isEditingTitle: boolean;
-    titleInputRef: React.RefObject<HTMLInputElement | null>;
-    onTitleChange: (title: string) => void;
-    onEditingChange: (isEditing: boolean) => void;
-    onTitleSave: () => void;
-    onTitleCancel: () => void;
-    onDelete: () => void;
-    onDisplayAddCardForm: (position: 'top' | 'bottom') => void;
-    onCopyList: (title: string, columnId: string) => void;
-    isCopyingList?: boolean;
-}
-
-function ColumnHeader({
-    columnId,
-    columnTitle,
-    isEditingTitle,
-    titleInputRef,
-    onTitleChange,
-    onEditingChange,
-    onTitleSave,
-    onTitleCancel,
-    onDelete,
-    onDisplayAddCardForm,
-    onCopyList,
-    isCopyingList = false
-}: ColumnHeaderProps) {
-    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-    const [dropdownView, setDropdownView] = useState<'menu' | 'copy-form'>('menu');
-
-    const handleCopyListClick = useCallback(() => {
-        setDropdownView('copy-form');
-    }, []);
-
-    const handleCopyListCancel = useCallback(() => {
-        setDropdownView('menu');
-    }, []);
-
-    const handleCopyListSubmit = useCallback((title: string) => {
-        onCopyList(title, columnId);
-        setDropdownView('menu');
-        setIsDropdownOpen(false);
-    }, [onCopyList]);
-
-    const handleDropdownOpenChange = useCallback((open: boolean) => {
-        setIsDropdownOpen(open);
-        if (!open) {
-            setDropdownView('menu');
-        }
-    }, []);
-
-    return (
-        <div className="flex justify-between items-center">
-            <div className="flex items-center gap-2 flex-1">
-                {isEditingTitle ? (
-                    <Input
-                        ref={titleInputRef}
-                        className="text-sm font-semibold text-gray-500"
-                        value={columnTitle}
-                        onChange={(e) => onTitleChange(e.target.value)}
-                        onBlur={onTitleSave}
-                        onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                                e.preventDefault();
-                                onTitleSave();
-                            } else if (e.key === 'Escape') {
-                                e.preventDefault();
-                                onTitleCancel();
-                            }
-                        }}
-                        placeholder="Enter column title..."
-                    />
-                ) : (
-                    <h2
-                        onClick={() => onEditingChange(true)}
-                        className="text-sm font-semibold text-black-500 cursor-pointer hover:text-gray-700 transition-colors flex-1"
-                        title="Click to edit title"
-                    >
-                        {columnTitle}
-                    </h2>
-                )}
-            </div>
-
-            {!isEditingTitle && (
-                <DropdownMenu open={isDropdownOpen} onOpenChange={handleDropdownOpenChange}>
-                    <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                            <MoreHorizontal className="h-4 w-4" />
-                            <span className="sr-only">Open column menu</span>
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-56"
-                        onCloseAutoFocus={(e) => e.preventDefault()}
-                    >
-                        {dropdownView === 'menu' ? (
-                            <>
-                                <DropdownMenuItem className="font-medium text-gray-600 cursor-default" onSelect={(e) => e.preventDefault()}>
-                                    List actions
-                                </DropdownMenuItem>
-
-                                <DropdownMenuItem
-                                    onSelect={(e) => e.preventDefault()}
-                                    onClick={(e) => {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        setIsDropdownOpen(false);
-                                        onDisplayAddCardForm('top');
-                                    }}>
-                                    <Plus className="h-4 w-4 mr-2" />
-                                    Add card
-                                </DropdownMenuItem>
-
-                                <DropdownMenuItem
-                                    onSelect={(e) => e.preventDefault()}
-                                    onClick={(e) => {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        handleCopyListClick();
-                                    }}>
-                                    <Copy className="h-4 w-4 mr-2" />
-                                    Copy list
-                                </DropdownMenuItem>
-
-                                <DropdownMenuItem>
-                                    <Move className="h-4 w-4 mr-2" />
-                                    Move list
-                                </DropdownMenuItem>
-
-                                <DropdownMenuItem>
-                                    <Move className="h-4 w-4 mr-2" />
-                                    Move all cards in this list
-                                </DropdownMenuItem>
-
-                                <DropdownMenuItem>
-                                    <Users className="h-4 w-4 mr-2" />
-                                    Watch
-                                </DropdownMenuItem>
-
-                                <DropdownMenuSeparator />
-
-                                <DropdownMenuItem className="text-blue-600">
-                                    <div className="h-4 w-4 mr-2 bg-blue-500 rounded flex items-center justify-center">
-                                        <div className="text-white text-xs font-bold">J</div>
-                                    </div>
-                                    Add list from Jira work items
-                                </DropdownMenuItem>
-
-                                <DropdownMenuSeparator />
-
-                                <DropdownMenuItem className="justify-between">
-                                    <span>Automation</span>
-                                    <ChevronRight className="h-4 w-4" />
-                                </DropdownMenuItem>
-
-                                <DropdownMenuSeparator />
-
-                                <DropdownMenuItem>
-                                    <Archive className="h-4 w-4 mr-2" />
-                                    Archive this list
-                                </DropdownMenuItem>
-
-                                <DropdownMenuItem>
-                                    <Archive className="h-4 w-4 mr-2" />
-                                    Archive all cards in this list
-                                </DropdownMenuItem>
-
-                                <DropdownMenuSeparator />
-
-                                <DropdownMenuItem
-                                    className="text-red-600 focus:text-red-600"
-                                    onSelect={(e) => e.preventDefault()}
-                                    onClick={onDelete}
-                                >
-                                    <Trash2 className="h-4 w-4 mr-2" />
-                                    Delete column
-                                </DropdownMenuItem>
-                            </>
-                        ) : (
-                            <CopyListForm
-                                originalTitle={columnTitle}
-                                onCopyList={handleCopyListSubmit}
-                                onCancel={handleCopyListCancel}
-                            />
-                        )}
-                    </DropdownMenuContent>
-                </DropdownMenu>
-            )}
-        </div>
-    );
-}
 
 interface DisplayCardProps {
     cards: TCard[];
@@ -564,7 +408,6 @@ function DisplayCards({ cards, columnId, state, columnTitle }: DisplayCardProps)
         </>
     );
 }
-
 
 export function ColumnShadow({ dragging }: { dragging: DOMRect }) {
     return <div className="flex-shrink-0 rounded-md bg-slate-900" style={{ height: dragging.height, width: dragging.width }} />;
