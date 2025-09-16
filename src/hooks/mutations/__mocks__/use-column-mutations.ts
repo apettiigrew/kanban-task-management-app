@@ -7,6 +7,8 @@ const mockReorderColumns = jest.fn()
 const mockCopyColumn = jest.fn()
 const mockMoveColumn = jest.fn()
 const mockRepositionColumn = jest.fn()
+const mockSortCards = jest.fn()
+const mockSortColumns = jest.fn()
 
 // Mock mutation return type
 interface MockMutation<TData = any, TVariables = any> {
@@ -219,6 +221,64 @@ export const useRepositionColumn = jest.fn((options: any = {}) => {
   return mutation
 })
 
+export const useSortCards = jest.fn((options: any = {}) => {
+  const mutation = createMockMutation(mockSortCards)
+  
+  mutation.mutate.mockImplementation((variables) => {
+    // Set pending state
+    mutation.isPending = true
+    mutation.isError = false
+    mutation.isSuccess = false
+    
+    const mockResult = {
+      success: true,
+      message: 'Cards sorted successfully',
+    }
+    
+    setTimeout(() => {
+      // Set success state
+      mutation.isPending = false
+      mutation.isSuccess = true
+      mutation.data = mockResult
+      
+      if (options.onSuccess) {
+        options.onSuccess(mockResult)
+      }
+    }, 0)
+  })
+  
+  return mutation
+})
+
+export const useSortColumns = jest.fn((options: any = {}) => {
+  const mutation = createMockMutation(mockSortColumns)
+  
+  mutation.mutate.mockImplementation((variables) => {
+    // Set pending state
+    mutation.isPending = true
+    mutation.isError = false
+    mutation.isSuccess = false
+    
+    const mockResult = {
+      success: true,
+      message: 'Columns sorted successfully',
+    }
+    
+    setTimeout(() => {
+      // Set success state
+      mutation.isPending = false
+      mutation.isSuccess = true
+      mutation.data = mockResult
+      
+      if (options.onSuccess) {
+        options.onSuccess(mockResult)
+      }
+    }, 0)
+  })
+  
+  return mutation
+})
+
 export const useColumnMutationStates = jest.fn(() => ({
   isCreating: false,
   isUpdating: false,
@@ -231,7 +291,7 @@ export const useColumnMutationStates = jest.fn(() => ({
 
 // Helper functions to control mock behavior in tests
 export const __setMockError = (hookName: string, error: any) => {
-  const hooks = { useCreateColumn, useUpdateColumn, useDeleteColumn, useReorderColumns, useCopyColumn, useMoveColumn, useRepositionColumn }
+  const hooks = { useCreateColumn, useUpdateColumn, useDeleteColumn, useReorderColumns, useCopyColumn, useMoveColumn, useRepositionColumn, useSortCards, useSortColumns }
   const hook = hooks[hookName as keyof typeof hooks]
   
   if (hook) {
@@ -260,7 +320,7 @@ export const __setMockError = (hookName: string, error: any) => {
 }
 
 export const __setMockFieldErrors = (hookName: string, fieldErrors: Record<string, string>) => {
-  const hooks = { useCreateColumn, useUpdateColumn, useCopyColumn, useMoveColumn, useRepositionColumn }
+  const hooks = { useCreateColumn, useUpdateColumn, useCopyColumn, useMoveColumn, useRepositionColumn, useSortCards, useSortColumns }
   const hook = hooks[hookName as keyof typeof hooks]
   
   if (hook) {
@@ -286,6 +346,8 @@ export const __resetAllMocks = () => {
   useCopyColumn.mockClear()
   useMoveColumn.mockClear()
   useRepositionColumn.mockClear()
+  useSortCards.mockClear()
+  useSortColumns.mockClear()
   useColumnMutationStates.mockClear()
   mockCreateColumn.mockClear()
   mockUpdateColumn.mockClear()
@@ -294,4 +356,6 @@ export const __resetAllMocks = () => {
   mockCopyColumn.mockClear()
   mockMoveColumn.mockClear()
   mockRepositionColumn.mockClear()
+  mockSortCards.mockClear()
+  mockSortColumns.mockClear()
 }

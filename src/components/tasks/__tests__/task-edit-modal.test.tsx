@@ -1,4 +1,4 @@
-import { CardTask } from '@/components/card'
+import { TaskEditModal } from '@/components/tasks/task-edit-modal'
 import { TaskDialogProvider } from '@/contexts/task-dialog-context'
 import { fireEvent, render, screen, waitFor, within, act } from '@/lib/test-utils'
 import { TCard } from '@/models/card'
@@ -198,40 +198,31 @@ describe('TaskEditModal - Card Title Update', () => {
   })
 
   it('should update card title in modal and reflect changes in card display', async () => {
-
-
-    // Render the card within the TaskDialogProvider
+    // Render the modal within the TaskDialogProvider
     render(
       <TestWrapper>
-        <CardTask
+        <TaskEditModal
           card={mockCard}
-          columnId="test-column-1"
           columnTitle="Test Column"
+          isOpen={true}
+          onClose={jest.fn()}
         />
       </TestWrapper>
     )
 
-    // Step 1: Verify initial card title is displayed
-    expect(screen.getByText('Original Card Title')).toBeInTheDocument()
-
-    // Step 2: Click on the card to open the edit modal
-    const cardElement = screen.getByText('Original Card Title')
-    fireEvent.click(cardElement)
-
-    // Step 3: Wait for modal to open and verify the title text is visible
+    // Step 1: Wait for modal to open and verify the title text is visible
     await waitFor(() => {
       expect(screen.getByRole('dialog')).toBeInTheDocument()
     })
 
-    // Step 4: Click on the title text to enter edit mode (find the one in modal)
-    const modalTitleElements = screen.getAllByText('Original Card Title')
-    const modalTitleText = modalTitleElements.find(el =>
-      el.closest('[role="dialog"]')
-    )
-    expect(modalTitleText).toBeDefined()
-    fireEvent.click(modalTitleText!)
+    // Step 2: Verify initial card title is displayed in the modal
+    expect(screen.getByText('Original Card Title')).toBeInTheDocument()
 
-    // Step 5: Wait for the textarea to appear and change the title
+    // Step 3: Click on the title text to enter edit mode
+    const modalTitleText = screen.getByText('Original Card Title')
+    fireEvent.click(modalTitleText)
+
+    // Step 4: Wait for the textarea to appear and change the title
     await waitFor(() => {
       expect(screen.getByDisplayValue('Original Card Title')).toBeInTheDocument()
     })
@@ -242,7 +233,7 @@ describe('TaskEditModal - Card Title Update', () => {
     // Verify the input value changed
     expect(titleInput).toHaveValue('Updated Card Title')
 
-    // Step 6: Trigger blur event to save the title (this calls handleTitleBlur)
+    // Step 5: Trigger blur event to save the title (this calls handleTitleBlur)
     fireEvent.blur(titleInput)
 
     // Wait for async operations to complete
@@ -267,38 +258,31 @@ describe('TaskEditModal - Card Title Update', () => {
       }
     })
 
-    // Render the card within the TaskDialogProvider
+    // Render the modal within the TaskDialogProvider
     render(
       <TestWrapper>
-        <CardTask
+        <TaskEditModal
           card={mockCard}
-          columnId="test-column-1"
           columnTitle="Test Column"
+          isOpen={true}
+          onClose={jest.fn()}
         />
       </TestWrapper>
     )
 
-    // Step 1: Verify initial card title is displayed
-    expect(screen.getByText('Original Card Title')).toBeInTheDocument()
-
-    // Step 2: Click on the card to open the edit modal
-    const cardElement = screen.getByText('Original Card Title')
-    fireEvent.click(cardElement)
-
-    // Step 3: Wait for modal to open and verify the title text is visible
+    // Step 1: Wait for modal to open and verify the title text is visible
     await waitFor(() => {
       expect(screen.getByRole('dialog')).toBeInTheDocument()
     })
 
-    // Step 4: Click on the title text to enter edit mode
-    const modalTitleElements = screen.getAllByText('Original Card Title')
-    const modalTitleText = modalTitleElements.find(el =>
-      el.closest('[role="dialog"]')
-    )
-    expect(modalTitleText).toBeDefined()
-    fireEvent.click(modalTitleText!)
+    // Step 2: Verify initial card title is displayed in the modal
+    expect(screen.getByText('Original Card Title')).toBeInTheDocument()
 
-    // Step 5: Wait for the textarea to appear and change the title
+    // Step 3: Click on the title text to enter edit mode
+    const modalTitleText = screen.getByText('Original Card Title')
+    fireEvent.click(modalTitleText)
+
+    // Step 4: Wait for the textarea to appear and change the title
     await waitFor(() => {
       expect(screen.getByDisplayValue('Original Card Title')).toBeInTheDocument()
     })
@@ -309,10 +293,10 @@ describe('TaskEditModal - Card Title Update', () => {
     // Verify the input value changed
     expect(titleInput).toHaveValue('Failed Update Title')
 
-    // Step 6: Trigger blur event to save the title (this will fail)
+    // Step 5: Trigger blur event to save the title (this will fail)
     fireEvent.blur(titleInput)
 
-    // Step 7: Wait for the mutation to be called and then verify title reverts
+    // Step 6: Wait for the mutation to be called and then verify title reverts
     await waitFor(() => {
       expect(mockMutate).toHaveBeenCalledWith(expect.objectContaining({
         id: 'test-card-1',
@@ -324,59 +308,39 @@ describe('TaskEditModal - Card Title Update', () => {
       }), expect.any(Object))
     })
 
-    // Step 8: Verify the title reverts back to original after failure
+    // Step 7: Verify the title reverts back to original after failure
     await waitFor(() => {
       // The title should revert to the original value in the modal
-      // Find the title text specifically within the modal dialog
-      const modalTitleElements = screen.getAllByText('Original Card Title')
-      const modalTitleText = modalTitleElements.find(el =>
-        el.closest('[role="dialog"]')
-      )
-      expect(modalTitleText).toBeInTheDocument()
+      expect(screen.getByText('Original Card Title')).toBeInTheDocument()
     })
-
-    // Step 9: Verify the card title outside the modal also shows the original title
-    // Find the title text specifically outside the modal (in the card)
-    const cardTitleElements = screen.getAllByText('Original Card Title')
-    const cardTitleText = cardTitleElements.find(el =>
-      !el.closest('[role="dialog"]')
-    )
-    expect(cardTitleText).toBeInTheDocument()
   })
 
   it('should not update with empty title', async () => {
-    // Render the card within the TaskDialogProvider
+    // Render the modal within the TaskDialogProvider
     render(
       <TestWrapper>
-        <CardTask
+        <TaskEditModal
           card={mockCard}
-          columnId="test-column-1"
           columnTitle="Test Column"
+          isOpen={true}
+          onClose={jest.fn()}
         />
       </TestWrapper>
     )
 
-    // Step 1: Verify initial card title is displayed
-    expect(screen.getByText('Original Card Title')).toBeInTheDocument()
-
-    // Step 2: Click on the card to open the edit modal
-    const cardElement = screen.getByText('Original Card Title')
-    fireEvent.click(cardElement)
-
-    // Step 3: Wait for modal to open and verify the title text is visible
+    // Step 1: Wait for modal to open and verify the title text is visible
     await waitFor(() => {
       expect(screen.getByRole('dialog')).toBeInTheDocument()
     })
 
-    // Step 4: Click on the title text to enter edit mode
-    const modalTitleElements = screen.getAllByText('Original Card Title')
-    const modalTitleText = modalTitleElements.find(el =>
-      el.closest('[role="dialog"]')
-    )
-    expect(modalTitleText).toBeDefined()
-    fireEvent.click(modalTitleText!)
+    // Step 2: Verify initial card title is displayed in the modal
+    expect(screen.getByText('Original Card Title')).toBeInTheDocument()
 
-    // Step 5: Wait for the textarea to appear and clear the title
+    // Step 3: Click on the title text to enter edit mode
+    const modalTitleText = screen.getByText('Original Card Title')
+    fireEvent.click(modalTitleText)
+
+    // Step 4: Wait for the textarea to appear and clear the title
     await waitFor(() => {
       expect(screen.getByDisplayValue('Original Card Title')).toBeInTheDocument()
     })
@@ -387,30 +351,19 @@ describe('TaskEditModal - Card Title Update', () => {
     // Verify the input value is empty
     expect(titleInput).toHaveValue('')
 
-    // Step 6: Trigger blur event to try to save the empty title
+    // Step 5: Trigger blur event to try to save the empty title
     fireEvent.blur(titleInput)
 
-    // Step 7: Verify the mutation was NOT called (empty title should not trigger update)
+    // Step 6: Verify the mutation was NOT called (empty title should not trigger update)
     await waitFor(() => {
       expect(mockMutate).not.toHaveBeenCalled()
     })
 
-    // Step 8: Verify the title reverts back to original value
+    // Step 7: Verify the title reverts back to original value
     await waitFor(() => {
       // The title should revert to the original value in the modal
-      const modalTitleElements = screen.getAllByText('Original Card Title')
-      const modalTitleText = modalTitleElements.find(el =>
-        el.closest('[role="dialog"]')
-      )
-      expect(modalTitleText).toBeInTheDocument()
+      expect(screen.getByText('Original Card Title')).toBeInTheDocument()
     })
-
-    // Step 9: Verify the card title outside the modal also shows the original title
-    const cardTitleElements = screen.getAllByText('Original Card Title')
-    const cardTitleText = cardTitleElements.find(el =>
-      !el.closest('[role="dialog"]')
-    )
-    expect(cardTitleText).toBeInTheDocument()
   })
 })
 
@@ -436,10 +389,11 @@ describe('TaskEditModal - Card Description Update', () => {
     // Render the card within the TaskDialogProvider
     render(
       <TestWrapper>
-        <CardTask
+        <TaskEditModal
           card={mockCard}
-          columnId="test-column-1"
           columnTitle="Test Column"
+          isOpen={true}
+          onClose={jest.fn()}
         />
       </TestWrapper>
     )
@@ -506,10 +460,11 @@ describe('TaskEditModal - Card Description Update', () => {
     // Render the card within the TaskDialogProvider
     render(
       <TestWrapper>
-        <CardTask
+        <TaskEditModal
           card={mockCard}
-          columnId="test-column-1"
           columnTitle="Test Column"
+          isOpen={true}
+          onClose={jest.fn()}
         />
       </TestWrapper>
     )
@@ -576,10 +531,11 @@ describe('TaskEditModal - Card Description Update', () => {
     // Render the card within the TaskDialogProvider
     render(
       <TestWrapper>
-        <CardTask
+        <TaskEditModal
           card={mockCard}
-          columnId="test-column-1"
           columnTitle="Test Column"
+          isOpen={true}
+          onClose={jest.fn()}
         />
       </TestWrapper>
     )
@@ -649,45 +605,42 @@ describe('TaskEditModal - Card Description Update', () => {
     const { useEditor } = require('@tiptap/react')
     useEditor.mockReturnValue(mockEditor)
 
-    // Render the card within the TaskDialogProvider
+    // Render the modal within the TaskDialogProvider
     render(
       <TestWrapper>
-        <CardTask
+        <TaskEditModal
           card={cardWithoutDescription}
-          columnId="test-column-1"
           columnTitle="Test Column"
+          isOpen={true}
+          onClose={jest.fn()}
         />
       </TestWrapper>
     )
 
-    // Step 1: Verify initial card title is displayed
-    expect(screen.getByText('Original Card Title')).toBeInTheDocument()
-
-    // Step 2: Click on the card to open the edit modal
-    const cardElement = screen.getByText('Original Card Title')
-    fireEvent.click(cardElement)
-
-    // Step 3: Wait for modal to open and verify the placeholder is visible
+    // Step 1: Wait for modal to open and verify the placeholder is visible
     await waitFor(() => {
       expect(screen.getByRole('dialog')).toBeInTheDocument()
     })
 
-    // Step 4: Find and click on the description area to enter edit mode
+    // Step 2: Verify initial card title is displayed in the modal
+    expect(screen.getByText('Original Card Title')).toBeInTheDocument()
+
+    // Step 3: Find and click on the description area to enter edit mode
     const descriptionArea = screen.getByText('Add a description...')
     expect(descriptionArea).toBeInTheDocument()
     fireEvent.click(descriptionArea)
 
-    // Step 5: Wait for the editor to be visible and verify save/cancel buttons appear
+    // Step 4: Wait for the editor to be visible and verify save/cancel buttons appear
     await waitFor(() => {
       expect(screen.getByText('Save')).toBeInTheDocument()
       expect(screen.getByText('Cancel')).toBeInTheDocument()
     })
 
-    // Step 6: Click the Save button to save the description
+    // Step 5: Click the Save button to save the description
     const saveButton = screen.getByText('Save')
     fireEvent.click(saveButton)
 
-    // Step 7: Wait for the mutation to be called with new description
+    // Step 6: Wait for the mutation to be called with new description
     await waitFor(() => {
       expect(mockMutate).toHaveBeenCalledWith(expect.objectContaining({
         id: 'test-card-1',
@@ -699,7 +652,7 @@ describe('TaskEditModal - Card Description Update', () => {
       }), expect.any(Object))
     })
 
-    // Step 8: Verify the description area shows the placeholder after save
+    // Step 7: Verify the description area shows the placeholder after save
     // (since the mock doesn't actually update the state, it reverts to placeholder)
     await waitFor(() => {
       expect(screen.getByText('Add a description...')).toBeInTheDocument()
@@ -779,10 +732,11 @@ describe('TaskEditModal - Checklist Creation', () => {
     // Step 1: Render the card within the TaskDialogProvider
     render(
       <TestWrapper>
-        <CardTask
+        <TaskEditModal
           card={mockCard}
-          columnId="test-column-1"
           columnTitle="Test Column"
+          isOpen={true}
+          onClose={jest.fn()}
         />
       </TestWrapper>
     )

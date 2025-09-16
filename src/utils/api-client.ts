@@ -1,4 +1,5 @@
 import { getSession } from "next-auth/react"
+import { SortType } from "./data"
 
 export interface ApiRequestConfig extends RequestInit {
   requireAuth?: boolean
@@ -23,14 +24,8 @@ export class ApiClient {
   }
 
   private async getAuthHeaders(): Promise<Record<string, string>> {
-    const session = await getSession()
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-    }
-
-    if (session?.user) {
-      // Add any auth headers if needed
-      // For now, NextAuth handles this via cookies
     }
 
     return headers
@@ -40,7 +35,7 @@ export class ApiClient {
     if (!response.ok) {
       const errorText = await response.text()
       let errorMessage: string
-      
+
       try {
         const errorData = JSON.parse(errorText)
         errorMessage = errorData.error || errorData.message || 'An error occurred'
@@ -60,15 +55,15 @@ export class ApiClient {
   }
 
   async request<T>(
-    endpoint: string, 
+    endpoint: string,
     config: ApiRequestConfig = {}
   ): Promise<T> {
     const { requireAuth = true, ...fetchConfig } = config
-    
+
     const url = `${this.baseUrl}${endpoint}`
-    
+
     try {
-      const headers = requireAuth 
+      const headers = requireAuth
         ? await this.getAuthHeaders()
         : { 'Content-Type': 'application/json' }
 
@@ -101,8 +96,8 @@ export class ApiClient {
   }
 
   async post<T>(
-    endpoint: string, 
-    data?: unknown, 
+    endpoint: string,
+    data?: unknown,
     config?: ApiRequestConfig
   ): Promise<T> {
     return this.request<T>(endpoint, {
@@ -113,8 +108,8 @@ export class ApiClient {
   }
 
   async put<T>(
-    endpoint: string, 
-    data?: unknown, 
+    endpoint: string,
+    data?: unknown,
     config?: ApiRequestConfig
   ): Promise<T> {
     return this.request<T>(endpoint, {
@@ -125,8 +120,8 @@ export class ApiClient {
   }
 
   async patch<T>(
-    endpoint: string, 
-    data?: unknown, 
+    endpoint: string,
+    data?: unknown,
     config?: ApiRequestConfig
   ): Promise<T> {
     return this.request<T>(endpoint, {
@@ -146,3 +141,8 @@ export const apiClient = new ApiClient('/api')
 
 // Export individual methods for convenience
 export const { get, post, put, patch, delete: del } = apiClient
+
+
+export const sortColumns = async (projectId: string, sortType: SortType) => {
+  return apiClient.post(`/projects/${projectId}/sort`, { sortType })
+}

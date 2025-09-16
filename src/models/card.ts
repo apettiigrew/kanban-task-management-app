@@ -10,4 +10,5 @@ export type TCard = {
     checklists: TChecklist[];
     totalChecklistItems?: number;
     totalCompletedChecklistItems?: number;
+    createdAt: Date;
 };

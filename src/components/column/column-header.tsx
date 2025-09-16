@@ -3,11 +3,13 @@ import { MoveColumn } from "@/lib/validations";
 import { RepositionColumn } from "@/lib/validations";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Archive, ChevronRight, Copy, MoreHorizontal, Move, Plus, Trash2, Users } from "lucide-react";
+import { Archive, ChevronRight, Copy, MoreHorizontal, Move, Plus, SortAsc, Trash2, Users } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { CopyListForm } from "./copy-list-form";
 import { MoveListForm } from "./move-list-form";
 import { MoveAllCardsForm } from "./move-all-cards-form";
+import { SortCardsForm } from "./sort-cards-form";
+import { SortType } from "@/utils/data";
 
 interface MenuIconProps {
     icon: React.ComponentType<{ className?: string }>;
@@ -23,6 +25,11 @@ interface ColumnHeaderProps {
     columnTitle: string;
     isEditingTitle: boolean;
     titleInputRef: React.RefObject<HTMLInputElement | null>;
+    isMovingAllCards?: boolean;
+    cardCount: number;
+    currentProjectId: string;
+    totalColumns?: number;
+    currentPosition?: number;
     onTitleChange: (title: string) => void;
     onEditingChange: (isEditing: boolean) => void;
     onTitleSave: () => void;
@@ -30,14 +37,9 @@ interface ColumnHeaderProps {
     onDelete: () => void;
     onDisplayAddCardForm: (position: 'top' | 'bottom') => void;
     onCopyList: (title: string, columnId: string) => void;
-    isCopyingList?: boolean;
     onMoveList: (data: { columnId: string; targetProjectId: string; position: number } | { columnId: string; position: number }) => void;
-    isMovingList?: boolean;
     onMoveAllCards: (data: { columnId: string; targetColumnId: string }) => void;
-    isMovingAllCards?: boolean;
-    currentProjectId: string;
-    totalColumns?: number;
-    currentPosition?: number;
+    onSortCards: (sortType: SortType) => void;
 }
 
 export function ColumnHeader({
@@ -52,17 +54,15 @@ export function ColumnHeader({
     onDelete,
     onDisplayAddCardForm,
     onCopyList,
-    isCopyingList = false,
     onMoveList,
-    isMovingList = false,
     onMoveAllCards,
-    isMovingAllCards = false,
+    onSortCards,
+    cardCount,
     currentProjectId,
-    totalColumns = 1,
     currentPosition = 1,
 }: ColumnHeaderProps) {
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-    const [dropdownView, setDropdownView] = useState<'menu' | 'copy-form' | 'move-form' | 'move-all-cards-form'>('menu');
+    const [dropdownView, setDropdownView] = useState<'menu' | 'copy-form' | 'move-form' | 'move-all-cards-form' | 'sort-cards-form'>('menu');
 
     const handleCopyListClick = useCallback(() => {
         setDropdownView('copy-form');
@@ -106,6 +106,20 @@ export function ColumnHeader({
         setIsDropdownOpen(false);
     }, [onMoveAllCards]);
 
+    const handleSortCardsClick = useCallback(() => {
+        setDropdownView('sort-cards-form');
+    }, []);
+
+    const handleSortCardsCancel = useCallback(() => {
+        setDropdownView('menu');
+    }, []);
+
+    const handleSortCardsSubmit = useCallback((sortType: SortType) => {
+        onSortCards(sortType);
+        setDropdownView('menu');
+        setIsDropdownOpen(false);
+    }, [onSortCards]);
+
     const handleDropdownOpenChange = useCallback((open: boolean) => {
         setIsDropdownOpen(open);
         if (!open) {
@@ -143,13 +157,15 @@ export function ColumnHeader({
                         placeholder="Enter column title..."
                     />
                 ) : (
-                    <h2
-                        onClick={() => onEditingChange(true)}
-                        className="text-sm font-semibold text-black-500 cursor-pointer hover:text-gray-700 transition-colors flex-1"
-                        title="Click to edit title"
-                    >
-                        {columnTitle}
-                    </h2>
+                    <div className="flex items-center gap-2 flex-1">
+                        <h2
+                            onClick={() => onEditingChange(true)}
+                            className="text-sm font-semibold text-black-500 cursor-pointer hover:text-gray-700 transition-colors"
+                            title="Click to edit title"
+                        >
+                            {columnTitle}
+                        </h2>
+                    </div>
                 )}
             </div>
 
@@ -200,6 +216,15 @@ export function ColumnHeader({
                                     <MenuIcon icon={Move} />
                                     Move all cards in this list
                                 </DropdownMenuItem>
+
+                                {cardCount >= 2 && (
+                                    <DropdownMenuItem
+                                        onSelect={(e) => e.preventDefault()}
+                                        onClick={handleDropdownItemClick(handleSortCardsClick)}>
+                                        <MenuIcon icon={SortAsc} />
+                                        Sort by
+                                    </DropdownMenuItem>
+                                )}
 
                                 <DropdownMenuItem>
                                     <MenuIcon icon={Users} />
@@ -258,6 +283,12 @@ export function ColumnHeader({
                                 currentColumnPosition={currentPosition}
                                 onMoveList={handleMoveListSubmit}
                                 onCancel={handleMoveListCancel}
+                            />
+                        ) : dropdownView === 'sort-cards-form' ? (
+                            <SortCardsForm
+                                columnId={columnId}
+                                onSortCards={handleSortCardsSubmit}
+                                onCancel={handleSortCardsCancel}
                             />
                         ) : (
                             <MoveAllCardsForm

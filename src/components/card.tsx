@@ -70,9 +70,9 @@ interface CardProps {
   columnId: string;
   columnTitle: string;
 }
-export function CardTask(props: CardProps) {
-  const [cardState, setCardState] = useState<CardState>(draggingState);
+export function Card(props: CardProps) {
   const { card, columnId, columnTitle } = props;
+  const [cardState, setCardState] = useState<CardState>(draggingState);
   const { openEditModal, openDeleteModal } = useTaskDialog();
   const outerRef = useRef<HTMLDivElement | null>(null);
   const innerRef = useRef<HTMLDivElement | null>(null);
@@ -207,6 +207,8 @@ interface CardDisplayProps {
 
 export function CardDisplay(props: CardDisplayProps) {
   const { card, state, outerRef, innerRef, handleCardClick, handleDeleteClick } = props;
+  const formattedDate = new Date(card.createdAt)
+  const formattedDateString = `${card.title} ${formattedDate.getMilliseconds()}`
   return (
     <div
       ref={outerRef}
@@ -229,7 +231,8 @@ export function CardDisplay(props: CardDisplayProps) {
         <div className="flex flex-col">
           <div className="flex items-start justify-between gap-2">
             <div className="flex-1 overflow-hidden" onClick={handleCardClick}>
-              {card.title}
+
+              { formattedDateString }
             </div>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

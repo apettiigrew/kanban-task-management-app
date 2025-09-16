@@ -1,14 +1,14 @@
 import { AddCardForm } from '@/components/add-card-form';
-import { CardShadow, CardTask } from '@/components/card';
+import { CardShadow, Card } from '@/components/card';
 import { ColumnWrapper } from '@/components/column-wrapper';
 import { ColumnHeader } from '@/components/column/column-header';
 import { Button } from '@/components/ui/button';
-import { useCopyColumn, useMoveColumn, useRepositionColumn, useUpdateColumn } from '@/hooks/mutations/use-column-mutations';
+import { useCopyColumn, useMoveColumn, useRepositionColumn, useUpdateColumn, useSortCards } from '@/hooks/mutations/use-column-mutations';
 import { useCreateTask, useMoveAllCards } from '@/hooks/mutations/use-task-mutations';
 import { TCard } from '@/models/card';
 import { TColumn } from '@/models/column';
 import { SettingsContext } from '@/providers/settings-context';
-import { getColumnData, isCardData, isColumnData, isDraggingACard, isDraggingAColumn, isShallowEqual, TCardData } from '@/utils/data';
+import { getColumnData, isCardData, isColumnData, isDraggingACard, isDraggingAColumn, isShallowEqual, SortType, TCardData } from '@/utils/data';
 import { cc } from '@/utils/style-utils';
 import { autoScrollForElements } from '@atlaskit/pragmatic-drag-and-drop-auto-scroll/element';
 import { unsafeOverflowAutoScrollForElements } from '@atlaskit/pragmatic-drag-and-drop-auto-scroll/unsafe-overflow/element';
@@ -66,9 +66,6 @@ export function Column(props: ColumnProps) {
     const [columnTitle, setColumnTitle] = useState(currentColumn.title);
     const [isAddingCard, setIsAddingCard] = useState(false);
     const [addCardPosition, setAddCardPosition] = useState<'top' | 'bottom'>('bottom');
-    const [isCopyingList, setIsCopyingList] = useState(false);
-    const [isMovingList, setIsMovingList] = useState(false);
-    const [isMovingAllCards, setIsMovingAllCards] = useState(false);
     const outerFullHeightRef = useRef<HTMLDivElement>(null);
     const titleInputRef = useRef<HTMLInputElement>(null);
     const scrollableRef = useRef<HTMLDivElement | null>(null);
@@ -82,6 +79,7 @@ export function Column(props: ColumnProps) {
     const moveColumnMutation = useMoveColumn();
     const repositionColumnMutation = useRepositionColumn();
     const moveAllCardsMutation = useMoveAllCards();
+    const sortCardsMutation = useSortCards();
 
     useEffect(() => {
         if (isEditingTitle && titleInputRef.current) {
@@ -269,72 +267,70 @@ export function Column(props: ColumnProps) {
     }, [isAddingCard]);
 
     const handleCopyList = useCallback((title: string, columnId: string) => {
-        setIsCopyingList(true);    
         copylistMutation.mutate({
             title: title,
             columnId: columnId,
             projectId: column.projectId,
-        },{
+        }, {
             onSuccess: () => {
-                setIsCopyingList(false);
             },
             onError: () => {
-                setIsCopyingList(false);
             }
         });
     }, []);
 
     const handleMoveList = useCallback((data: MoveColumn | RepositionColumn) => {
-        setIsMovingList(true);
-        
+
         if ('targetProjectId' in data) {
             // Moving to different board
             moveColumnMutation.mutate({
                 ...data,
-                sourceProjectId: column.projectId
+                targetProjectId: column.projectId,
+                columnId: column.id
             }, {
                 onSuccess: () => {
-                    setIsMovingList(false);
                 },
                 onError: (error) => {
                     console.error('Error moving column to different board:', error);
-                    setIsMovingList(false);
                 }
             });
         } else {
             // Repositioning within same board
             repositionColumnMutation.mutate({
                 ...data,
-                projectId: column.projectId
+                columnId: column.id
             }, {
                 onSuccess: () => {
-                    setIsMovingList(false);
                 },
                 onError: (error) => {
                     console.error('Error repositioning column:', error);
-                    setIsMovingList(false);
                 }
             });
         }
     }, [moveColumnMutation, repositionColumnMutation]);
 
     const handleMoveAllCards = useCallback((data: { columnId: string; targetColumnId: string }) => {
-        setIsMovingAllCards(true);
-        
+
         moveAllCardsMutation.mutate({
             sourceColumnId: data.columnId,
             targetColumnId: data.targetColumnId,
             projectId: column.projectId
         }, {
             onSuccess: () => {
-                setIsMovingAllCards(false);
             },
             onError: (error) => {
-                console.error('Error moving all cards:', error);
-                setIsMovingAllCards(false);
+                console.error('Error moving all cards:', error);    
             }
         });
     }, [moveAllCardsMutation, column.projectId]);
+
+    const handleSortCards = useCallback((sortType: SortType) => {
+        sortCardsMutation.mutate({
+            columnId: column.id,
+            projectId: column.projectId,
+            sortType: sortType
+        });
+    }, [sortCardsMutation, column.id]);
 
     return (
         <>
@@ -359,11 +355,10 @@ export function Column(props: ColumnProps) {
                     onDelete={handleDelete}
                     onDisplayAddCardForm={handleDisplayAddCardForm}
                     onCopyList={handleCopyList}
-                    isCopyingList={isCopyingList}
                     onMoveList={handleMoveList}
-                    isMovingList={isMovingList}
                     onMoveAllCards={handleMoveAllCards}
-                    isMovingAllCards={isMovingAllCards}
+                    onSortCards={handleSortCards}
+                    cardCount={currentColumn.cards.length}
                     currentProjectId={column.projectId}
                     totalColumns={totalColumns}
                     currentPosition={currentPosition}
@@ -377,7 +372,12 @@ export function Column(props: ColumnProps) {
                             placeholder="top"
                         /> : null}
 
-                    <DisplayCards columnId={column.id} cards={currentColumn.cards} state={columnState} columnTitle={columnTitle} />
+                    <DisplayCards
+                        columnId={column.id}
+                        cards={currentColumn.cards}
+                        state={columnState}
+                        columnTitle={columnTitle}
+                    />
                 </div>
                 <div>
                     {
@@ -415,6 +415,7 @@ interface DisplayCardProps {
     columnId: string;
     state: TColumnState;
     columnTitle: string;
+    onCardReorder?: (reorderedCards: TCard[]) => void;
 }
 
 function DisplayCards({ cards, columnId, state, columnTitle }: DisplayCardProps) {
@@ -425,7 +426,7 @@ function DisplayCards({ cards, columnId, state, columnTitle }: DisplayCardProps)
     return (
         <>
             {cards.map((card) => (
-                <CardTask card={card} key={card.id} columnId={columnId} columnTitle={columnTitle} />
+                <Card card={card} key={card.id} columnId={columnId} columnTitle={columnTitle} />
             ))}
         </>
     );
