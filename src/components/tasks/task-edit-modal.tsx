@@ -57,6 +57,7 @@ import { Checklist } from '../checklist/checklist'
 import { DeleteActionButton } from '../delete-action-button'
 import { MenuBar } from '../editor/menubar'
 import { Textarea } from '../ui/textarea'
+import { AddLabelButton } from '../add-label-button'
 
 interface TaskEditModalProps {
   card: TCard
@@ -1046,15 +1047,19 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
                   </div>
                 </div>
               </div>
-              <div className="flex flex-[1_1_auto] flex-col gap-1">
+              <div className="flex flex-[1_1_auto] flex-col gap-2">
                 <p className="text-sm font-medium mb-2">Actions</p>
-                <DeleteActionButton onClick={() => openDeleteModal(card)} className="mb-2">
+                <DeleteActionButton onClick={() => openDeleteModal(card)}>
                   Delete Card
                 </DeleteActionButton>
 
                 <AddChecklistButton onAddChecklist={addChecklist}>
                   Add Checklist
                 </AddChecklistButton>
+
+                <AddLabelButton>
+                  Add Label
+                </AddLabelButton>
               </div>
             </div>
           </div>
