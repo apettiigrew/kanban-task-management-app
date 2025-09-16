@@ -21,39 +21,25 @@ interface TaskDeleteDialogProps {
   
 }
 
-// Utility functions for text truncation
-const truncateText = (text: string, maxLength: number): string => {
-  return text.length > maxLength ? `${text.substring(0, maxLength)}...` : text
-}
-
-const cleanAndTruncateDescription = (description: string, maxLength: number): string => {
-  const cleanDescription = description.replace(/<[^>]*>/g, '').trim()
-  return truncateText(cleanDescription, maxLength)
-}
-
 export function TaskDeleteDialog(props: TaskDeleteDialogProps) {
   const { card, isOpen, onClose, onDeleted } = props
   const deleteTaskMutation = useDeleteTask()
 
-  // Memoized text processing
+  
   const displayTitle = useMemo(() => {
-    return truncateText(card.title, 50)
+    return card.title.length > 50 ? `${card.title.substring(0, 50)}...` : card.title
   }, [card.title])
-
-  const displayDescription = useMemo(() => {
-    return card.description ? cleanAndTruncateDescription(card.description, 40) : null
-  }, [card.description])
 
   const handleDelete = useCallback(() => {
     deleteTaskMutation.mutate({
       id: card.id as string,
       projectId: card.projectId,
       columnId: card.columnId,
-    }, {
+    },{
       onSuccess: () => {
         onClose()
         onDeleted?.()
-      },
+      }
     })
   }, [card.id, card.projectId, card.columnId, deleteTaskMutation, onClose, onDeleted])
 
@@ -83,7 +69,11 @@ export function TaskDeleteDialog(props: TaskDeleteDialogProps) {
           </Button>
           <Button
             variant="destructive"
-            onClick={handleDelete}
+            onClick={(e)=>{
+              e.preventDefault()
+              e.stopPropagation()
+              handleDelete()
+            }}
             disabled={deleteTaskMutation.isPending}
           >
             {deleteTaskMutation.isPending ? 'Deleting...' : 'Delete'}
