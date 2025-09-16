@@ -56,7 +56,7 @@ export function Board(props: BoardProps) {
             setProjectState(project)
         }
     }, [project])
-    
+
     const [isAddingList, setIsAddingList] = useState(false);
     const [newListTitle, setNewListTitle] = useState('');
     const { settings } = useContext(SettingsContext);
@@ -128,7 +128,7 @@ export function Board(props: BoardProps) {
 
     const handleAddList = useCallback(() => {
         if (!projectState) return;
-        
+
         const trimmedTitle = newListTitle.trim();
 
         if (!trimmedTitle) {
@@ -581,7 +581,7 @@ export function Board(props: BoardProps) {
         let cleanupActive: CleanupFn | null = null;
         const scrollable = scrollableRef.current;
 
-        if(!scrollable) {
+        if (!scrollable) {
             return;
         }
 
@@ -635,7 +635,7 @@ export function Board(props: BoardProps) {
                     if (event.target.closest(`[${blockBoardPanningAttr}]`)) {
                         return;
                     }
-                    
+
 
                     begin({ startX: event.clientX });
                 },
@@ -661,17 +661,17 @@ export function Board(props: BoardProps) {
     }
 
     return (
-        <div className="flex flex-col h-full" style={{ overflow: 'visible' }}>
-            <div className="flex-1 flex flex-col min-h-0" style={{ overflow: 'hidden' }}>
-                <div className="flex items-center justify-between mb-6 mt-6 flex-shrink-0 px-6">
-                    <EditableProjectTitle 
-                        projectId={projectState.id} 
-                        title={projectState.title} 
-                        className="text-3xl font-bold" 
+        <div className="flex flex-col h-full">
+            <div className="flex flex-col h-full">
+                <div className="flex items-center justify-between flex-shrink-0 p-4">
+                    <EditableProjectTitle
+                        projectId={projectState.id}
+                        title={projectState.title}
+                        className="text-3xl font-bold"
                     />
                 </div>
 
-                <div ref={scrollableRef} className="board-columns-container pb-4 snap-x snap-mandatory flex-1 px-6">
+                <div ref={scrollableRef} className="min-w-0 overflow-x-auto overflow-y-hidden scroll-smooth w-full flex items-start gap-4 flex-shrink-0 flex-1 px-6 pb-4 snap-x snap-mandatory">
 
                     {projectState.columns.map((column, index) => (
                         <Column
@@ -698,20 +698,21 @@ export function Board(props: BoardProps) {
                         />
                     )}
                 </div>
+
+                {/* Fixed bottom button */}
+                <div className="flex justify-center py-4 flex-shrink-0">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setIsProjectDialogOpen(true)}
+                        className="flex items-center gap-2">
+                        <FolderOpen className="h-4 w-4" />
+                        Switch Project
+                    </Button>
+                </div>
             </div>
 
-            {/* Fixed bottom button */}
-            <div className="flex justify-center pb-4">
-                <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setIsProjectDialogOpen(true)}
-                    className="flex items-center gap-2"
-                >
-                    <FolderOpen className="h-4 w-4" />
-                    Switch Project
-                </Button>
-            </div>
+
 
             <ProjectDialog
                 ref={projectDialogRef}

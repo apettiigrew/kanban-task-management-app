@@ -339,7 +339,7 @@ export function Column(props: ColumnProps) {
             )}
             <ColumnWrapper
                 className={cc(
-                    'bg-gray-50 text-gray-900 rounded-2xl p-4 border border-gray-200 max-h-[calc(100vh-160px)] flex flex-col gap-4',
+                    'bg-gray-50 text-gray-900 rounded-2xl p-4 border border-gray-200 flex flex-col gap-4',
                     stateStyles[columnState.type]
                 )}
                 ref={outerFullHeightRef}>
