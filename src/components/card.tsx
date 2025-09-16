@@ -9,7 +9,7 @@ import {
   dropTargetForElements,
 } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
 import { Pencil, Trash2 } from 'lucide-react';
-import React, { MutableRefObject, useEffect, useRef, useState } from 'react';
+import React, { MutableRefObject, useCallback, useEffect, useRef, useState } from 'react';
 import invariant from 'tiny-invariant';
 import { setCustomNativeDragPreview } from '@atlaskit/pragmatic-drag-and-drop/element/set-custom-native-drag-preview';
 import { preserveOffsetOnSource } from '@atlaskit/pragmatic-drag-and-drop/element/preserve-offset-on-source';
@@ -77,15 +77,15 @@ export function Card(props: CardProps) {
   const outerRef = useRef<HTMLDivElement | null>(null);
   const innerRef = useRef<HTMLDivElement | null>(null);
 
-  const handleCardClick = (e: React.MouseEvent) => {
+  const handleCardClick = useCallback ((e: React.MouseEvent) => {
     e.stopPropagation();
     if (cardState.type === 'is-dragging') return;
     openEditModal(card, columnTitle);
-  };
+  }, [card, columnTitle, cardState.type, openEditModal])
 
-  const handleDeleteClick = () => {
+  const handleDeleteClick = useCallback(() => {
     openDeleteModal(card);
-  };
+  }, [card, openDeleteModal]);
 
   useEffect(() => {
     const outer = outerRef.current;
@@ -234,7 +234,7 @@ export function CardDisplay(props: CardDisplayProps) {
 
               { formattedDateString }
             </div>
-            <DropdownMenu>
+            <DropdownMenu modal={false}>
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="ghost"
@@ -257,6 +257,7 @@ export function CardDisplay(props: CardDisplayProps) {
                 <DropdownMenuItem
                   onClick={(e) => {
                     e.stopPropagation();
+                    e.preventDefault();
                     handleDeleteClick();
                   }}
                   className="text-red-600 focus:text-red-600 focus:bg-red-50"

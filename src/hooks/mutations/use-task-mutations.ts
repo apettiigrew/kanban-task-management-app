@@ -151,7 +151,7 @@ export const useDeleteTask = () => {
                     ...old,
                     columns: old.columns.map((column) => ({
                         ...column,
-                        cards: column.cards?.filter((card) => card.id !== variables.id) || []
+                        cards: column.cards?.filter((card) => card.id !== variables.id)
                     }))
                 }
             })
@@ -167,6 +167,7 @@ export const useDeleteTask = () => {
         },
         onSettled: (data, error, variables) => {
             // Always refetch after error or success to ensure consistency
+            console.log('onSettled', data, error, variables)
             queryClient.invalidateQueries({ queryKey: projectKeys.detail(variables.projectId) })
         }
     })
