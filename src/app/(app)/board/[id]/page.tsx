@@ -8,6 +8,7 @@ import { TProject } from "@/models/project"
 
 import { useParams } from "next/navigation"
 import { Suspense } from "react"
+import { RenderIf } from "@/utils/render-if"
 
 export default function BoardPage() {
   const params = useParams()
@@ -71,7 +72,10 @@ function BoardContent({ projectId }: BoardContentProps) {
     <div className="h-[calc(100vh-4rem)] bg-background bg-gradient-to-br from-blue-100 via-sky-100 to-indigo-200 flex flex-col overflow-hidden">
       <main className="flex-1">
         <Suspense fallback={<RouteLoading message="Loading board..." />}>
-          <Board project={project || null} />
+          <RenderIf
+            condition={project != null || projectError != undefined}
+            children={<Board project={project!} />}
+          />      
         </Suspense>
       </main>
     </div>

@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { renderHook, waitFor } from '@testing-library/react'
 import { ReactNode } from 'react'
-import { useMoveColumn, useRepositionColumn } from './use-column-mutations'
+import { useMoveColumn, useRepositionColumn } from '../use-column-mutations'
 
 // Mock OpenAI service
 jest.mock('@/service/openai-service', () => ({
@@ -17,7 +17,7 @@ jest.mock('@/lib/form-error-handler', () => ({
 }))
 
 // Mock the project keys
-jest.mock('../queries/use-projects', () => ({
+jest.mock('../../queries/use-projects', () => ({
   projectKeys: {
     detail: (id: string) => ['projects', id],
   },

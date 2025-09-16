@@ -33,12 +33,12 @@ import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import invariant from 'tiny-invariant';
 
 interface BoardProps {
-    project: TProject | null
+    project: TProject
 }
 
 export function Board(props: BoardProps) {
     const { project } = props;
-    const [projectState, setProjectState] = useState<TProject | null>(project || null);
+    const [projectState, setProjectState] = useState<TProject>(project);
     const createProjectMutation = useCreateProject();
     const {
         isDialogOpen: isProjectDialogOpen,
@@ -322,6 +322,7 @@ export function Board(props: BoardProps) {
                             checklists: card.checklists,
                             totalChecklistItems: card.totalChecklistItems,
                             totalCompletedChecklistItems: card.totalCompletedChecklistItems,
+                            createdAt: card.createdAt,
                         }));
 
                         const reorderedHomeCards = homeCards.map((card, index) => ({
@@ -334,6 +335,7 @@ export function Board(props: BoardProps) {
                             checklists: card.checklists,
                             totalChecklistItems: card.totalChecklistItems,
                             totalCompletedChecklistItems: card.totalCompletedChecklistItems,
+                            createdAt: card.createdAt,
                         }));
 
                         // console.log("reorderedDestinationCards", reorderedDestinationCards)

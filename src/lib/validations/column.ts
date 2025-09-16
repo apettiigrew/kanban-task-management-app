@@ -51,6 +51,20 @@ export const repositionColumnSchema = z.object({
   position: z.number().int().min(1, 'Position must be at least 1'),
 })
 
+// Schema for sorting cards in a column
+export const sortCardsSchema = z.object({
+  sortType: z.enum(['newest-first', 'oldest-first', 'alphabetical'], {
+    errorMap: () => ({ message: 'Sort type must be newest-first, oldest-first, or alphabetical' })
+  }),
+})
+
+// Schema for sorting columns in a project
+export const sortColumnsSchema = z.object({
+  sortType: z.enum(['newest-first', 'oldest-first', 'alphabetical'], {
+    errorMap: () => ({ message: 'Sort type must be newest-first, oldest-first, or alphabetical' })
+  }),
+})
+
 // Schema for column with tasks
 export const columnWithTasksSchema = columnSchema.extend({
   tasks: z.array(z.object({
@@ -73,4 +87,6 @@ export type ReorderColumns = z.infer<typeof reorderColumnsSchema>
 export type CopyColumn = z.infer<typeof copyColumnSchema>
 export type MoveColumn = z.infer<typeof moveColumnSchema>
 export type RepositionColumn = z.infer<typeof repositionColumnSchema>
+export type SortCards = z.infer<typeof sortCardsSchema>
+export type SortColumns = z.infer<typeof sortColumnsSchema>
 export type ColumnWithTasks = z.infer<typeof columnWithTasksSchema>

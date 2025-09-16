@@ -4,6 +4,9 @@ import { apiRequest } from '@/lib/form-error-handler'
 import { TColumn } from '@/models/column'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { projectKeys } from '../queries/use-projects'
+import { sortColumns as sortColumnsApi } from '@/utils/api-client'
+import { SortType } from '@/utils/data'
+import { TProject } from '@/models/project'
 
 // Types for mutation data
 interface CreateColumnData {
@@ -41,6 +44,17 @@ interface MoveColumnData {
 interface RepositionColumnData {
   columnId: string
   position: number
+}
+
+interface SortCardsData {
+  columnId: string
+  projectId: string
+  sortType: SortType
+}
+
+interface SortColumnsData {
+  projectId: string
+  sortType: SortType
 }
 
 // API client functions for mutations
@@ -97,6 +111,19 @@ const repositionColumn = async (data: RepositionColumnData): Promise<TColumn & {
       position: data.position,
     }),
   })
+}
+
+const sortCards = async (data: SortCardsData): Promise<any> => {
+  return apiRequest<any>(`/api/columns/${data.columnId}/sort`, {
+    method: 'POST',
+    body: JSON.stringify({
+      sortType: data.sortType,
+    }),
+  })
+}
+
+const sortColumns = async (data: SortColumnsData): Promise<any> => {
+  return sortColumnsApi(data.projectId, data.sortType)
 }
 
 
@@ -384,112 +411,174 @@ export const useRepositionColumn = () => {
   })
 }
 
-// Utility hooks for mutation states
-export const useColumnMutationStates = () => {
+export const useSortCards = () => {
   const queryClient = useQueryClient()
 
-  return {
-    isCreating: queryClient.isMutating({ mutationKey: ['createColumn'] }) > 0,
-    isUpdating: queryClient.isMutating({ mutationKey: ['updateColumn'] }) > 0,
-    isDeleting: queryClient.isMutating({ mutationKey: ['deleteColumn'] }) > 0,
-    isReordering: queryClient.isMutating({ mutationKey: ['reorderColumns'] }) > 0,
-    isCopying: queryClient.isMutating({ mutationKey: ['copyColumn'] }) > 0,
-    isMoving: queryClient.isMutating({ mutationKey: ['moveColumn'] }) > 0,
-    isRepositioning: queryClient.isMutating({ mutationKey: ['repositionColumn'] }) > 0,
-  }
-}
+  return useMutation({
+    mutationKey: ['sortCards'],
+    mutationFn: sortCards,
+    onMutate: async (variables) => {
+      
 
-// Enhanced mutation state hook with more detailed states
-export const useColumnMutationStatesDetailed = () => {
-  const queryClient = useQueryClient()
+      // Cancel any outgoing refetches for the project
+      await queryClient.cancelQueries({ queryKey: projectKeys.detail(variables.projectId) })
+      
+      // Snapshot the previous value
+      const previousProject = queryClient.getQueryData(projectKeys.detail(variables.projectId)) as TProject
 
-  const getMutationState = (mutationKey: string[]) => {
-    const mutations = queryClient.getMutationState({ mutationKey })
-    if (mutations.length === 0) return 'IDLE'
-    
-    const mutation = mutations[0]
-    if (mutation.status === 'pending') return 'LOADING'
-    if (mutation.status === 'success') return 'SUCCESS'
-    if (mutation.status === 'error') return 'ERROR'
-    
-    return 'IDLE'
-  }
 
-  const getQueryState = (queryKey: string[]) => {
-    const query = queryClient.getQueryState(queryKey)
-    if (!query) return 'IDLE'
-    
-    if (query.isFetching && query.dataUpdatedAt > 0) return 'REFRESHING'
-    if (query.isStale) return 'STALE'
-    if (query.isFetching) return 'LOADING'
-    if (query.error) return 'ERROR'
-    if (query.data) return 'SUCCESS'
-    
-    return 'IDLE'
-  }
+      if (!previousProject) {
+        return { 
+          previousProject: null, 
+          projectId: variables.projectId 
+        }
+      }
 
-  return {
-    createColumn: getMutationState(['createColumn']),
-    updateColumn: getMutationState(['updateColumn']),
-    deleteColumn: getMutationState(['deleteColumn']),
-    reorderColumns: getMutationState(['reorderColumns']),
-    copyColumn: getMutationState(['copyColumn']),
-    moveColumn: getMutationState(['moveColumn']),
-    repositionColumn: getMutationState(['repositionColumn']),
-    // Query states for background updates
-    projects: getQueryState(['projects']),
-  }
-}
+      // Get the column being sorted
+      const columnToSort = previousProject?.columns?.find((col: TColumn) => col.id === variables.columnId)
+      
+      if (!columnToSort || !columnToSort.cards || columnToSort.cards.length < 2) {
+        // If column has fewer than 2 cards, no sorting needed
+        return { 
+          previousProject, 
+          projectId: variables.projectId 
+        }
+      }
 
-// Hook to check if any column mutation is in progress
-export const useIsAnyColumnMutationPending = () => {
-  const queryClient = useQueryClient()
-  
-  const mutationKeys = [
-    ['createColumn'],
-    ['updateColumn'],
-    ['deleteColumn'],
-    ['reorderColumns'],
-    ['copyColumn'],
-    ['moveColumn'],
-    ['repositionColumn'],
-  ]
-  
-  return mutationKeys.some(key => 
-    queryClient.isMutating({ mutationKey: key }) > 0
-  )
-}
+      // Sort cards based on sort type
+      let sortedCards = [...columnToSort.cards]
+      
+      switch (variables.sortType) {
+        case 'newest-first':
+          sortedCards.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+          break
+        case 'oldest-first':
+          sortedCards.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+          break
+        case 'alphabetical':
+          sortedCards.sort((a, b) => a.title.localeCompare(b.title))
+          break
+      }
 
-// Hook to check specific project query states
-export const useProjectQueryState = (projectId: string) => {
-  const queryClient = useQueryClient()
-  
-  const query = queryClient.getQueryState(projectKeys.detail(projectId))
-  if (!query) return 'IDLE'
-  
-  if (query.isFetching && query.dataUpdatedAt > 0) return 'REFRESHING'
-  if (query.isStale) return 'STALE'
-  if (query.isFetching) return 'LOADING'
-  if (query.error) return 'ERROR'
-  if (query.data) return 'SUCCESS'
-  
-  return 'IDLE'
-}
+      // Update card orders optimistically
+      const updatedCards = sortedCards.map((card, index) => ({
+        ...card,
+        order: index
+      }))
 
-// Hook to invalidate project queries
-export const useInvalidateProjectQueries = () => {
-  const queryClient = useQueryClient()
-  
-  return {
-    invalidateProject: (projectId: string) => {
-      queryClient.invalidateQueries({ queryKey: projectKeys.detail(projectId) })
+      // Optimistically update the project with sorted cards
+      queryClient.setQueryData(projectKeys.detail(variables.projectId), (oldProject: any) => {
+        if (!oldProject) return oldProject
+        
+        return {
+          ...oldProject,
+          columns: oldProject.columns.map((col: TColumn) => 
+            col.id === variables.columnId 
+              ? { ...col, cards: updatedCards }
+              : col
+          )
+        }
+      })
+
+      // Return context for rollback
+      return { 
+        previousProject, 
+        projectId: variables.projectId 
+      }
     },
-    invalidateAllProjects: () => {
-      queryClient.invalidateQueries({ queryKey: projectKeys.all })
+    onError: (err, variables, context) => {
+      // Rollback on error
+      if (context?.previousProject && context.projectId) {
+        queryClient.setQueryData(projectKeys.detail(context.projectId), context.previousProject)
+      }
     },
-    invalidateProjectsList: () => {
-      queryClient.invalidateQueries({ queryKey: projectKeys.lists() })
+    onSettled: (data, error, variables) => {
+      // Invalidate the project to ensure data consistency
+      if (data) {
+        queryClient.invalidateQueries({ queryKey: projectKeys.all })
+      }
     }
-  }
+  })
 }
 
+export const useSortColumns = () => {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationKey: ['sortColumns'],
+    mutationFn: sortColumns,
+    onMutate: async (variables) => {
+      // Cancel any outgoing refetches for the project
+      await queryClient.cancelQueries({ queryKey: projectKeys.detail(variables.projectId) })
+      
+      // Snapshot the previous value
+      const previousProject = queryClient.getQueryData(projectKeys.detail(variables.projectId))
+
+      if (!previousProject) {
+        return { 
+          previousProject: null, 
+          projectId: variables.projectId 
+        }
+      }
+
+      // Get the project columns
+      const project = previousProject as any
+      const columns = project.columns || []
+
+      if (columns.length < 2) {
+        // If project has fewer than 2 columns, no sorting needed
+        return { 
+          previousProject, 
+          projectId: variables.projectId 
+        }
+      }
+
+      // Sort columns based on sort type
+      let sortedColumns = [...columns]
+      
+      switch (variables.sortType) {
+        case 'newest-first':
+          sortedColumns.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+          break
+        case 'oldest-first':
+          sortedColumns.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+          break
+        case 'alphabetical':
+          sortedColumns.sort((a, b) => a.title.localeCompare(b.title))
+          break
+      }
+
+      // Update column orders optimistically
+      const updatedColumns = sortedColumns.map((column, index) => ({
+        ...column,
+        order: index
+      }))
+
+      // Optimistically update the project with sorted columns
+      queryClient.setQueryData(projectKeys.detail(variables.projectId), (oldProject: any) => {
+        if (!oldProject) return oldProject
+        
+        return {
+          ...oldProject,
+          columns: updatedColumns
+        }
+      })
+
+      // Return context for rollback
+      return { 
+        previousProject, 
+        projectId: variables.projectId 
+      }
+    },
+    onError: (err, variables, context) => {
+      if (context?.previousProject && context.projectId) {
+        queryClient.setQueryData(projectKeys.detail(context.projectId), context.previousProject)
+      }
+    },
+    onSettled: (data, error, variables) => {
+      if (data) {
+        queryClient.invalidateQueries({ queryKey: projectKeys.detail(variables.projectId) })
+      }
+    }
+  })
+}

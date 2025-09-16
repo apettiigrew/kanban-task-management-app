@@ -77,6 +77,7 @@ export const useCreateTask = () => {
                     checklists: [],
                     totalChecklistItems: 0,
                     totalCompletedChecklistItems: 0,
+                    createdAt: new Date(),
                 }
 
 

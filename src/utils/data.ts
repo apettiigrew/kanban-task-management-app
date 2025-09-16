@@ -3,6 +3,9 @@ import { TColumn } from "@/models/column";
 import { TChecklist } from "@/models/checklist";
 import { TChecklistItem } from "@/models/checklist-item";
 
+
+export type SortType = 'newest-first' | 'oldest-first' | 'alphabetical';
+
 const cardKey = Symbol('card');
 export type TCardData = {
     [cardKey]: true;

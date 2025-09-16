@@ -14,6 +14,13 @@ export class APIError extends Error {
   }
 }
 
+export class InternalServerError extends APIError {
+  constructor(message: string) {
+    super(message, 500, 'INTERNAL_SERVER_ERROR')
+    this.name = 'InternalServerError'
+  }
+}
+
 export class ValidationError extends APIError {
   constructor(message: string, public details?: z.ZodError) {
     super(message, 400, 'VALIDATION_ERROR')
