@@ -3,6 +3,14 @@ import { TColumn } from "@/models/column";
 import { TChecklist } from "@/models/checklist";
 import { TChecklistItem } from "@/models/checklist-item";
 
+export const LABEL_COLORS = [
+    '#61BD4F', '#F2D600', '#FF9F1A', '#EB5A46', '#C377E0',
+    '#0079BF', '#00C2E0', '#51E898', '#FF78CB', '#344563',
+    '#B04632', '#89609E', '#CD5A91', '#4BBF6B', '#00AECC',
+    '#838C91', '#D29034', '#B3B3B3', '#FF6B6B', '#4ECDC4',
+    '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8',
+    '#F7DC6F', '#BB8FCE', '#85C1E9', '#F8C471', '#82E0AA'
+  ]
 
 export type SortType = 'newest-first' | 'oldest-first' | 'alphabetical';
 

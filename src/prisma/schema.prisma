@@ -20,6 +20,7 @@ model Project {
   // Relations
   columns     Column[]
   cards       Card[]
+  labels      Label[]
 
   @@map("projects")
 }
@@ -97,4 +98,20 @@ model ChecklistItem {
   @@map("checklist_items")
   @@index([checklistId])
   @@index([checklistId, order])
+}
+
+model Label {
+  id        String   @id @default(cuid())
+  title     String
+  color     String
+  checked   Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("labels")
+  @@index([projectId])
 }

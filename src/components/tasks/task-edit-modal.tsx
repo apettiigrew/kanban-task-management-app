@@ -1057,7 +1057,17 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
                   Add Checklist
                 </AddChecklistButton>
 
-                <AddLabelButton>
+                <AddLabelButton
+                  projectId={card.projectId}
+                  onSelectLabel={(label) => {
+                    // TODO: Implement label selection logic
+                    console.log('Selected label:', label)
+                  }}
+                  onDeselectLabel={(labelId) => {
+                    // TODO: Implement label deselection logic
+                    console.log('Deselected label:', labelId)
+                  }}
+                >
                   Add Label
                 </AddLabelButton>
               </div>
