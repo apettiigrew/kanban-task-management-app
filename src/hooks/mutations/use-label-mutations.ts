@@ -1,31 +1,29 @@
-import { TLabel } from "@/models/label";
-import { CreateLabelDTO, UpdateLabelDTO } from "@/models/label"
 import { apiRequest } from "@/lib/form-error-handler";
+import { CreateLabelDTO, TLabel, UpdateLabelDTO } from "@/models/label";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { labelKeys } from "../queries/use-labels";
-import React from "react";
 
 const createLabel = async (data: CreateLabelDTO): Promise<TLabel> => {
-    return  apiRequest<TLabel>('/api/labels', {
-      method: 'POST',
-      body: JSON.stringify(data)
+    return apiRequest<TLabel>('/api/labels', {
+        method: 'POST',
+        body: JSON.stringify(data)
     })
-  }
-  
-  const updateLabel = async ({ id, data }: { id: string; data: UpdateLabelDTO }): Promise<TLabel> => {
-    return apiRequest<TLabel>(`/api/labels/${id}`, {
-      method: 'PATCH',
-      body: JSON.stringify(data)
-    })
-  }
-  
-  const deleteLabel = async (id: string): Promise<void> => {
-    return apiRequest<void>(`/api/labels/${id}`, {
-      method: 'DELETE'
-    })
-  }
+}
 
-  
+const updateLabel = async (payload: UpdateLabelDTO): Promise<TLabel> => {
+    return apiRequest<TLabel>(`/api/labels/${payload.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(payload)
+    })
+}
+
+const deleteLabel = async (id: string): Promise<void> => {
+    return apiRequest<void>(`/api/labels/${id}`, {
+        method: 'DELETE'
+    })
+}
+
+
 // Mutation hooks with optimistic updates
 export const useCreateLabel = () => {
     const queryClient = useQueryClient()
@@ -79,64 +77,47 @@ export const useUpdateLabel = () => {
 
     return useMutation({
         mutationFn: updateLabel,
-        onMutate: async ({ id, data }) => {
+        onMutate: async (payload) => {
             // Cancel any outgoing refetches
-            await queryClient.cancelQueries({ queryKey: labelKeys.detail(id) })
+            await queryClient.cancelQueries({ queryKey: labelKeys.byProject(payload.id) })
 
             // Snapshot the previous value
-            const previousLabel = queryClient.getQueryData<TLabel>(labelKeys.detail(id))
+            const previousLabels = queryClient.getQueryData<TLabel[]>(labelKeys.byProject(payload.projectId))
 
+            console.log('previousLabels', previousLabels)
             // Optimistically update to the new value
-            if (previousLabel) {
+            if (previousLabels) {
+                const previousLabel = previousLabels.find(label => label.id === payload.id)
+                if (!previousLabel) {
+                    return { previousLabels, optimisticLabel: null }
+                }
+
                 const optimisticLabel: TLabel = {
                     ...previousLabel,
-                    ...data,
+                    ...payload,
                     updatedAt: new Date(),
                 }
 
-                queryClient.setQueryData<TLabel>(labelKeys.detail(id), optimisticLabel)
+                queryClient.setQueryData(labelKeys.byProject(payload.projectId), (oldData: TLabel[] | undefined) => {
+                    if (!oldData) return oldData
 
-                // Also update in the project labels list if it exists
-                const projectLabels = queryClient.getQueryData<TLabel[]>(labelKeys.byProject(previousLabel.projectId))
-                if (projectLabels) {
-                    const updatedProjectLabels = projectLabels.map(label =>
-                        label.id === id ? optimisticLabel : label
+                    return oldData.map(label =>
+                        label.id === payload.id ? optimisticLabel : label
                     )
-                    queryClient.setQueryData<TLabel[]>(
-                        labelKeys.byProject(previousLabel.projectId),
-                        updatedProjectLabels
-                    )
-                }
+                })
 
                 return { previousLabel, optimisticLabel }
             }
         },
-        onError: (err, { id }, context) => {
+        onError: (err, payload , context) => {
             // If the mutation fails, use the context returned from onMutate to roll back
             if (context?.previousLabel) {
-                queryClient.setQueryData(labelKeys.detail(id), context.previousLabel)
-
-                // Also rollback in the project labels list
-                const projectLabels = queryClient.getQueryData<TLabel[]>(labelKeys.byProject(context.previousLabel.projectId))
-                if (projectLabels) {
-                    const rolledBackProjectLabels = projectLabels.map(label =>
-                        label.id === id ? context.previousLabel : label
-                    )
-                    queryClient.setQueryData<TLabel[]>(
-                        labelKeys.byProject(context.previousLabel.projectId),
-                        rolledBackProjectLabels
-                    )
-                }
+                queryClient.setQueryData(labelKeys.byProject(payload.id), context.previousLabel)
             }
         },
-        onSettled: (data, error, { id }) => {
+        onSettled: (data, error, payload) => {
             // Always refetch after error or success to ensure server state
-            queryClient.invalidateQueries({ queryKey: labelKeys.detail(id) })
-
-            // Also invalidate project labels if we have the label data
-            if (data) {
-                queryClient.invalidateQueries({ queryKey: labelKeys.byProject(data.projectId) })
-            }
+            queryClient.invalidateQueries({ queryKey: labelKeys.byProject(payload.id) })
         },
     })
 }
@@ -194,23 +175,4 @@ export const useDeleteLabel = () => {
             queryClient.invalidateQueries({ queryKey: labelKeys.lists() })
         },
     })
-}
-
-
-// Utility hook for toggling label checked state
-export const useToggleLabel = () => {
-    const updateLabelMutation = useUpdateLabel()
-
-    const toggleLabel = React.useCallback((id: string, currentChecked: boolean) => {
-        return updateLabelMutation.mutate({
-            id,
-            data: { id, title: '', color: '', checked: !currentChecked }
-        })
-    }, [updateLabelMutation])
-
-    return {
-        toggleLabel,
-        isPending: updateLabelMutation.isPending,
-        error: updateLabelMutation.error,
-    }
 }

@@ -25,12 +25,10 @@ const fetchLabel = async (id: string): Promise<TLabel> => {
 }
 
 // Query hooks
-export const useLabels = (projectId?: string) => {
+export const useLabels = (projectId: string) => {
   return useQuery({
-    queryKey: projectId ? labelKeys.byProject(projectId) : labelKeys.lists(),
+    queryKey: labelKeys.byProject(projectId),
     queryFn: () => fetchLabels(projectId),
-    enabled: !!projectId,
-    staleTime: 5 * 60 * 1000, // 5 minutes
   })
 }
 

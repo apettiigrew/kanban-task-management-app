@@ -11,33 +11,27 @@ import { X, TagIcon, ArrowLeft, Check, Pencil } from 'lucide-react'
 import { Checkbox } from '@/components/ui/checkbox'
 import { useCallback, useState, useMemo } from 'react'
 import { useLabels } from '@/hooks/queries/use-labels'
-import { useCreateLabel, useToggleLabel } from '@/hooks/mutations/use-label-mutations'
+import { useCreateLabel, useUpdateLabel } from '@/hooks/mutations/use-label-mutations'
 import { TLabel } from '@/models/label'
 import { LABEL_COLORS } from '@/utils/data'
 
 interface AddLabelButtonProps {
   projectId: string
-  onSelectLabel?: (label: TLabel) => void
-  onDeselectLabel?: (labelId: string) => void
-  selectedLabels?: TLabel[]
   disabled?: boolean
   children?: React.ReactNode
 }
 export function AddLabelButton({
   projectId,
-  onSelectLabel,
-  onDeselectLabel,
-  selectedLabels = [],
   disabled = false,
   children = "Labels"
 }: AddLabelButtonProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [showCreateLabel, setShowCreateLabel] = useState(false)
-  
+
   const { data: labels = [], isLoading: isLoadingLabels, error: labelsError } = useLabels(projectId)
   const createLabelMutation = useCreateLabel()
-  const toggleLabelMutation = useToggleLabel()
+  const updateLabelMutation = useUpdateLabel()
 
   const handleClose = () => {
     setIsOpen(false)
@@ -59,20 +53,21 @@ export function AddLabelButton({
       projectId
     }, {
       onSuccess: (newLabel) => {
-        onSelectLabel?.(newLabel)
         setShowCreateLabel(false)
       }
     })
-  }, [createLabelMutation, onSelectLabel])
+  }, [createLabelMutation])
 
-  const handleLabelToggle = (label: TLabel) => {
-    toggleLabelMutation.toggleLabel(label.id, label.checked)
-    if (label.checked) {
-      onDeselectLabel?.(label.id)
-    } else {
-      onSelectLabel?.(label)
-    }
-  }
+  const handleLabelToggle = useCallback((label: TLabel) => {
+    console.log('Toggle label:', label.id)
+    updateLabelMutation.mutate({
+      id: label.id,
+      title: label.title,
+      color: label.color,
+      checked: !label.checked,
+      projectId: label.projectId
+    })
+  }, [updateLabelMutation])
 
   const filteredLabels = labels.filter(label =>
     label.title.toLowerCase().includes(searchQuery.toLowerCase())
@@ -85,8 +80,7 @@ export function AddLabelButton({
           variant="outline"
           size="sm"
           disabled={disabled}
-          className="w-full justify-start gap-2 hover:bg-accent hover:text-accent-foreground"
-        >
+          className="w-full justify-start gap-2 hover:bg-accent hover:text-accent-foreground">
           <TagIcon className="h-4 w-4" />
           {children}
         </Button>
@@ -102,7 +96,6 @@ export function AddLabelButton({
             onClose={handleClose}
             isLoading={isLoadingLabels}
             error={labelsError}
-            selectedLabels={selectedLabels}
           />
         ) : (
           <CreateNewLabel
@@ -128,7 +121,6 @@ interface DisplayLabelsProps {
   onClose: () => void
   isLoading?: boolean
   error?: Error | null
-  selectedLabels?: TLabel[]
 }
 function DisplayLabels({
   labels,
@@ -139,21 +131,20 @@ function DisplayLabels({
   onClose,
   isLoading = false,
   error,
-  selectedLabels = []
 }: DisplayLabelsProps) {
   const labelsContainerClassName = useMemo(() => {
     const baseClasses = 'space-y-1 overflow-y-auto scrollbar-thin scrollbar-gray-300'
-    
-    const heightClass = labels.length >= 15 
-      ? 'max-h-80' 
-      : labels.length >= 10 
-        ? 'max-h-64' 
+
+    const heightClass = labels.length >= 15
+      ? 'max-h-80'
+      : labels.length >= 10
+        ? 'max-h-64'
         : 'max-h-48'
-    
-    const borderClass = labels.length >= 10 
-      ? 'border border-gray-200 rounded-md p-1' 
+
+    const borderClass = labels.length >= 10
+      ? 'border border-gray-200 rounded-md p-1'
       : ''
-    
+
     return `${baseClasses} ${heightClass} ${borderClass}`
   }, [labels.length])
 
@@ -179,19 +170,6 @@ function DisplayLabels({
 
       <div className="space-y-2">
         <h4 className="text-sm font-medium text-gray-700">Labels</h4>
-
-        {isLoading && (
-          <div className="flex items-center justify-center py-4">
-            <div className="text-sm text-gray-500">Loading labels...</div>
-          </div>
-        )}
-
-        {error && (
-          <div className="flex items-center justify-center py-4">
-            <div className="text-sm text-red-500">Error loading labels</div>
-          </div>
-        )}
-
         {!isLoading && !error && labels.length > 0 && (
           <div className="relative">
             {labels.length >= 10 && (
@@ -199,17 +177,12 @@ function DisplayLabels({
             )}
             <div className={labelsContainerClassName}>
               {labels.map((label) => {
-                
+
                 return (
                   <LabelItem
                     key={label.id}
                     label={label}
-                    // isSelected={isSelected}
                     onLabelToggle={onLabelToggle}
-                    onEdit={(labelId) => {
-                      // TODO: Implement edit functionality
-                      console.log('Edit label:', labelId)
-                    }}
                   />
                 )
               })}
@@ -322,8 +295,8 @@ function CreateNewLabel({ onBack, onClose, onCreate, isCreating = false, error }
             <button
               key={color}
               className={`h-6 w-12 rounded border-2 ${selectedColor === color
-                  ? 'border-blue-500'
-                  : 'border-gray-200 hover:border-gray-300'
+                ? 'border-blue-500'
+                : 'border-gray-200 hover:border-gray-300'
                 }`}
               style={{ backgroundColor: color }}
               onClick={() => handleColorSelect(color)}
@@ -366,10 +339,9 @@ function CreateNewLabel({ onBack, onClose, onCreate, isCreating = false, error }
 interface LabelItemProps {
   label: TLabel
   onLabelToggle: (label: TLabel) => void
-  onEdit?: (labelId: string) => void
 }
 
-function LabelItem({ label, onLabelToggle, onEdit }: LabelItemProps) {
+function LabelItem({ label, onLabelToggle }: LabelItemProps) {
   return (
     <div className="flex items-center gap-2 p-2 rounded hover:bg-gray-50">
       <Checkbox
@@ -389,9 +361,8 @@ function LabelItem({ label, onLabelToggle, onEdit }: LabelItemProps) {
         className="h-6 w-6 p-0 hover:bg-gray-200"
         onClick={(e) => {
           e.stopPropagation()
-          onEdit?.(label.id)
-        }}
-      >
+          console.log('Edit label:', label.id)
+        }}>
         <Pencil className="h-3 w-3" />
       </Button>
     </div>

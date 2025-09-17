@@ -19,4 +19,5 @@ export interface UpdateLabelDTO {
   title: string;
   color: string;
   checked: boolean;
+  projectId: string;
 }
