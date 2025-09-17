@@ -1,4 +1,5 @@
 import { TChecklist } from "./checklist";
+import { TLabelWithChecked } from "./label";
 
 export type TCard = {
     id: string;
@@ -10,5 +11,6 @@ export type TCard = {
     checklists: TChecklist[];
     totalChecklistItems?: number;
     totalCompletedChecklistItems?: number;
+    labels?: TLabelWithChecked[];
     createdAt: Date;
 };

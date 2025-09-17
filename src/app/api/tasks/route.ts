@@ -35,6 +35,11 @@ export async function GET(request: NextRequest) {
             title: true,
           }
         } : false,
+        cardLabels: {
+          include: {
+            label: true
+          }
+        }
       },
       orderBy: [
         { columnId: 'asc' },
@@ -42,7 +47,21 @@ export async function GET(request: NextRequest) {
       ],
     })
 
-    return createSuccessResponse(tasks, 'Tasks fetched successfully')
+    // Transform the data to include labels with checked status
+    const tasksWithLabels = tasks.map(task => ({
+      ...task,
+      labels: task.cardLabels.map(cardLabel => ({
+        id: cardLabel.label.id,
+        title: cardLabel.label.title,
+        color: cardLabel.label.color,
+        projectId: cardLabel.label.projectId,
+        createdAt: cardLabel.label.createdAt,
+        updatedAt: cardLabel.label.updatedAt,
+        checked: cardLabel.checked
+      }))
+    }))
+
+    return createSuccessResponse(tasksWithLabels, 'Tasks fetched successfully')
   } catch (error) {
     return handleAPIError(error, '/api/tasks')
   }

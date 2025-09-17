@@ -6,7 +6,7 @@ import {
   createSuccessResponse, 
   validateRequestBody 
 } from '@/lib/api-error-handler'
-import { TLabel } from '@/models/label'
+import { TCardLabel, TLabel } from '@/models/label'
 
 // GET /api/labels - Get all labels (optionally filtered by project)
 export async function GET(request: NextRequest) {
@@ -38,12 +38,25 @@ export async function POST(request: NextRequest) {
     const validatedData = validateRequestBody(createLabelSchema, body)
 
     const label = await prisma.label.create({
-      data: validatedData
+        data: {
+          title: validatedData.title,
+          color: validatedData.color,
+          projectId: validatedData.projectId
+        }
     })
 
-    const response: TLabel = label
+    // create card label relationship
+    const cardLabel = await prisma.cardLabel.create({
+      data: {
+        cardId: validatedData.cardId,
+        labelId: label.id
+      }
+    })
 
-    return createSuccessResponse(response, 'Label created successfully', 201)
+    // return the card label
+    const response: TCardLabel = cardLabel
+
+    return createSuccessResponse(response, 'Card Label created successfully', 201)
   } catch (error) {
     return handleAPIError(error, '/api/labels')
   }

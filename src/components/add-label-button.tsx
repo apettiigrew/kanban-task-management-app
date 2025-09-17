@@ -10,18 +10,20 @@ import { Input } from '@/components/ui/input'
 import { X, TagIcon, ArrowLeft, Check, Pencil } from 'lucide-react'
 import { Checkbox } from '@/components/ui/checkbox'
 import { useCallback, useState, useMemo } from 'react'
-import { useLabels } from '@/hooks/queries/use-labels'
-import { useCreateLabel, useUpdateLabel } from '@/hooks/mutations/use-label-mutations'
-import { TLabel } from '@/models/label'
+import { useLabels, useLabelsWithCheckedStatus } from '@/hooks/queries/use-labels'
+import { useCreateLabel, useToggleCardLabel } from '@/hooks/mutations/use-label-mutations'
+import { TLabel, TLabelWithChecked } from '@/models/label'
 import { LABEL_COLORS } from '@/utils/data'
 
 interface AddLabelButtonProps {
   projectId: string
+  cardId: string
   disabled?: boolean
   children?: React.ReactNode
 }
 export function AddLabelButton({
   projectId,
+  cardId,
   disabled = false,
   children = "Labels"
 }: AddLabelButtonProps) {
@@ -29,9 +31,9 @@ export function AddLabelButton({
   const [searchQuery, setSearchQuery] = useState('')
   const [showCreateLabel, setShowCreateLabel] = useState(false)
 
-  const { data: labels = [], isLoading: isLoadingLabels, error: labelsError } = useLabels(projectId)
+  const { data: labelsWithChecked = [], isLoading: isLoadingLabelsWithChecked, error: labelsWithCheckedError } = useLabelsWithCheckedStatus(cardId)
   const createLabelMutation = useCreateLabel()
-  const updateLabelMutation = useUpdateLabel()
+  const toggleCardLabelMutation = useToggleCardLabel()
 
   const handleClose = () => {
     setIsOpen(false)
@@ -48,6 +50,7 @@ export function AddLabelButton({
 
   const handleCreateLabel = useCallback((labelData: { title: string; color: string }) => {
     createLabelMutation.mutate({
+      cardId: cardId,
       title: labelData.title,
       color: labelData.color,
       projectId
@@ -58,18 +61,15 @@ export function AddLabelButton({
     })
   }, [createLabelMutation])
 
-  const handleLabelToggle = useCallback((label: TLabel) => {
+  const handleLabelToggle = useCallback((label: TLabelWithChecked) => {
     console.log('Toggle label:', label.id)
-    updateLabelMutation.mutate({
-      id: label.id,
-      title: label.title,
-      color: label.color,
-      checked: !label.checked,
-      projectId: label.projectId
+    toggleCardLabelMutation.mutate({
+      cardId: cardId,
+      labelId: label.id
     })
-  }, [updateLabelMutation])
+  }, [toggleCardLabelMutation, cardId])
 
-  const filteredLabels = labels.filter(label =>
+  const filteredLabels = labelsWithChecked.filter(label =>
     label.title.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
@@ -94,8 +94,8 @@ export function AddLabelButton({
             onLabelToggle={handleLabelToggle}
             onShowCreateLabel={handleShowCreateLabel}
             onClose={handleClose}
-            isLoading={isLoadingLabels}
-            error={labelsError}
+            isLoading={isLoadingLabelsWithChecked}
+            error={labelsWithCheckedError}
           />
         ) : (
           <CreateNewLabel
@@ -113,10 +113,10 @@ export function AddLabelButton({
 
 
 interface DisplayLabelsProps {
-  labels: TLabel[]
+  labels: TLabelWithChecked[]
   searchQuery: string
   onSearchChange: (query: string) => void
-  onLabelToggle: (label: TLabel) => void
+  onLabelToggle: (label: TLabelWithChecked) => void
   onShowCreateLabel: () => void
   onClose: () => void
   isLoading?: boolean
@@ -337,8 +337,8 @@ function CreateNewLabel({ onBack, onClose, onCreate, isCreating = false, error }
 }
 
 interface LabelItemProps {
-  label: TLabel
-  onLabelToggle: (label: TLabel) => void
+  label: TLabelWithChecked
+  onLabelToggle: (label: TLabelWithChecked) => void
 }
 
 function LabelItem({ label, onLabelToggle }: LabelItemProps) {

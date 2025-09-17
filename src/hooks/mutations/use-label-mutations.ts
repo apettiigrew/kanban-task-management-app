@@ -1,5 +1,5 @@
 import { apiRequest } from "@/lib/form-error-handler";
-import { CreateLabelDTO, TLabel, UpdateLabelDTO } from "@/models/label";
+import { CreateLabelDTO, TLabel, UpdateLabelDTO, CreateCardLabelDTO, UpdateCardLabelDTO, TCardLabel, TLabelWithChecked } from "@/models/label";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { labelKeys } from "../queries/use-labels";
 
@@ -23,6 +23,33 @@ const deleteLabel = async (id: string): Promise<void> => {
     })
 }
 
+const createCardLabel = async (data: CreateCardLabelDTO): Promise<TCardLabel> => {
+    return apiRequest<TCardLabel>('/api/card-labels', {
+        method: 'POST',
+        body: JSON.stringify(data)
+    })
+}
+
+const updateCardLabel = async (payload: UpdateCardLabelDTO): Promise<TCardLabel> => {
+    return apiRequest<TCardLabel>(`/api/card-labels/${payload.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(payload)
+    })
+}
+
+const toggleCardLabel = async (data: { cardId: string; labelId: string }): Promise<TCardLabel> => {
+    return apiRequest<TCardLabel>('/api/card-labels/toggle', {
+        method: 'POST',
+        body: JSON.stringify(data)
+    })
+}
+
+const deleteCardLabel = async (id: string): Promise<void> => {
+    return apiRequest<void>(`/api/card-labels/${id}`, {
+        method: 'DELETE'
+    })
+}
+
 
 // Mutation hooks with optimistic updates
 export const useCreateLabel = () => {
@@ -42,7 +69,6 @@ export const useCreateLabel = () => {
                 id: `temp-${Date.now()}`, // Temporary ID
                 title: newLabel.title,
                 color: newLabel.color,
-                checked: true,
                 projectId: newLabel.projectId,
                 createdAt: new Date(),
                 updatedAt: new Date(),
@@ -79,12 +105,11 @@ export const useUpdateLabel = () => {
         mutationFn: updateLabel,
         onMutate: async (payload) => {
             // Cancel any outgoing refetches
-            await queryClient.cancelQueries({ queryKey: labelKeys.byProject(payload.id) })
+            await queryClient.cancelQueries({ queryKey: labelKeys.byProject(payload.projectId) })
 
             // Snapshot the previous value
             const previousLabels = queryClient.getQueryData<TLabel[]>(labelKeys.byProject(payload.projectId))
 
-            console.log('previousLabels', previousLabels)
             // Optimistically update to the new value
             if (previousLabels) {
                 const previousLabel = previousLabels.find(label => label.id === payload.id)
@@ -112,12 +137,12 @@ export const useUpdateLabel = () => {
         onError: (err, payload , context) => {
             // If the mutation fails, use the context returned from onMutate to roll back
             if (context?.previousLabel) {
-                queryClient.setQueryData(labelKeys.byProject(payload.id), context.previousLabel)
+                queryClient.setQueryData(labelKeys.byProject(payload.projectId), context.previousLabel)
             }
         },
         onSettled: (data, error, payload) => {
             // Always refetch after error or success to ensure server state
-            queryClient.invalidateQueries({ queryKey: labelKeys.byProject(payload.id) })
+            queryClient.invalidateQueries({ queryKey: labelKeys.byProject(payload.projectId) })
         },
     })
 }
@@ -173,6 +198,91 @@ export const useDeleteLabel = () => {
 
             // Also invalidate all project labels lists
             queryClient.invalidateQueries({ queryKey: labelKeys.lists() })
+        },
+    })
+}
+
+// Card Label Mutations
+export const useCreateCardLabel = () => {
+    const queryClient = useQueryClient()
+
+    return useMutation({
+        mutationFn: createCardLabel,
+        onSettled: (data, error, variables) => {
+            // Invalidate card labels queries
+            if (data) {
+                queryClient.invalidateQueries({ queryKey: labelKeys.byCard(variables.cardId) })
+            }
+        },
+    })
+}
+
+export const useUpdateCardLabel = () => {
+    const queryClient = useQueryClient()
+
+    return useMutation({
+        mutationFn: updateCardLabel,
+        onSettled: (data, error, variables) => {
+            // Invalidate card labels queries
+            if (data) {
+                queryClient.invalidateQueries({ queryKey: labelKeys.byCard(data.cardId) })
+            }
+        },
+    })
+}
+
+export const useToggleCardLabel = () => {
+    const queryClient = useQueryClient()
+
+    return useMutation({
+        mutationFn: toggleCardLabel,
+        onMutate: async (variables) => {
+            // Cancel any outgoing refetches
+            await queryClient.cancelQueries({ queryKey: labelKeys.byCard(variables.cardId) })
+
+            // Snapshot the previous value
+            const previousLabels = queryClient.getQueryData<TLabelWithChecked[]>(labelKeys.byCard(variables.cardId))
+
+            // Optimistically update the checked status
+            if (previousLabels) {
+                const updatedLabels = previousLabels.map(label => 
+                    label.id === variables.labelId 
+                        ? { ...label, checked: !label.checked }
+                        : label
+                )
+
+                queryClient.setQueryData<TLabelWithChecked[]>(
+                    labelKeys.byCard(variables.cardId),
+                    updatedLabels
+                )
+
+                return { previousLabels, optimisticLabels: updatedLabels }
+            }
+        },
+        onError: (err, variables, context) => {
+            // If the mutation fails, use the context returned from onMutate to roll back
+            if (context?.previousLabels) {
+                queryClient.setQueryData(
+                    labelKeys.byCard(variables.cardId),
+                    context.previousLabels
+                )
+            }
+        },
+        onSettled: (data, error, variables) => {
+            // Always refetch after error or success to ensure server state
+            queryClient.invalidateQueries({ queryKey: labelKeys.byCard(variables.cardId) })
+        },
+    })
+}
+
+export const useDeleteCardLabel = () => {
+    const queryClient = useQueryClient()
+
+    return useMutation({
+        mutationFn: deleteCardLabel,
+        onSettled: (data, error, id) => {
+            // Invalidate all card labels queries since we don't know which card this belonged to
+            queryClient.invalidateQueries({ queryKey: labelKeys.byCard('') })
         },
     })
 }
