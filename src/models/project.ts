@@ -10,6 +10,7 @@ export interface TProject {
   title: string;
   description: string;
   columns: TColumn[];
+  isArchived: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
