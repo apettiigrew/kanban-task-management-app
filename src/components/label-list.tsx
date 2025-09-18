@@ -10,13 +10,15 @@ interface LabelListProps {
   className?: string
   size?: 'sm' | 'md' | 'lg'
   showOnlyChecked?: boolean
+  truncateLength?: number
 }
 
 export const LabelList = memo(function LabelList({
   labels,
   className = '',
   size = 'lg',
-  showOnlyChecked = true
+  showOnlyChecked = true,
+  truncateLength
 }: LabelListProps) {
   const filteredLabels = useMemo(() => {
     if (showOnlyChecked) {
@@ -42,6 +44,7 @@ export const LabelList = memo(function LabelList({
           key={label.id}
           label={label}
           size={size}
+          truncateLength={truncateLength}
         />
       ))}
     </div>

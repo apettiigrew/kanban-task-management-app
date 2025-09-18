@@ -23,7 +23,7 @@ export const cardLabelSchema = z.object({
 // Schema for creating a new label at board level
 export const createLabelSchema = z.object({
   cardId: z.string().cuid(),
-  title: z.string().min(1, 'Label title is required').max(50, 'Label title must be less than 50 characters'),
+  title: z.string().min(1, 'Label title is required').max(500, 'Label title must be less than 50 characters'),
   color: z.string().min(1, 'Label color is required').max(20, 'Label color must be less than 20 characters'),
   projectId: z.string().cuid(),
 })

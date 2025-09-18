@@ -15,6 +15,13 @@ import { LABEL_COLORS } from '@/utils/data'
 import { ArrowLeft, Pencil, TagIcon, X } from 'lucide-react'
 import { useCallback, useMemo, useState } from 'react'
 
+const truncateText = (text: string, maxLength: number): string => {
+  if (text.length <= maxLength) {
+    return text
+  }
+  return text.slice(0, maxLength) + '...'
+}
+
 interface AddLabelButtonProps {
   projectId: string
   cardId: string
@@ -268,7 +275,7 @@ function CreateNewLabel({ onBack, onClose, onCreate, isCreating = false, error }
           className="h-8 w-full rounded flex items-center px-2 text-white text-sm font-medium"
           style={{ backgroundColor: selectedColor }}
         >
-          {labelTitle}
+          {truncateText(labelTitle, 35)}
         </div>
       )}
 
@@ -323,9 +330,8 @@ function CreateNewLabel({ onBack, onClose, onCreate, isCreating = false, error }
           size="sm"
           onClick={handleCreate}
           disabled={!labelTitle.trim() || !selectedColor || isCreating}
-          className="flex-1"
-        >
-          {isCreating ? 'Creating...' : 'Create'}
+          className="flex-1">
+         Create
         </Button>
       </div>
     </div>
@@ -349,7 +355,7 @@ function LabelItem({ label, onLabelToggle }: LabelItemProps) {
         className="h-6 px-2 rounded text-white text-xs font-medium flex items-center flex-1 cursor-pointer"
         style={{ backgroundColor: label.color }}
         onClick={() => onLabelToggle(label)}>
-        {label.title}
+        {truncateText(label.title, 27)}
       </div>
       <Button
         variant="ghost"

@@ -4,10 +4,18 @@ import { memo } from 'react'
 import { TLabel } from '@/models/label'
 import { cn } from '@/lib/utils'
 
+const truncateText = (text: string, maxLength: number): string => {
+  if (text.length <= maxLength) {
+    return text
+  }
+  return text.slice(0, maxLength) + '...'
+}
+
 interface LabelPillProps {
     label: TLabel
     className?: string
     size?: 'sm' | 'md' | 'lg'
+    truncateLength?: number
 }
 
 const sizeClasses = {
@@ -19,8 +27,11 @@ const sizeClasses = {
 export const LabelPill = memo(function LabelPill({
     label,
     className = '',
-    size = 'lg'
+    size = 'lg',
+    truncateLength
 }: LabelPillProps) {
+
+    const displayText = truncateLength ? truncateText(label.title, truncateLength) : label.title
 
     const cname = cn(
         'inline-flex items-center rounded font-medium text-white cursor-pointer',
@@ -41,7 +52,7 @@ export const LabelPill = memo(function LabelPill({
                 }
             }}
         >
-            {label.title}
+            {displayText}
         </div>
     )
 })

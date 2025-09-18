@@ -1003,6 +1003,7 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
                         showOnlyChecked={true}
                         size="lg"
                         className="mb-2"
+                        truncateLength={72}
                       />
                     </div>
                   )}
