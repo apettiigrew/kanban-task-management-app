@@ -4,13 +4,27 @@ import { TChecklist } from "@/models/checklist";
 import { TChecklistItem } from "@/models/checklist-item";
 
 export const LABEL_COLORS = [
-    '#61BD4F', '#F2D600', '#FF9F1A', '#EB5A46', '#C377E0',
-    '#0079BF', '#00C2E0', '#51E898', '#FF78CB', '#344563',
-    '#B04632', '#89609E', '#CD5A91', '#4BBF6B', '#00AECC',
-    '#838C91', '#D29034', '#B3B3B3', '#FF6B6B', '#4ECDC4',
-    '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8',
-    '#F7DC6F', '#BB8FCE', '#85C1E9', '#F8C471', '#82E0AA'
-  ]
+  { "color": "#7ed6df", "name": "middle blue" },
+  { "color": "#22a6b3", "name": "greendland" },
+  { "color": "#e056fd", "name": "heliotrope" },
+  { "color": "#be2edd", "name": "steel pink" },
+  { "color": "#686de0", "name": "exodus fruit" },
+  { "color": "#4834d4", "name": "blurple" },
+  { "color": "#30336b", "name": "deep koamaru" },
+  { "color": "#130f40", "name": "deep cove" },
+  { "color": "#95afc0", "name": "soaring eagle" },
+  { "color": "#535c68", "name": "wizard gray" },
+  { "color": "#f6e58d", "name": "beekper" },
+  { "color": "#f9ca24", "name": "turbo" },
+  { "color": "#ffbe76", "name": "spaced nectarine" },
+  { "color": "#f0932b", "name": "quinced jelly" },
+  { "color": "#ff7979", "name": "pink glamour" },
+  { "color": "#eb4d4b", "name": "carmine pink" },
+  { "color": "#badc58", "name": "june bud" },
+  { "color": "#6ab04c", "name": "pure apple" },
+  { "color": "#dff9fb", "name": "costal breeze" },
+  { "color": "#c7ecee", "name": "hint of ice pack" }
+]
 
 export type SortType = 'newest-first' | 'oldest-first' | 'alphabetical';
 

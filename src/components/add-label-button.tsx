@@ -8,6 +8,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useCreateLabel, useToggleCardLabel, useUpdateLabel, useDeleteLabel } from '@/hooks/mutations/use-label-mutations'
 import { useLabelsWithCheckedStatus } from '@/hooks/queries/use-labels'
 import { TLabelWithChecked } from '@/models/label'
@@ -20,6 +21,11 @@ const truncateText = (text: string, maxLength: number): string => {
     return text
   }
   return text.slice(0, maxLength) + '...'
+}
+
+const getColorName = (colorHex: string): string => {
+  const colorOption = LABEL_COLORS.find(option => option.color === colorHex)
+  return colorOption?.name || 'Unknown color'
 }
 
 interface AddLabelButtonProps {
@@ -342,17 +348,23 @@ function CreateNewLabel({ onBack, onClose, onCreate, isCreating = false, error }
       <div className="space-y-2">
         <label className="text-sm font-medium text-gray-700">Select a color</label>
         <div className="grid grid-cols-5 gap-1">
-          {LABEL_COLORS.map((color) => (
-            <button
-              key={color}
-              className={`h-6 w-12 rounded border-2 ${selectedColor === color
-                ? 'border-blue-500'
-                : 'border-gray-200 hover:border-gray-300'
-                }`}
-              style={{ backgroundColor: color }}
-              onClick={() => handleColorSelect(color)}
-              disabled={isCreating}
-            />
+          {LABEL_COLORS.map((colorOption) => (
+            <Tooltip key={colorOption.color}>
+              <TooltipTrigger asChild>
+                <button
+                  className={`h-6 w-12 rounded cursor-pointer ${selectedColor === colorOption.color
+                    ? 'border-blue-500'
+                    : ''
+                    }`}
+                  style={{ backgroundColor: colorOption.color }}
+                  onClick={() => handleColorSelect(colorOption.color)}
+                  disabled={isCreating}
+                />
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{colorOption.name}</p>
+              </TooltipContent>
+            </Tooltip>
           ))}
         </div>
       </div>
@@ -473,17 +485,23 @@ function EditLabel({ label, onBack, onClose, onUpdate, onDelete, isUpdating = fa
       <div className="space-y-2">
         <label className="text-sm font-medium text-gray-700">Select a color</label>
         <div className="grid grid-cols-5 gap-1">
-          {LABEL_COLORS.map((color) => (
-            <button
-              key={color}
-              className={`h-6 w-12 rounded border-2 ${selectedColor === color
-                ? 'border-blue-500'
-                : 'border-gray-200 hover:border-gray-300'
-                }`}
-              style={{ backgroundColor: color }}
-              onClick={() => handleColorSelect(color)}
-              disabled={isUpdating}
-            />
+          {LABEL_COLORS.map((colorOption) => (
+            <Tooltip key={colorOption.color}>
+              <TooltipTrigger asChild>
+                <button
+                  className={`h-6 w-12 rounded ${selectedColor === colorOption.color
+                    ? 'border-blue-500'
+                    : 'hover:border-gray-300'
+                    }`}
+                  style={{ backgroundColor: colorOption.color }}
+                  onClick={() => handleColorSelect(colorOption.color)}
+                  disabled={isUpdating}
+                />
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{colorOption.name}</p>
+              </TooltipContent>
+            </Tooltip>
           ))}
         </div>
       </div>
@@ -530,12 +548,19 @@ function LabelItem({ label, onLabelToggle, onShowEditLabel }: LabelItemProps) {
         onCheckedChange={() => onLabelToggle(label)}
         className="w-4 h-4"
       />
-      <div
-        className="h-6 px-2 rounded text-white text-xs font-medium flex items-center flex-1 cursor-pointer"
-        style={{ backgroundColor: label.color }}
-        onClick={() => onLabelToggle(label)}>
-        {truncateText(label.title, 27)}
-      </div>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div
+            className="h-6 px-2 rounded text-white text-xs font-medium flex items-center flex-1 cursor-pointer"
+            style={{ backgroundColor: label.color }}
+            onClick={() => onLabelToggle(label)}>
+            {truncateText(label.title, 27)}
+          </div>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>{getColorName(label.color)}</p>
+        </TooltipContent>
+      </Tooltip>
       <Button
         variant="ghost"
         size="sm"
