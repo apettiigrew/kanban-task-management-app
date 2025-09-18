@@ -21,7 +21,27 @@ export async function GET(request: NextRequest) {
     const columns = await prisma.column.findMany({
       where: whereClause,
       include: {
-        cards: includeTasks,
+        cards: includeTasks ? {
+          include: {
+            cardLabels: {
+              select: {
+                id: true,
+                cardId: true,
+                labelId: true,
+                label: {
+                  select: {
+                    id: true,
+                    title: true,
+                    color: true,
+                  }
+                }
+              }
+            }
+          },
+          orderBy: {
+            order: 'asc'
+          }
+        } : false,
         project: {
           select: {
             id: true,
@@ -34,7 +54,24 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    return createSuccessResponse(columns, 'Columns fetched successfully')
+    // Transform the data to include labels with checked status for cards
+    const columnsWithLabels = columns.map(column => ({
+      ...column,
+      cards: column.cards ? column.cards.map(card => ({
+        ...card,
+        labels: card.cardLabels.map(cardLabel => ({
+          id: cardLabel.label.id,
+          title: cardLabel.label.title,
+          color: cardLabel.label.color,
+          projectId: cardLabel.label.projectId,
+          createdAt: cardLabel.label.createdAt,
+          updatedAt: cardLabel.label.updatedAt,
+          checked: cardLabel.checked
+        }))
+      })) : []
+    }))
+
+    return createSuccessResponse(columnsWithLabels, 'Columns fetched successfully')
   } catch (error) {
     return handleAPIError(error, '/api/columns')
   }

@@ -34,6 +34,7 @@ import {
 import { cc, classIf } from '@/utils/style-utils';
 import { TextIcon } from './icons/icons';
 import { ChecklistProgressIndicator } from './checklist-progress-indicator';
+import { LabelDisplay } from './label-display';
 import { useTaskDialog } from '@/contexts/task-dialog-context';
 
 
@@ -64,6 +65,16 @@ type CardState =
   | { type: 'is-over'; dragging: DOMRect; closestEdge: Edge };
 
 const draggingState: CardState = { type: 'idle' };
+
+const innerStyles: { [Key in CardState['type']]?: string } = {
+  idle: 'hover:cursor-grab',
+  'is-dragging': 'opacity-50',
+};
+
+const outerStyles: { [Key in CardState['type']]?: string } = {
+  'is-dragging-and-left-self': 'hidden',
+};
+
 
 interface CardProps {
   card: TCard;
@@ -187,15 +198,6 @@ export function CardShadow({ dragging }: { dragging: DOMRect }) {
   return <div className="flex-shrink-0 rounded-md bg-slate-900" style={{ height: dragging.height }} />;
 }
 
-const innerStyles: { [Key in CardState['type']]?: string } = {
-  idle: 'hover:cursor-grab',
-  'is-dragging': 'opacity-50',
-};
-
-const outerStyles: { [Key in CardState['type']]?: string } = {
-  'is-dragging-and-left-self': 'hidden',
-};
-
 interface CardDisplayProps {
   card: TCard;
   state: CardState;
@@ -209,6 +211,8 @@ export function CardDisplay(props: CardDisplayProps) {
   const { card, state, outerRef, innerRef, handleCardClick, handleDeleteClick } = props;
   const formattedDate = new Date(card.createdAt)
   const formattedDateString = `${card.title} ${formattedDate.getMilliseconds()}`
+
+  console.log(card.labels)
   return (
     <div
       ref={outerRef}
@@ -229,10 +233,10 @@ export function CardDisplay(props: CardDisplayProps) {
           classIf(state.type === 'is-dragging', 'opacity-50 shadow-none')
         )}>
         <div className="flex flex-col">
+          <LabelDisplay labels={card.labels || []} />
           <div className="flex items-start justify-between gap-2">
             <div className="flex-1 overflow-hidden" onClick={handleCardClick}>
-
-              { formattedDateString }
+              {card.title}
             </div>
             <DropdownMenu modal={false}>
               <DropdownMenuTrigger asChild>

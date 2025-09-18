@@ -2,6 +2,7 @@ import { apiRequest } from "@/lib/form-error-handler";
 import { CreateLabelDTO, TLabel, UpdateLabelDTO, CreateCardLabelDTO, UpdateCardLabelDTO, TCardLabel, TLabelWithChecked } from "@/models/label";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { labelKeys } from "../queries/use-labels";
+import { projectKeys } from "../queries/use-projects";
 
 const createLabel = async (data: CreateLabelDTO): Promise<TLabel> => {
     return apiRequest<TLabel>('/api/labels', {
@@ -17,13 +18,13 @@ const updateLabel = async (payload: UpdateLabelDTO): Promise<TLabel> => {
     })
 }
 
-const deleteLabel = async ({ labelId, cardId }: { labelId: string, cardId: string }): Promise<void> => {
+const deleteLabel = async ({ labelId }: { labelId: string, cardId: string, projectId: string }): Promise<void> => {
     return apiRequest<void>(`/api/labels/${labelId}`, {
         method: 'DELETE'
     })
 }
 
-const toggleCardLabel = async (data: { cardId: string; labelId: string }): Promise<TCardLabel> => {
+const toggleCardLabel = async (data: { cardId: string; labelId: string; projectId: string }): Promise<TCardLabel> => {
     return apiRequest<TCardLabel>('/api/card-labels/toggle', {
         method: 'POST',
         body: JSON.stringify(data)
@@ -74,6 +75,10 @@ export const useCreateLabel = () => {
         onSettled: (data, error, newLabel) => {
             // Always refetch after error or success to ensure server state
             queryClient.invalidateQueries({ queryKey: labelKeys.byCard(newLabel.projectId) })
+
+
+            // Always refetch after error or success to ensure consistency
+            queryClient.invalidateQueries({ queryKey: projectKeys.detail(data!.projectId) })
         },
     })
 }
@@ -144,12 +149,11 @@ export const useUpdateLabel = () => {
             }
         },
         onSettled: (data, error, payload) => {
-            // Always refetch after error or success to ensure server state
-            queryClient.invalidateQueries({ queryKey: labelKeys.byProject(payload.projectId) })
             // Also invalidate card-specific queries if cardId is provided
-            if (payload.cardId) {
-                queryClient.invalidateQueries({ queryKey: labelKeys.byCard(payload.cardId) })
-            }
+            queryClient.invalidateQueries({ queryKey: labelKeys.byCard(payload.cardId) })
+
+            // Always refetch after error or success to ensure consistency
+            queryClient.invalidateQueries({ queryKey: projectKeys.detail(payload.projectId) })
         },
     })
 }
@@ -165,7 +169,7 @@ export const useDeleteLabel = () => {
 
             // Snapshot the previous values
             const previousCardLabels = queryClient.getQueryData<TLabel[]>(labelKeys.byCard(payload.cardId))
-        
+
             // Optimistically update to the new value
             if (previousCardLabels) {
                 queryClient.setQueryData(labelKeys.byCard(payload.cardId), (oldData: TLabel[] | undefined) => {
@@ -185,7 +189,11 @@ export const useDeleteLabel = () => {
             }
         },
         onSettled: (data, error, payload) => {
+            // Always refetch after error or success to ensure server state
             queryClient.invalidateQueries({ queryKey: labelKeys.byCard(payload.cardId) })
+
+            // Always refetch after error or success to ensure consistency
+            queryClient.invalidateQueries({ queryKey: projectKeys.detail(payload.projectId) })
         },
     })
 }
@@ -230,6 +238,9 @@ export const useToggleCardLabel = () => {
         onSettled: (data, error, variables) => {
             // Always refetch after error or success to ensure server state
             queryClient.invalidateQueries({ queryKey: labelKeys.byCard(variables.cardId) })
+
+            // Always refetch after error or success to ensure consistency
+            queryClient.invalidateQueries({ queryKey: projectKeys.detail(variables.projectId) })
         },
     })
 }

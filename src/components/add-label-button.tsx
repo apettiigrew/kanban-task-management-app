@@ -85,7 +85,8 @@ export function AddLabelButton({
   const handleLabelToggle = useCallback((label: TLabelWithChecked) => {
     toggleCardLabelMutation.mutate({
       cardId: cardId,
-      labelId: label.id
+      labelId: label.id,
+      projectId: projectId
     })
   }, [toggleCardLabelMutation, cardId])
 
@@ -104,7 +105,7 @@ export function AddLabelButton({
   }, [updateLabelMutation, cardId])
 
   const handleDeleteLabel = useCallback((labelId: string) => {
-    deleteLabelMutation.mutate({labelId: labelId, cardId: cardId}, {
+    deleteLabelMutation.mutate({labelId, cardId, projectId}, {
       onSuccess: () => {
         setEditingLabel(null)
       }
