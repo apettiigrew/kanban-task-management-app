@@ -107,15 +107,19 @@ export const useUpdateLabel = () => {
         onMutate: async (payload) => {
             // Cancel any outgoing refetches
             await queryClient.cancelQueries({ queryKey: labelKeys.byProject(payload.projectId) })
+            if (payload.cardId) {
+                await queryClient.cancelQueries({ queryKey: labelKeys.byCard(payload.cardId) })
+            }
 
-            // Snapshot the previous value
+            // Snapshot the previous values
             const previousLabels = queryClient.getQueryData<TLabel[]>(labelKeys.byProject(payload.projectId))
+            const previousCardLabels = payload.cardId ? queryClient.getQueryData<TLabelWithChecked[]>(labelKeys.byCard(payload.cardId)) : null
 
             // Optimistically update to the new value
             if (previousLabels) {
                 const previousLabel = previousLabels.find(label => label.id === payload.id)
                 if (!previousLabel) {
-                    return { previousLabels, optimisticLabel: null }
+                    return { previousLabels, previousCardLabels, optimisticLabel: null }
                 }
 
                 const optimisticLabel: TLabel = {
@@ -132,18 +136,41 @@ export const useUpdateLabel = () => {
                     )
                 })
 
-                return { previousLabel, optimisticLabel }
+                // Also update card-specific query if it exists
+                if (payload.cardId && previousCardLabels) {
+                    const optimisticCardLabel: TLabelWithChecked = {
+                        ...optimisticLabel,
+                        checked: previousCardLabels.find(label => label.id === payload.id)?.checked ?? false
+                    }
+
+                    queryClient.setQueryData(labelKeys.byCard(payload.cardId), (oldData: TLabelWithChecked[] | undefined) => {
+                        if (!oldData) return oldData
+
+                        return oldData.map(label =>
+                            label.id === payload.id ? optimisticCardLabel : label
+                        )
+                    })
+                }
+
+                return { previousLabel, previousLabels, previousCardLabels, optimisticLabel }
             }
         },
         onError: (err, payload , context) => {
             // If the mutation fails, use the context returned from onMutate to roll back
-            if (context?.previousLabel) {
-                queryClient.setQueryData(labelKeys.byProject(payload.projectId), context.previousLabel)
+            if (context?.previousLabels) {
+                queryClient.setQueryData(labelKeys.byProject(payload.projectId), context.previousLabels)
+            }
+            if (context?.previousCardLabels && payload.cardId) {
+                queryClient.setQueryData(labelKeys.byCard(payload.cardId), context.previousCardLabels)
             }
         },
         onSettled: (data, error, payload) => {
             // Always refetch after error or success to ensure server state
             queryClient.invalidateQueries({ queryKey: labelKeys.byProject(payload.projectId) })
+            // Also invalidate card-specific queries if cardId is provided
+            if (payload.cardId) {
+                queryClient.invalidateQueries({ queryKey: labelKeys.byCard(payload.cardId) })
+            }
         },
     })
 }
