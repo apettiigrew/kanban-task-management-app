@@ -8,11 +8,11 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
-import { useCreateLabel, useToggleCardLabel, useUpdateLabel } from '@/hooks/mutations/use-label-mutations'
+import { useCreateLabel, useToggleCardLabel, useUpdateLabel, useDeleteLabel } from '@/hooks/mutations/use-label-mutations'
 import { useLabelsWithCheckedStatus } from '@/hooks/queries/use-labels'
 import { TLabelWithChecked } from '@/models/label'
 import { LABEL_COLORS } from '@/utils/data'
-import { ArrowLeft, Pencil, TagIcon, X } from 'lucide-react'
+import { ArrowLeft, Pencil, TagIcon, Trash2, X } from 'lucide-react'
 import { useCallback, useMemo, useState } from 'react'
 
 const truncateText = (text: string, maxLength: number): string => {
@@ -48,6 +48,7 @@ export function AddLabelButton({
   const createLabelMutation = useCreateLabel()
   const toggleCardLabelMutation = useToggleCardLabel()
   const updateLabelMutation = useUpdateLabel()
+  const deleteLabelMutation = useDeleteLabel()
 
   const handleClose = useCallback(() => {
     setIsOpen(false)
@@ -102,6 +103,14 @@ export function AddLabelButton({
     })
   }, [updateLabelMutation, cardId])
 
+  const handleDeleteLabel = useCallback((labelId: string) => {
+    deleteLabelMutation.mutate({labelId: labelId, cardId: cardId}, {
+      onSuccess: () => {
+        setEditingLabel(null)
+      }
+    } )
+  }, [deleteLabelMutation])
+
   const filteredLabels = useMemo(() => labelsWithChecked.filter(label =>
     label.title.toLowerCase().includes(searchQuery.toLowerCase())
   ), [labelsWithChecked, searchQuery])
@@ -146,8 +155,10 @@ export function AddLabelButton({
             onBack={handleBackToLabels}
             onClose={handleClose}
             onUpdate={handleUpdateLabel}
+            onDelete={handleDeleteLabel}
             isUpdating={updateLabelMutation.isPending}
-            error={updateLabelMutation.error}
+            isDeleting={deleteLabelMutation.isPending}
+            error={updateLabelMutation.error || deleteLabelMutation.error}
           />
         ) : null}
       </DropdownMenuContent>
@@ -379,10 +390,12 @@ interface EditLabelProps {
   onBack: () => void
   onClose: () => void
   onUpdate: (labelData: { id: string; title: string; color: string; projectId: string }) => void
+  onDelete: (labelId: string) => void
   isUpdating?: boolean
+  isDeleting?: boolean
   error?: Error | null
 }
-function EditLabel({ label, onBack, onClose, onUpdate, isUpdating = false, error }: EditLabelProps) {
+function EditLabel({ label, onBack, onClose, onUpdate, onDelete, isUpdating = false, isDeleting = false, error }: EditLabelProps) {
   const [labelTitle, setLabelTitle] = useState(label.title)
   const [selectedColor, setSelectedColor] = useState(label.color)
 
@@ -404,6 +417,12 @@ function EditLabel({ label, onBack, onClose, onUpdate, isUpdating = false, error
       })
     }
   }, [labelTitle, selectedColor, isUpdating, onUpdate, label.id, label.projectId])
+
+  const handleDelete = useCallback(() => {
+    if (!isDeleting) {
+      onDelete(label.id)
+    }
+  }, [onDelete, label.id, isDeleting])
 
   return (
     <div className="space-y-4">
@@ -476,21 +495,20 @@ function EditLabel({ label, onBack, onClose, onUpdate, isUpdating = false, error
 
       <div className="flex gap-2 pt-2">
         <Button
-          variant="outline"
-          size="sm"
-          onClick={handleRemoveColor}
-          className="flex-1"
-          disabled={!selectedColor || isUpdating}
-        >
-          <X className="h-4 w-4 mr-1" />
-          Remove color
-        </Button>
-        <Button
           size="sm"
           onClick={handleUpdate}
-          disabled={!labelTitle.trim() || !selectedColor || isUpdating}
+          disabled={!labelTitle.trim() || !selectedColor || isUpdating || isDeleting}
           className="flex-1">
          Update
+        </Button>
+        <Button
+          variant="destructive"
+          size="sm"
+          onClick={handleDelete}
+          disabled={isUpdating || isDeleting}
+          className="flex-1">
+          <Trash2 className="h-4 w-4 mr-1" />
+          Delete
         </Button>
       </div>
     </div>
