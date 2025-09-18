@@ -167,7 +167,6 @@ export const useDeleteTask = () => {
         },
         onSettled: (data, error, variables) => {
             // Always refetch after error or success to ensure consistency
-            console.log('onSettled', data, error, variables)
             queryClient.invalidateQueries({ queryKey: projectKeys.detail(variables.projectId) })
         }
     })

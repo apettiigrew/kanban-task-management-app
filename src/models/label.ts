@@ -22,9 +22,9 @@ export type TLabelWithChecked = TLabel & {
 }
 
 export interface CreateLabelDTO {
-  cardId: string;
   title: string;
   color: string;
+  cardId: string;
   projectId: string;
 }
 

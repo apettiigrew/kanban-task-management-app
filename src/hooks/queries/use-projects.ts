@@ -40,7 +40,6 @@ interface UpdateProjectData {
 }
 
 const createProject = async (data: CreateProjectData): Promise<TProject> => {
-  console.log("data inside createProject", data)
   return apiRequest<TProject>('/api/projects', {
     method: 'POST',
     body: JSON.stringify(data),

@@ -59,23 +59,24 @@ export const useCreateLabel = () => {
         mutationFn: createLabel,
         onMutate: async (newLabel) => {
             // Cancel any outgoing refetches
-            await queryClient.cancelQueries({ queryKey: labelKeys.byProject(newLabel.projectId) })
+            await queryClient.cancelQueries({ queryKey: labelKeys.byCard(newLabel.cardId) })
 
             // Snapshot the previous value
-            const previousLabels = queryClient.getQueryData<TLabel[]>(labelKeys.byProject(newLabel.projectId))
+            const previousLabels = queryClient.getQueryData<TLabelWithChecked[]>(labelKeys.byCard(newLabel.cardId))
 
             // Optimistically update to the new value
-            const optimisticLabel: TLabel = {
-                id: `temp-${Date.now()}`, // Temporary ID
+            const optimisticLabel: TLabelWithChecked = {
+                id: `temp-${Date.now()}`,
                 title: newLabel.title,
                 color: newLabel.color,
+                checked: true,
                 projectId: newLabel.projectId,
                 createdAt: new Date(),
                 updatedAt: new Date(),
             }
 
-            queryClient.setQueryData<TLabel[]>(
-                labelKeys.byProject(newLabel.projectId),
+            queryClient.setQueryData<TLabelWithChecked[]>(
+                labelKeys.byCard(newLabel.cardId),
                 (old) => old ? [...old, optimisticLabel] : [optimisticLabel]
             )
 
@@ -86,14 +87,14 @@ export const useCreateLabel = () => {
             // If the mutation fails, use the context returned from onMutate to roll back
             if (context?.previousLabels) {
                 queryClient.setQueryData(
-                    labelKeys.byProject(newLabel.projectId),
+                    labelKeys.byCard(newLabel.cardId),
                     context.previousLabels
                 )
             }
         },
         onSettled: (data, error, newLabel) => {
             // Always refetch after error or success to ensure server state
-            queryClient.invalidateQueries({ queryKey: labelKeys.byProject(newLabel.projectId) })
+            queryClient.invalidateQueries({ queryKey: labelKeys.byCard(newLabel.projectId) })
         },
     })
 }

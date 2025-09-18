@@ -35,8 +35,9 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
+    
     const validatedData = validateRequestBody(createLabelSchema, body)
-
+  
     const label = await prisma.label.create({
         data: {
           title: validatedData.title,
@@ -49,7 +50,8 @@ export async function POST(request: NextRequest) {
     const cardLabel = await prisma.cardLabel.create({
       data: {
         cardId: validatedData.cardId,
-        labelId: label.id
+        labelId: label.id,
+        checked: true
       }
     })
 

@@ -10,6 +10,7 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
+    "db:sql": "prisma generate sql --schema=./src/prisma/schema.prisma",
     "db:generate": "prisma generate --schema=./src/prisma/schema.prisma",
     "db:migrate": "prisma migrate dev --schema=./src/prisma/schema.prisma",
     "db:seed": "tsx src/prisma/seed.ts",

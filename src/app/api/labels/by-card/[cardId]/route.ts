@@ -32,9 +32,6 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
           where: {
             cardId: cardId
           },
-          select: {
-            checked: true
-          }
         }
       },
       orderBy: {

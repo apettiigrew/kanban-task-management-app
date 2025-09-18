@@ -1,19 +1,19 @@
 'use client'
 
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
-import { X, TagIcon, ArrowLeft, Check, Pencil } from 'lucide-react'
-import { Checkbox } from '@/components/ui/checkbox'
-import { useCallback, useState, useMemo } from 'react'
-import { useLabels, useLabelsWithCheckedStatus } from '@/hooks/queries/use-labels'
 import { useCreateLabel, useToggleCardLabel } from '@/hooks/mutations/use-label-mutations'
-import { TLabel, TLabelWithChecked } from '@/models/label'
+import { useLabelsWithCheckedStatus } from '@/hooks/queries/use-labels'
+import { TLabelWithChecked } from '@/models/label'
 import { LABEL_COLORS } from '@/utils/data'
+import { ArrowLeft, Pencil, TagIcon, X } from 'lucide-react'
+import { useCallback, useMemo, useState } from 'react'
 
 interface AddLabelButtonProps {
   projectId: string
@@ -31,29 +31,34 @@ export function AddLabelButton({
   const [searchQuery, setSearchQuery] = useState('')
   const [showCreateLabel, setShowCreateLabel] = useState(false)
 
-  const { data: labelsWithChecked = [], isLoading: isLoadingLabelsWithChecked, error: labelsWithCheckedError } = useLabelsWithCheckedStatus(cardId)
+  const {
+    data: labelsWithChecked = [],
+    isLoading: isLoadingLabelsWithChecked,
+    error: labelsWithCheckedError
+  } = useLabelsWithCheckedStatus(cardId)
+  
   const createLabelMutation = useCreateLabel()
   const toggleCardLabelMutation = useToggleCardLabel()
 
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     setIsOpen(false)
     setShowCreateLabel(false)
-  }
+  }, [])
 
-  const handleShowCreateLabel = () => {
+  const handleShowCreateLabel = useCallback(() => {
     setShowCreateLabel(true)
-  }
+  }, [])
 
-  const handleBackToLabels = () => {
+  const handleBackToLabels = useCallback(() => {
     setShowCreateLabel(false)
-  }
+  }, [])
 
   const handleCreateLabel = useCallback((labelData: { title: string; color: string }) => {
     createLabelMutation.mutate({
       cardId: cardId,
+      projectId: projectId,
       title: labelData.title,
       color: labelData.color,
-      projectId
     }, {
       onSuccess: (newLabel) => {
         setShowCreateLabel(false)
@@ -62,16 +67,15 @@ export function AddLabelButton({
   }, [createLabelMutation])
 
   const handleLabelToggle = useCallback((label: TLabelWithChecked) => {
-    console.log('Toggle label:', label.id)
     toggleCardLabelMutation.mutate({
       cardId: cardId,
       labelId: label.id
     })
   }, [toggleCardLabelMutation, cardId])
 
-  const filteredLabels = labelsWithChecked.filter(label =>
+  const filteredLabels = useMemo(() => labelsWithChecked.filter(label =>
     label.title.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+  ), [labelsWithChecked, searchQuery])
 
   return (
     <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
@@ -212,7 +216,6 @@ function DisplayLabels({
   )
 }
 
-
 interface CreateNewLabelProps {
   onBack: () => void
   onClose: () => void
@@ -224,15 +227,15 @@ function CreateNewLabel({ onBack, onClose, onCreate, isCreating = false, error }
   const [labelTitle, setLabelTitle] = useState('')
   const [selectedColor, setSelectedColor] = useState('#61BD4F')
 
-  const handleColorSelect = (color: string) => {
+  const handleColorSelect = useCallback((color: string) => {
     setSelectedColor(color)
-  }
+  }, [])
 
-  const handleRemoveColor = () => {
+  const handleRemoveColor = useCallback(() => {
     setSelectedColor('')
-  }
+  }, [])
 
-  const handleCreate = () => {
+  const handleCreate = useCallback(() => {
     if (labelTitle.trim() && selectedColor && !isCreating) {
       onCreate({
         title: labelTitle.trim(),
@@ -241,7 +244,7 @@ function CreateNewLabel({ onBack, onClose, onCreate, isCreating = false, error }
       setLabelTitle('')
       setSelectedColor('#61BD4F')
     }
-  }
+  }, [labelTitle, selectedColor, isCreating, onCreate])
 
   return (
     <div className="space-y-4">
@@ -361,7 +364,6 @@ function LabelItem({ label, onLabelToggle }: LabelItemProps) {
         className="h-6 w-6 p-0 hover:bg-gray-200"
         onClick={(e) => {
           e.stopPropagation()
-          console.log('Edit label:', label.id)
         }}>
         <Pencil className="h-3 w-3" />
       </Button>

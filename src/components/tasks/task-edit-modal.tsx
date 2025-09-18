@@ -755,7 +755,7 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
   const handleImproveWriting = useCallback(async () => {
     const oldTitle = title;
     setIsAIProcessing(true);
-    
+
     try {
       const improvedTitle = await handleImproveWritingOpenAI(title)
       setTitle("")
@@ -794,7 +794,7 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
   const handleMakeLonger = useCallback(async () => {
     const oldTitle = title;
     setIsAIProcessing(true);
-    
+
     try {
       const improvedTitle = await handleMakeLongerOpenAI(title)
       setTitle("")
@@ -833,7 +833,7 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
   const handleMakeShorter = useCallback(async () => {
     const oldTitle = title;
     setIsAIProcessing(true);
-    
+
     try {
       const improvedTitle = await handleMakeShorterOpenAI(title)
       setTitle("")
@@ -872,7 +872,7 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
   const handleMakeSMART = useCallback(async () => {
     const oldTitle = title;
     setIsAIProcessing(true);
-    
+
     try {
       const improvedTitle = await handleMakeSMARTOpenAI(title)
       setTitle("")
@@ -1049,17 +1049,19 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
               </div>
               <div className="flex flex-[1_1_auto] flex-col gap-2">
                 <p className="text-sm font-medium mb-2">Actions</p>
-                <DeleteActionButton onClick={() => openDeleteModal(card)}>
-                  Delete Card
-                </DeleteActionButton>
+                <AddLabelButton
+                  projectId={card.projectId}
+                  cardId={card.id}>
+                  Add Label
+                </AddLabelButton>
 
                 <AddChecklistButton onAddChecklist={addChecklist}>
                   Add Checklist
                 </AddChecklistButton>
 
-                <AddLabelButton projectId={card.projectId}>
-                  Add Label
-                </AddLabelButton>
+                <DeleteActionButton onClick={() => openDeleteModal(card)}>
+                  Delete Card
+                </DeleteActionButton>
               </div>
             </div>
           </div>
