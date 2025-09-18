@@ -21,11 +21,13 @@ import {
 } from '@/hooks/mutations/use-checklist-mutations'
 import { useUpdateTask } from '@/hooks/mutations/use-task-mutations'
 import { useChecklistsByCard } from '@/hooks/queries/use-checklists'
+import { useLabelsWithCheckedStatus } from '@/hooks/queries/use-labels'
 
 import { projectKeys } from '@/hooks/queries/use-projects'
 import { TCard } from '@/models/card'
 import { TChecklist } from '@/models/checklist'
 import { TChecklistItem } from '@/models/checklist-item'
+import { TLabelWithChecked } from '@/models/label'
 import {
   isChecklistData,
   isChecklistDropTargetData,
@@ -58,6 +60,7 @@ import { DeleteActionButton } from '../delete-action-button'
 import { MenuBar } from '../editor/menubar'
 import { Textarea } from '../ui/textarea'
 import { AddLabelButton } from '../add-label-button'
+import { LabelList } from '../label-list'
 
 interface TaskEditModalProps {
   card: TCard
@@ -110,6 +113,15 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
   const {
     data: fetchedChecklists = [],
   } = useChecklistsByCard(card.id)
+
+  const {
+    data: labelsWithChecked = [],
+  } = useLabelsWithCheckedStatus(card.id)
+
+  const handleLabelClick = useCallback((label: TLabelWithChecked) => {
+    // Optional: Handle label click if needed in the future
+    console.log('Label clicked:', label.title)
+  }, [])
 
   useEffect(() => {
     if (fetchedChecklists.length > 0 && !checklistsInitialized.current) {
@@ -981,6 +993,20 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
             <div className="flex flex-1 gap-4">
               <div className="flex-[2_0_80%]">
                 <div className="space-y-4">
+                  {labelsWithChecked.length > 0 && (
+                    <div className="space-y-2">
+                      <div className='flex items-center gap-2'>
+                        <label className="text-sm font-medium">Labels</label>
+                      </div>
+                      <LabelList 
+                        labels={labelsWithChecked}
+                        showOnlyChecked={true}
+                        size="lg"
+                        className="mb-2"
+                      />
+                    </div>
+                  )}
+                  
                   <div className="space-y-2">
                     <div className='flex items-center gap-2'>
                       <TextIcon className="h-4 w-4 text-gray-500" />

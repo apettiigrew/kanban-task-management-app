@@ -139,12 +139,8 @@ function DisplayLabels({
   const labelsContainerClassName = useMemo(() => {
     const baseClasses = 'space-y-1 overflow-y-auto scrollbar-thin scrollbar-gray-300'
 
-    const heightClass = labels.length >= 15
-      ? 'max-h-80'
-      : labels.length >= 10
-        ? 'max-h-64'
-        : 'max-h-48'
-
+    const heightClass = 'max-h-48'
+  
     const borderClass = labels.length >= 10
       ? 'border border-gray-200 rounded-md p-1'
       : ''
@@ -176,9 +172,6 @@ function DisplayLabels({
         <h4 className="text-sm font-medium text-gray-700">Labels</h4>
         {!isLoading && !error && labels.length > 0 && (
           <div className="relative">
-            {labels.length >= 10 && (
-              <div className="absolute top-0 left-0 right-0 h-4 bg-gradient-to-b from-white to-transparent pointer-events-none z-10" />
-            )}
             <div className={labelsContainerClassName}>
               {labels.map((label) => {
 
