@@ -84,8 +84,18 @@ export function AddLabelButton({
     label.title.toLowerCase().includes(searchQuery.toLowerCase())
   ), [labelsWithChecked, searchQuery])
 
+
+  const handleOpenChange = useCallback((open: boolean) => {
+    if (!open) {
+      //remove the style="pointer-events: none;" from the body
+      document.body.style.pointerEvents = "auto"
+      setIsOpen(false)
+    }
+    setIsOpen(open)
+  }, [])
+
   return (
-    <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
+    <DropdownMenu open={isOpen} onOpenChange={handleOpenChange}>
       <DropdownMenuTrigger asChild>
         <Button
           variant="outline"
