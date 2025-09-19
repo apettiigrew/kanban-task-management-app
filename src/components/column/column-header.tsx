@@ -225,28 +225,7 @@ export function ColumnHeader({
                                         Sort by
                                     </DropdownMenuItem>
                                 )}
-
-                                <DropdownMenuItem>
-                                    <MenuIcon icon={Users} />
-                                    Watch
-                                </DropdownMenuItem>
-
-                                <DropdownMenuSeparator />
-
-                                <DropdownMenuItem className="text-blue-600">
-                                    <div className="h-4 w-4 mr-2 bg-blue-500 rounded flex items-center justify-center">
-                                        <div className="text-white text-xs font-bold">J</div>
-                                    </div>
-                                    Add list from Jira work items
-                                </DropdownMenuItem>
-
-                                <DropdownMenuSeparator />
-
-                                <DropdownMenuItem className="justify-between">
-                                    <span>Automation</span>
-                                    <ChevronRight className="h-4 w-4" />
-                                </DropdownMenuItem>
-
+                                
                                 <DropdownMenuSeparator />
 
                                 <DropdownMenuItem>
