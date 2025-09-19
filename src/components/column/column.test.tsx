@@ -110,7 +110,7 @@ describe('Card Component - Card Creation', () => {
       fireEvent.click(addCardButton)
 
       // Should show the input form
-      expect(screen.getByPlaceholderText(/bottom/i)).toBeInTheDocument()
+      expect(screen.getByPlaceholderText(/add a card/i)).toBeInTheDocument()
       expect(screen.getByText('Add card')).toBeInTheDocument()
       expect(screen.getByRole('button', { name: /cancel adding card/i })).toBeInTheDocument()
 
@@ -124,7 +124,7 @@ describe('Card Component - Card Creation', () => {
       const addCardButton = screen.getByRole('button', { name: /add a card/i })
       fireEvent.click(addCardButton)
 
-      const titleInput = screen.getByPlaceholderText(/bottom/i)
+      const titleInput = screen.getByPlaceholderText(/add a card/i)
       await waitFor(() => {
         expect(titleInput).toHaveFocus()
       })
@@ -136,7 +136,7 @@ describe('Card Component - Card Creation', () => {
       const addCardButton = screen.getByRole('button', { name: /add a card/i })
       fireEvent.click(addCardButton)
 
-      const titleInput = screen.getByPlaceholderText(/bottom/i)
+      const titleInput = screen.getByPlaceholderText(/add a card/i)
       fireEvent.change(titleInput, { target: { value: 'New Task Title' } })
 
       expect(titleInput).toHaveValue('New Task Title')
@@ -158,7 +158,7 @@ describe('Card Component - Card Creation', () => {
       const addCardButton = screen.getByRole('button', { name: /add a card/i })
       fireEvent.click(addCardButton)
 
-      const titleInput = screen.getByPlaceholderText(/bottom/i)
+      const titleInput = screen.getByPlaceholderText(/add a card/i)
       const submitButton = screen.getByText('Add card')
 
       expect(submitButton).toBeDisabled()
@@ -173,7 +173,7 @@ describe('Card Component - Card Creation', () => {
       const addCardButton = screen.getByRole('button', { name: /add a card/i })
       fireEvent.click(addCardButton)
 
-      const titleInput = screen.getByPlaceholderText(/bottom/i)
+      const titleInput = screen.getByPlaceholderText(/add a card/i)
       const submitButton = screen.getByText('Add card')
 
       fireEvent.change(titleInput, { target: { value: '   ' } })
@@ -189,12 +189,12 @@ describe('Card Component - Card Creation', () => {
       const addCardButton = screen.getByRole('button', { name: /add a card/i })
       fireEvent.click(addCardButton)
 
-      const titleInput = screen.getByPlaceholderText(/bottom/i)
+      const titleInput = screen.getByPlaceholderText(/add a card/i)
       fireEvent.change(titleInput, { target: { value: 'Quick Card' } })
       fireEvent.keyDown(titleInput, { key: 'Enter', code: 'Enter' })
 
       // Should exit add mode and return to button view
-      expect(screen.queryByPlaceholderText(/bottom/i)).not.toBeInTheDocument()
+      expect(screen.queryByPlaceholderText(/add a card/i)).not.toBeInTheDocument()
       expect(screen.getByRole('button', { name: /add a card/i })).toBeInTheDocument()
     })
 
@@ -204,11 +204,11 @@ describe('Card Component - Card Creation', () => {
       const addCardButton = screen.getByRole('button', { name: /add a card/i })
       fireEvent.click(addCardButton)
 
-      const titleInput = screen.getByPlaceholderText(/bottom/i)
+      const titleInput = screen.getByPlaceholderText(/add a card/i)
       fireEvent.keyDown(titleInput, { key: 'Enter', code: 'Enter' })
 
       // Should stay in add mode
-      expect(screen.getByPlaceholderText(/bottom/i)).toBeInTheDocument()
+      expect(screen.getByPlaceholderText(/add a card/i)).toBeInTheDocument()
     })
 
     it('should cancel when pressing Escape key', () => {
@@ -217,13 +217,13 @@ describe('Card Component - Card Creation', () => {
       const addCardButton = screen.getByRole('button', { name: /add a card/i })
       fireEvent.click(addCardButton)
 
-      const titleInput = screen.getByPlaceholderText(/bottom/i)
+      const titleInput = screen.getByPlaceholderText(/add a card/i)
       fireEvent.change(titleInput, { target: { value: 'Some text' } })
 
       fireEvent.keyDown(titleInput, { key: 'Escape', code: 'Escape' })
 
       // Should return to add button view
-      expect(screen.queryByPlaceholderText(/bottom/i)).not.toBeInTheDocument()
+      expect(screen.queryByPlaceholderText(/add a card/i)).not.toBeInTheDocument()
       expect(screen.getByRole('button', { name: /add a card/i })).toBeInTheDocument()
     })
 
@@ -233,14 +233,14 @@ describe('Card Component - Card Creation', () => {
       const addCardButton = screen.getByRole('button', { name: /add a card/i })
       fireEvent.click(addCardButton)
 
-      const titleInput = screen.getByPlaceholderText(/bottom/i)
+      const titleInput = screen.getByPlaceholderText(/add a card/i)
       fireEvent.change(titleInput, { target: { value: 'Some text' } })
 
       const cancelButton = screen.getByRole('button', { name: /cancel adding card/i })
       fireEvent.click(cancelButton)
 
       // Should return to add button view
-      expect(screen.queryByPlaceholderText(/bottom/i)).not.toBeInTheDocument()
+      expect(screen.queryByPlaceholderText(/add a card/i)).not.toBeInTheDocument()
       expect(screen.getByRole('button', { name: /add a card/i })).toBeInTheDocument()
     })
 
@@ -250,14 +250,14 @@ describe('Card Component - Card Creation', () => {
       const addCardButton = screen.getByRole('button', { name: /add a card/i })
       fireEvent.click(addCardButton)
 
-      const titleInput = screen.getByPlaceholderText(/bottom/i)
+      const titleInput = screen.getByPlaceholderText(/add a card/i)
       fireEvent.change(titleInput, { target: { value: 'Mouse Click Card' } })
 
       const submitButton = screen.getByText('Add card')
       fireEvent.click(submitButton)
 
       // Should return to button view
-      expect(screen.queryByPlaceholderText(/bottom/i)).not.toBeInTheDocument()
+      expect(screen.queryByPlaceholderText(/add a card/i)).not.toBeInTheDocument()
       expect(screen.getByRole('button', { name: /add a card/i })).toBeInTheDocument()
     })
 
@@ -267,7 +267,7 @@ describe('Card Component - Card Creation', () => {
       const addCardButton = screen.getByRole('button', { name: /add a card/i })
       fireEvent.click(addCardButton)
 
-      const titleInput = screen.getByPlaceholderText(/bottom/i)
+      const titleInput = screen.getByPlaceholderText(/add a card/i)
       const specialText = 'Task #1: Fix bug @john & @jane (urgent!) 50% done'
       fireEvent.change(titleInput, { target: { value: specialText } })
 
@@ -283,7 +283,7 @@ describe('Card Component - Card Creation', () => {
       const addCardButton = screen.getByRole('button', { name: /add a card/i })
       fireEvent.click(addCardButton)
 
-      const titleInput = screen.getByPlaceholderText(/bottom/i)
+      const titleInput = screen.getByPlaceholderText(/add a card/i)
       const unicodeText = 'タスク 🚀 émojis & ñoño'
       fireEvent.change(titleInput, { target: { value: unicodeText } })
 
@@ -299,7 +299,7 @@ describe('Card Component - Card Creation', () => {
       const addCardButton = screen.getByRole('button', { name: /add a card/i })
       fireEvent.click(addCardButton)
 
-      const titleInput = screen.getByPlaceholderText(/bottom/i)
+      const titleInput = screen.getByPlaceholderText(/add a card/i)
       const longText = 'A'.repeat(500) // Very long text
       fireEvent.change(titleInput, { target: { value: longText } })
 
@@ -315,7 +315,7 @@ describe('Card Component - Card Creation', () => {
       const addCardButton = screen.getByRole('button', { name: /add a card/i })
       fireEvent.click(addCardButton)
 
-      const titleInput = screen.getByPlaceholderText(/bottom/i)
+      const titleInput = screen.getByPlaceholderText(/add a card/i)
       fireEvent.change(titleInput, { target: { value: 'Test Card' } })
 
       const submitButton = screen.getByText('Add card')
@@ -325,7 +325,7 @@ describe('Card Component - Card Creation', () => {
       const newAddCardButton = screen.getByRole('button', { name: /add a card/i })
       fireEvent.click(newAddCardButton)
 
-      const newTitleInput = screen.getByPlaceholderText(/bottom/i)
+      const newTitleInput = screen.getByPlaceholderText(/add a card/i)
       expect(newTitleInput).toHaveValue('')
     })
 
@@ -336,7 +336,7 @@ describe('Card Component - Card Creation', () => {
       let addCardButton = screen.getByRole('button', { name: /add a card/i })
       fireEvent.click(addCardButton)
 
-      let titleInput = screen.getByPlaceholderText(/bottom/i)
+      let titleInput = screen.getByPlaceholderText(/add a card/i)
       fireEvent.change(titleInput, { target: { value: 'First Card' } })
 
       let submitButton = screen.getByText('Add card')
@@ -349,7 +349,7 @@ describe('Card Component - Card Creation', () => {
       addCardButton = screen.getByRole('button', { name: /add a card/i })
       fireEvent.click(addCardButton)
 
-      titleInput = screen.getByPlaceholderText(/bottom/i)
+      titleInput = screen.getByPlaceholderText(/add a card/i)
       expect(titleInput).toHaveValue('') // Should be empty
       expect(titleInput).toHaveFocus()
 
@@ -367,7 +367,7 @@ describe('Card Component - Card Creation', () => {
       const addCardButton = screen.getByRole('button', { name: /add a card/i })
       fireEvent.click(addCardButton)
 
-      const titleInput = screen.getByPlaceholderText(/bottom/i)
+      const titleInput = screen.getByPlaceholderText(/add a card/i)
       const submitButton = screen.getByText('Add card')
 
       fireEvent.change(titleInput, { target: { value: '   ' } })
@@ -383,7 +383,7 @@ describe('Card Component - Card Creation', () => {
       const addCardButton = screen.getByRole('button', { name: /add a card/i })
       fireEvent.click(addCardButton)
 
-      const titleInput = screen.getByPlaceholderText(/bottom/i)
+      const titleInput = screen.getByPlaceholderText(/add a card/i)
 
       fireEvent.change(titleInput, { target: { value: 'Test' } })
       expect(titleInput).toHaveFocus()
@@ -438,7 +438,7 @@ describe('Card Component - Card Creation', () => {
       fireEvent.click(addCardButton)
 
       // Fill in the title
-      const titleInput = screen.getByPlaceholderText(/bottom/i)
+      const titleInput = screen.getByPlaceholderText(/add a card/i)
       fireEvent.change(titleInput, { target: { value: 'Bottom Card' } })
 
       // Submit the form
@@ -477,7 +477,7 @@ describe('Card Component - Card Creation', () => {
       fireEvent.click(addCardButton)
 
       // Fill in the title
-      const titleInput = screen.getByPlaceholderText(/bottom/i)
+      const titleInput = screen.getByPlaceholderText(/add a card/i)
       fireEvent.change(titleInput, { target: { value: 'New Bottom Card' } })
 
       // Submit the form

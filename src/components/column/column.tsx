@@ -367,7 +367,7 @@ export function Column(props: ColumnProps) {
                             onAddCard={onAddCard}
                             position="top"
                             onCancel={handleCancelAddCard}
-                            placeholder="top"
+                            placeholder="add a card"
                         /> : null}
 
                     <DisplayCards
@@ -384,7 +384,7 @@ export function Column(props: ColumnProps) {
                                 onAddCard={onAddCard}
                                 position="bottom"
                                 onCancel={handleCancelAddCard}
-                                placeholder="bottom"
+                                placeholder="add a card"
                             /> :
                             <RenderIf
                                 condition={!isAddingCard && addCardPosition != 'top'}
