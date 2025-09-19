@@ -300,6 +300,10 @@ function CreateNewLabel({ onBack, onClose, onCreate, isCreating = false, error }
     }
   }, [labelTitle, selectedColor, isCreating, onCreate])
 
+  const isCreateButtonDisabled = useMemo(() => {
+    return !labelTitle.trim() || !selectedColor || isCreating
+  }, [labelTitle, selectedColor, isCreating])
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -377,20 +381,10 @@ function CreateNewLabel({ onBack, onClose, onCreate, isCreating = false, error }
 
       <div className="flex gap-2 pt-2">
         <Button
-          variant="outline"
-          size="sm"
-          onClick={handleRemoveColor}
-          className="flex-1"
-          disabled={!selectedColor || isCreating}
-        >
-          <X className="h-4 w-4 mr-1" />
-          Remove color
-        </Button>
-        <Button
           size="sm"
           onClick={handleCreate}
-          disabled={!labelTitle.trim() || !selectedColor || isCreating}
-          className="flex-1">
+          disabled={isCreateButtonDisabled}
+          className={`flex-1 ${isCreateButtonDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}>
          Create
         </Button>
       </div>
