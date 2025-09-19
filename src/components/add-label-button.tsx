@@ -416,10 +416,6 @@ function EditLabel({ label, onBack, onClose, onUpdate, onDelete, isUpdating = fa
     setSelectedColor(color)
   }, [])
 
-  const handleRemoveColor = useCallback(() => {
-    setSelectedColor('')
-  }, [])
-
   const handleUpdate = useCallback(() => {
     if (labelTitle.trim() && selectedColor && !isUpdating) {
       onUpdate({

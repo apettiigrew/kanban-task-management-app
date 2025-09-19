@@ -78,7 +78,7 @@ export const useCreateLabel = () => {
 
 
             // Always refetch after error or success to ensure consistency
-            queryClient.invalidateQueries({ queryKey: projectKeys.detail(data!.projectId) })
+            queryClient.invalidateQueries({ queryKey: projectKeys.detail(newLabel.projectId) })
         },
     })
 }

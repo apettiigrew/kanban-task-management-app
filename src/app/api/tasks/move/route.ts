@@ -49,11 +49,30 @@ export async function PUT(request: NextRequest) {
             id: true,
             title: true,
           }
+        },
+        cardLabels: {
+          include: {
+            label: true
+          }
         }
       }
     })
 
-    return createSuccessResponse(task, 'Task updated successfully')
+    // Transform the data to include labels with checked status
+    const taskWithLabels = {
+      ...task,
+      labels: task.cardLabels.map(cardLabel => ({
+        id: cardLabel.label.id,
+        title: cardLabel.label.title,
+        color: cardLabel.label.color,
+        projectId: cardLabel.label.projectId,
+        createdAt: cardLabel.label.createdAt,
+        updatedAt: cardLabel.label.updatedAt,
+        checked: cardLabel.checked
+      }))
+    }
+
+    return createSuccessResponse(taskWithLabels, 'Task updated successfully')
   } catch (error) {
     console.log('error', error)
     return handleAPIError(error, `/api/tasks/move`)

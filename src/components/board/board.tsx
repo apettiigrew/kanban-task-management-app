@@ -321,6 +321,7 @@ export function Board(props: BoardProps) {
                             checklists: card.checklists,
                             totalChecklistItems: card.totalChecklistItems,
                             totalCompletedChecklistItems: card.totalCompletedChecklistItems,
+                            labels: card.labels,
                             createdAt: card.createdAt,
                         }));
 
@@ -334,6 +335,7 @@ export function Board(props: BoardProps) {
                             checklists: card.checklists,
                             totalChecklistItems: card.totalChecklistItems,
                             totalCompletedChecklistItems: card.totalCompletedChecklistItems,
+                            labels: card.labels,
                             createdAt: card.createdAt,
                         }));
 
