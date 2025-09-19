@@ -242,8 +242,6 @@ export function Column(props: ColumnProps) {
 
     const onAddCard = useCallback((card: { title: string, position: 'top' | 'bottom' }) => {
         const order = card.position === 'top' ? 0 : (currentColumn.cards.length + 1) - 1;
-
-        console.log('order', order);
         createTaskMutation.mutate({
             projectId: column.projectId,
             columnId: column.id,

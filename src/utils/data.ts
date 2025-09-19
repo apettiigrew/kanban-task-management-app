@@ -3,6 +3,28 @@ import { TColumn } from "@/models/column";
 import { TChecklist } from "@/models/checklist";
 import { TChecklistItem } from "@/models/checklist-item";
 
+export const LABEL_COLORS = [
+  { "color": "#7ed6df", "name": "middle blue" },
+  { "color": "#22a6b3", "name": "greendland" },
+  { "color": "#e056fd", "name": "heliotrope" },
+  { "color": "#be2edd", "name": "steel pink" },
+  { "color": "#686de0", "name": "exodus fruit" },
+  { "color": "#4834d4", "name": "blurple" },
+  { "color": "#30336b", "name": "deep koamaru" },
+  { "color": "#130f40", "name": "deep cove" },
+  { "color": "#95afc0", "name": "soaring eagle" },
+  { "color": "#535c68", "name": "wizard gray" },
+  { "color": "#f6e58d", "name": "beekper" },
+  { "color": "#f9ca24", "name": "turbo" },
+  { "color": "#ffbe76", "name": "spaced nectarine" },
+  { "color": "#f0932b", "name": "quinced jelly" },
+  { "color": "#ff7979", "name": "pink glamour" },
+  { "color": "#eb4d4b", "name": "carmine pink" },
+  { "color": "#badc58", "name": "june bud" },
+  { "color": "#6ab04c", "name": "pure apple" },
+  { "color": "#dff9fb", "name": "costal breeze" },
+  { "color": "#c7ecee", "name": "hint of ice pack" }
+]
 
 export type SortType = 'newest-first' | 'oldest-first' | 'alphabetical';
 

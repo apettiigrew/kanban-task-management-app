@@ -21,11 +21,13 @@ import {
 } from '@/hooks/mutations/use-checklist-mutations'
 import { useUpdateTask } from '@/hooks/mutations/use-task-mutations'
 import { useChecklistsByCard } from '@/hooks/queries/use-checklists'
+import { useLabelsWithCheckedStatus } from '@/hooks/queries/use-labels'
 
 import { projectKeys } from '@/hooks/queries/use-projects'
 import { TCard } from '@/models/card'
 import { TChecklist } from '@/models/checklist'
 import { TChecklistItem } from '@/models/checklist-item'
+import { TLabelWithChecked } from '@/models/label'
 import {
   isChecklistData,
   isChecklistDropTargetData,
@@ -57,6 +59,8 @@ import { Checklist } from '../checklist/checklist'
 import { DeleteActionButton } from '../delete-action-button'
 import { MenuBar } from '../editor/menubar'
 import { Textarea } from '../ui/textarea'
+import { AddLabelButton } from '../add-label-button'
+import { LabelList } from '../label-list'
 
 interface TaskEditModalProps {
   card: TCard
@@ -109,6 +113,15 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
   const {
     data: fetchedChecklists = [],
   } = useChecklistsByCard(card.id)
+
+  const {
+    data: labelsWithChecked = [],
+  } = useLabelsWithCheckedStatus(card.id)
+
+  const handleLabelClick = useCallback((label: TLabelWithChecked) => {
+    // Optional: Handle label click if needed in the future
+    console.log('Label clicked:', label.title)
+  }, [])
 
   useEffect(() => {
     if (fetchedChecklists.length > 0 && !checklistsInitialized.current) {
@@ -754,7 +767,7 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
   const handleImproveWriting = useCallback(async () => {
     const oldTitle = title;
     setIsAIProcessing(true);
-    
+
     try {
       const improvedTitle = await handleImproveWritingOpenAI(title)
       setTitle("")
@@ -793,7 +806,7 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
   const handleMakeLonger = useCallback(async () => {
     const oldTitle = title;
     setIsAIProcessing(true);
-    
+
     try {
       const improvedTitle = await handleMakeLongerOpenAI(title)
       setTitle("")
@@ -832,7 +845,7 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
   const handleMakeShorter = useCallback(async () => {
     const oldTitle = title;
     setIsAIProcessing(true);
-    
+
     try {
       const improvedTitle = await handleMakeShorterOpenAI(title)
       setTitle("")
@@ -871,7 +884,7 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
   const handleMakeSMART = useCallback(async () => {
     const oldTitle = title;
     setIsAIProcessing(true);
-    
+
     try {
       const improvedTitle = await handleMakeSMARTOpenAI(title)
       setTitle("")
@@ -980,6 +993,21 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
             <div className="flex flex-1 gap-4">
               <div className="flex-[2_0_80%]">
                 <div className="space-y-4">
+                  {labelsWithChecked.length > 0 && (
+                    <div className="space-y-2">
+                      <div className='flex items-center gap-2'>
+                        <label className="text-sm font-medium">Labels</label>
+                      </div>
+                      <LabelList 
+                        labels={labelsWithChecked}
+                        showOnlyChecked={true}
+                        size="lg"
+                        className="mb-2"
+                        truncateLength={72}
+                      />
+                    </div>
+                  )}
+                  
                   <div className="space-y-2">
                     <div className='flex items-center gap-2'>
                       <TextIcon className="h-4 w-4 text-gray-500" />
@@ -1046,15 +1074,21 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
                   </div>
                 </div>
               </div>
-              <div className="flex flex-[1_1_auto] flex-col gap-1">
+              <div className="flex flex-[1_1_auto] flex-col gap-2">
                 <p className="text-sm font-medium mb-2">Actions</p>
-                <DeleteActionButton onClick={() => openDeleteModal(card)} className="mb-2">
-                  Delete Card
-                </DeleteActionButton>
+                <AddLabelButton
+                  projectId={card.projectId}
+                  cardId={card.id}>
+                  Add Label
+                </AddLabelButton>
 
                 <AddChecklistButton onAddChecklist={addChecklist}>
                   Add Checklist
                 </AddChecklistButton>
+
+                <DeleteActionButton onClick={() => openDeleteModal(card)}>
+                  Delete Card
+                </DeleteActionButton>
               </div>
             </div>
           </div>

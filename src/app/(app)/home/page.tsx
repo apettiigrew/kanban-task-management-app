@@ -13,6 +13,7 @@ import { useCallback, useState } from "react"
 export default function HomePage() {
 
   const { data: boards = [], isLoading, error } = useProjects()
+  
   const router = useRouter()
   const [searchQuery, setSearchQuery] = useState("")
   const [showArchivedOnly, setShowArchivedOnly] = useState(false)
@@ -134,8 +135,6 @@ const BoardItem = ({ board, onClick }: BoardItemProps) => {
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault()
-          // Handle board click
-          console.log('Opening board:', board.title)
         }
       }}
     >

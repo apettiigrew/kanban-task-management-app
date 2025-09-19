@@ -35,6 +35,11 @@ export async function GET(
             title: true,
           }
         } : false,
+        cardLabels: {
+          include: {
+            label: true
+          }
+        }
       },
     })
 
@@ -42,7 +47,21 @@ export async function GET(
       throw new NotFoundError('Task')
     }
 
-    return createSuccessResponse(task, 'Task fetched successfully')
+    // Transform the data to include labels with checked status
+    const taskWithLabels = {
+      ...task,
+      labels: task.cardLabels.map(cardLabel => ({
+        id: cardLabel.label.id,
+        title: cardLabel.label.title,
+        color: cardLabel.label.color,
+        projectId: cardLabel.label.projectId,
+        createdAt: cardLabel.label.createdAt,
+        updatedAt: cardLabel.label.updatedAt,
+        checked: cardLabel.checked
+      }))
+    }
+
+    return createSuccessResponse(taskWithLabels, 'Task fetched successfully')
   } catch (error) {
     return handleAPIError(error, `/api/tasks/${params.id}`)
   }
@@ -84,11 +103,30 @@ export async function PUT(
             id: true,
             title: true,
           }
+        },
+        cardLabels: {
+          include: {
+            label: true
+          }
         }
       }
     })
 
-    return createSuccessResponse(task, 'Task updated successfully')
+    // Transform the data to include labels with checked status
+    const taskWithLabels = {
+      ...task,
+      labels: task.cardLabels.map(cardLabel => ({
+        id: cardLabel.label.id,
+        title: cardLabel.label.title,
+        color: cardLabel.label.color,
+        projectId: cardLabel.label.projectId,
+        createdAt: cardLabel.label.createdAt,
+        updatedAt: cardLabel.label.updatedAt,
+        checked: cardLabel.checked
+      }))
+    }
+
+    return createSuccessResponse(taskWithLabels, 'Task updated successfully')
   } catch (error) {
     return handleAPIError(error, `/api/tasks/${params.id}`)
   }

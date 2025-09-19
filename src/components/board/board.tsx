@@ -80,7 +80,6 @@ export function Board(props: BoardProps) {
             description: null
         }, {
             onSuccess: (newProject: TProject) => {
-                console.log("Successfully created project", newProject)
                 projectDialogRef.current?.resetForm();
                 setIsProjectDialogOpen(false);
                 router.push(`/board/${newProject.id}`);
@@ -322,6 +321,7 @@ export function Board(props: BoardProps) {
                             checklists: card.checklists,
                             totalChecklistItems: card.totalChecklistItems,
                             totalCompletedChecklistItems: card.totalCompletedChecklistItems,
+                            labels: card.labels,
                             createdAt: card.createdAt,
                         }));
 
@@ -335,11 +335,9 @@ export function Board(props: BoardProps) {
                             checklists: card.checklists,
                             totalChecklistItems: card.totalChecklistItems,
                             totalCompletedChecklistItems: card.totalCompletedChecklistItems,
+                            labels: card.labels,
                             createdAt: card.createdAt,
                         }));
-
-                        // console.log("reorderedDestinationCards", reorderedDestinationCards)
-                        // console.log("reorderedHomeCards", reorderedHomeCards)
 
                         const columns = Array.from(projectState.columns);
                         columns[homeColumnIndex] = {

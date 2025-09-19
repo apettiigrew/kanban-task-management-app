@@ -3,6 +3,7 @@
 
 generator client {
   provider = "prisma-client-js"
+  previewFeatures = ["typedSql"]
 }
 
 datasource db {
@@ -20,6 +21,7 @@ model Project {
   // Relations
   columns     Column[]
   cards       Card[]
+  labels      Label[]
 
   @@map("projects")
 }
@@ -58,6 +60,7 @@ model Card {
   columnId  String
   column    Column  @relation(fields: [columnId], references: [id], onDelete: Cascade)
   checklists Checklist[]
+  cardLabels CardLabel[]
 
   @@map("cards")
   @@index([projectId])
@@ -97,4 +100,38 @@ model ChecklistItem {
   @@map("checklist_items")
   @@index([checklistId])
   @@index([checklistId, order])
+}
+
+model Label {
+  id        String   @id @default(cuid())
+  title     String
+  color     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  cardLabels CardLabel[]
+
+  @@map("labels")
+  @@index([projectId])
+}
+
+model CardLabel {
+  id        String   @id @default(cuid())
+  checked   Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  cardId  String
+  card    Card  @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  labelId String
+  label   Label @relation(fields: [labelId], references: [id], onDelete: Cascade)
+
+  @@map("card_labels")
+  @@index([cardId])
+  @@index([labelId])
+  @@unique([cardId, labelId])
 }

@@ -38,6 +38,21 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                       select: { isCompleted: true }
                     }
                   }
+                },
+                cardLabels: {
+                  select: { 
+                    id: true,
+                    cardId: true,
+                    labelId: true,
+                    label: {
+                      select: {
+                        id: true,
+                        title: true,
+                        color: true,
+                      }
+                    },
+                    checked: true,
+                  }
                 }
               }
             }
@@ -69,6 +84,12 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             ...card,
             totalChecklistItems,
             totalCompletedChecklistItems,
+            labels: card.cardLabels.map(cardLabel => ({
+              id: cardLabel.id,
+              title: cardLabel.label.title,
+              color: cardLabel.label.color,
+              checked: cardLabel.checked
+            }))
           };
         });
 

@@ -149,8 +149,6 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       })
     })
 
-    console.log('copiedColumn', copiedColumn)
-
     return createSuccessResponse(copiedColumn, 'Column copied successfully', 201)
   } catch (error) {
     return handleAPIError(error, `/api/columns/${params.id}/copy`)
