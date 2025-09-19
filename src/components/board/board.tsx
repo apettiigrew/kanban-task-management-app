@@ -669,7 +669,7 @@ export function Board(props: BoardProps) {
                     />
                 </div>
 
-                <div ref={scrollableRef} className="min-w-0 overflow-x-auto overflow-y-hidden scroll-smooth w-full flex items-start gap-4 flex-shrink-0 flex-1 px-6 pb-4 snap-x snap-mandatory">
+                <div ref={scrollableRef} className="min-w-0 overflow-x-auto overflow-y-hidden scroll-smooth w-full flex items-start gap-4 flex-shrink-0 flex-1 px-6 py-4 snap-x snap-mandatory">
 
                     {projectState.columns.map((column, index) => (
                         <Column
