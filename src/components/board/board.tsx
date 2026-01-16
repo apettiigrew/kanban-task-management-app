@@ -665,7 +665,7 @@ export function Board(props: BoardProps) {
                     <EditableProjectTitle
                         projectId={projectState.id}
                         title={projectState.title}
-                        className="text-3xl font-bold"
+                        className="text-2xl font-bold"
                     />
                 </div>
 

@@ -33,7 +33,7 @@ export function LabelDisplay({ labels }: LabelDisplayProps) {
           className="h-5 px-2 rounded text-white text-xs font-medium flex items-center"
           style={{ backgroundColor: label.color }}
         >
-          {truncateText(label.title, 12)}
+          {truncateText(label.title, 30)}
         </div>
       ))}
     </div>

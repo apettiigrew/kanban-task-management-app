@@ -47,7 +47,7 @@ const stateStyles: { [Key in TColumnState['type']]: string } = {
     idle: '',
     'is-card-over': 'border-2 border-emerald-500 bg-emerald-50 shadow-lg scale-[1.02] transition-all',
     'is-dragging': 'opacity-60 rotate-2 shadow-2xl transition-all',
-    'is-column-over': 'border-2 border-purple-500 bg-purple-50 shadow-lg scale-[1.02] transition-all',
+    'is-column-over': '',
     'is-dragging-and-left-self': 'hidden',
     'preview': 'border-2 border-purple-500 bg-purple-50 shadow-lg scale-[1.02] transition-all',
     'dragging': 'opacity-60 rotate-2 shadow-2xl transition-all',
