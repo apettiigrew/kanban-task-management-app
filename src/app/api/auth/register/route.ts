@@ -4,14 +4,15 @@ import {
   validateRequestBody
 } from '@/lib/api-error-handler'
 import { prisma } from '@/lib/prisma'
-import { authSchemas } from '@/utils/validation-schemas'
+import { authSchemas, commonValidations } from '@/utils/validation-schemas'
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
+import bcrypt from 'bcryptjs'
 
 // Schema for register request (without confirmPassword)
 const registerRequestSchema = z.object({
-  email: authSchemas.register.shape.email,
-  password: authSchemas.register.shape.password,
+  email: commonValidations.email,
+  password: commonValidations.password
 })
 
 // POST /api/auth/register - Register a new user
@@ -22,6 +23,7 @@ export async function POST(request: NextRequest) {
     // Validate request body (email and password only, confirmPassword is client-side only)
     const validatedData = validateRequestBody(registerRequestSchema, body)
 
+    
     // Check if email already exists
     const existingUser = await prisma.user.findUnique({
       where: { email: validatedData.email },
@@ -48,13 +50,12 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Create new user
-    // Note: In production, password should be hashed before storing
-    // For now, storing plain text password (this should be changed)
+    const hashedPassword = await bcrypt.hash(validatedData.password, 12)
+
     const user = await prisma.user.create({
       data: {
         email: validatedData.email,
-        password: validatedData.password, // TODO: Hash password before storing
+        password: hashedPassword,
       },
       select: {
         id: true,
