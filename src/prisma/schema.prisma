@@ -135,3 +135,14 @@ model CardLabel {
   @@index([labelId])
   @@unique([cardId, labelId])
 }
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("users")
+  @@index([email])
+}

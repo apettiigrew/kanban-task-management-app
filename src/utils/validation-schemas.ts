@@ -91,10 +91,21 @@ export const authSchemas = {
     password: commonValidations.password,
     name: z.string().min(1, 'Name is required').max(100, 'Name must be less than 100 characters'),
   }),
+  register: z.object({
+    email: commonValidations.email,
+    password: commonValidations.password,
+    confirmPassword: z.string().min(1, 'Please confirm your password'),
+  }).refine((data) => data.password === data.confirmPassword, {
+    message: 'Passwords do not match',
+    path: ['confirmPassword'],
+  }),
   resetPassword: z.object({
     email: commonValidations.email,
   }),
 }
+
+// Export types for auth schemas
+export type RegisterSchema = z.infer<typeof authSchemas.register>
 
 // Query parameter schemas
 export const querySchemas = {
