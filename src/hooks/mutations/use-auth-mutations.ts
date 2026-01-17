@@ -28,3 +28,28 @@ export const useRegisterUser = () => {
         mutationFn: registerUser,
     })
 }
+
+interface LoginUserData {
+    email: string
+    password: string
+}
+
+interface LoginUserResponse {
+    id: string
+    email: string
+    createdAt: Date
+}
+
+const loginUser = async (data: LoginUserData): Promise<LoginUserResponse> => {
+    return apiRequest<LoginUserResponse>('/api/auth/login', {
+        method: 'POST',
+        body: JSON.stringify(data),
+    })
+}
+
+export const useLoginUser = () => {
+    return useMutation({
+        mutationKey: ['loginUser'],
+        mutationFn: loginUser,
+    })
+}

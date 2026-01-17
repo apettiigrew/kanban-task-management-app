@@ -106,6 +106,7 @@ export const authSchemas = {
 
 // Export types for auth schemas
 export type RegisterSchema = z.infer<typeof authSchemas.register>
+export type LoginSchema = z.infer<typeof authSchemas.signIn>
 
 // Query parameter schemas
 export const querySchemas = {
