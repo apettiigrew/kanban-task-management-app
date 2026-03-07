@@ -1,48 +1,72 @@
+import { SignUpCommand } from '@aws-sdk/client-cognito-identity-provider'
 import {
   createSuccessResponse,
   handleAPIError,
   validateRequestBody
 } from '@/lib/api-error-handler'
-import { prisma } from '@/lib/prisma'
-import { authSchemas, commonValidations } from '@/utils/validation-schemas'
+import { cognitoClient, COGNITO_CLIENT_ID } from '@/lib/cognito'
+import { commonValidations } from '@/utils/validation-schemas'
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import bcrypt from 'bcryptjs'
 
-// Schema for register request (without confirmPassword)
 const registerRequestSchema = z.object({
   email: commonValidations.email,
-  password: commonValidations.password
+  password: commonValidations.password,
 })
 
-// POST /api/auth/register - Register a new user
+const COGNITO_ERROR_MAP: Record<string, { field: string; message: string; code: string }> = {
+  UsernameExistsException: {
+    field: 'email',
+    message: 'An account with this email already exists',
+    code: 'DUPLICATE_EMAIL',
+  },
+  InvalidPasswordException: {
+    field: 'password',
+    message: 'Password does not meet the security requirements',
+    code: 'INVALID_PASSWORD',
+  },
+  InvalidParameterException: {
+    field: 'email',
+    message: 'Invalid email address',
+    code: 'INVALID_PARAMETER',
+  },
+}
+
+// POST /api/auth/register - Register a new user via Cognito
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    
-    // Validate request body (email and password only, confirmPassword is client-side only)
+
+    // Validate request body (confirmPassword is client-side only)
     const validatedData = validateRequestBody(registerRequestSchema, body)
 
-    
-    // Check if email already exists
-    const existingUser = await prisma.user.findUnique({
-      where: { email: validatedData.email },
+    const command = new SignUpCommand({
+      ClientId: COGNITO_CLIENT_ID,
+      Username: validatedData.email,
+      Password: validatedData.password,
+      UserAttributes: [
+        { Name: 'email', Value: validatedData.email },
+      ],
     })
 
-    if (existingUser) {
-      // Return field-specific error for duplicate email
+    await cognitoClient.send(command)
+
+    return createSuccessResponse(
+      { email: validatedData.email },
+      'Registration successful. Please check your email for a verification code.',
+      201
+    )
+  } catch (error) {
+    const cognitoError = error as { name?: string }
+    const mapped = cognitoError.name ? COGNITO_ERROR_MAP[cognitoError.name] : undefined
+
+    if (mapped) {
       return NextResponse.json(
         {
           success: false,
           error: 'Validation failed',
           code: 'VALIDATION_ERROR',
-          details: [
-            {
-              field: 'email',
-              message: 'This email is already taken',
-              code: 'DUPLICATE_EMAIL',
-            },
-          ],
+          details: [mapped],
           timestamp: new Date().toISOString(),
           path: '/api/auth/register',
         },
@@ -50,27 +74,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const hashedPassword = await bcrypt.hash(validatedData.password, 12)
-
-    const user = await prisma.user.create({
-      data: {
-        email: validatedData.email,
-        password: hashedPassword,
-      },
-      select: {
-        id: true,
-        email: true,
-        createdAt: true,
-        updatedAt: true,
-      },
-    })
-
-    return createSuccessResponse(
-      user,
-      'User registered successfully',
-      201
-    )
-  } catch (error) {
     return handleAPIError(error, '/api/auth/register')
   }
 }
