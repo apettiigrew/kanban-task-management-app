@@ -7,16 +7,17 @@ import {
   validateRequestBody,
   NotFoundError
 } from '@/lib/api-error-handler'
+import { getUserIdFromRequest } from '@/lib/auth-helpers'
 import { TProject } from '@/models/project';
 
 // GET /api/projects/[id] - Get a specific project
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
+    const userId = getUserIdFromRequest(request);
 
-    // order columsn by order fields in ascending order
-    const project = await prisma.project.findUnique({
-      where: { id },
+    const project = await prisma.project.findFirst({
+      where: { id, userId },
       include: {
         columns: {
           orderBy: {
@@ -114,14 +115,13 @@ export async function PUT(
 ) {
   try {
     const { id } = await params;
+    const userId = getUserIdFromRequest(request);
     const body = await request.json()
 
-    // Validate the request body using our validation helper
     const validatedData = validateRequestBody(updateProjectSchema, body)
 
-    // Check if project exists
-    const existingProject = await prisma.project.findUnique({
-      where: { id },
+    const existingProject = await prisma.project.findFirst({
+      where: { id, userId },
     })
 
     if (!existingProject) {
@@ -163,9 +163,10 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    // Check if project exists
-    const existingProject = await prisma.project.findUnique({
-      where: { id },
+    const userId = getUserIdFromRequest(request);
+
+    const existingProject = await prisma.project.findFirst({
+      where: { id, userId },
     })
 
     if (!existingProject) {
