@@ -4,33 +4,31 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { FormError, setFormErrors } from "@/lib/form-error-handler"
-import { useRegisterUser } from "@/hooks/mutations/use-auth-mutations"
-import { authSchemas, type RegisterSchema } from "@/utils/validation-schemas"
+import { useForgotPassword } from "@/hooks/mutations/use-auth-mutations"
+import { authSchemas, type ForgotPasswordSchema } from "@/utils/validation-schemas"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Loader2 } from "lucide-react"
 import React from "react"
 import { useForm } from "react-hook-form"
 import { FieldError, FormStateDisplay, useFormErrorState } from "./ui/form-error"
 
-interface RegisterFormProps {
+interface ForgotPasswordFormProps {
   onSuccess?: (email: string) => void
 }
 
-export function RegisterForm({ onSuccess }: RegisterFormProps) {
+export function ForgotPasswordForm({ onSuccess }: ForgotPasswordFormProps) {
   const {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
     reset,
     setError,
-    clearErrors
-  } = useForm<RegisterSchema>({
-    resolver: zodResolver(authSchemas.register),
+    clearErrors,
+  } = useForm<ForgotPasswordSchema>({
+    resolver: zodResolver(authSchemas.forgotPassword),
     defaultValues: {
       email: "",
-      password: "",
-      confirmPassword: "",
-    }
+    },
   })
 
   const {
@@ -40,10 +38,10 @@ export function RegisterForm({ onSuccess }: RegisterFormProps) {
     setMultipleFieldErrors,
     clearErrors: clearFormErrors,
     clearGeneralError,
-    hasErrors
+    hasErrors,
   } = useFormErrorState()
 
-  const registerUserMutation = useRegisterUser()
+  const forgotPasswordMutation = useForgotPassword()
 
   React.useEffect(() => {
     if (Object.keys(errors).length > 0) {
@@ -51,22 +49,23 @@ export function RegisterForm({ onSuccess }: RegisterFormProps) {
     }
   }, [errors, clearFormErrors])
 
-  const handleFormErrors = React.useCallback((error: FormError) => {
-    if (Object.keys(error.fieldErrors).length > 0) {
-      setFormErrors<RegisterSchema>(setError, error.fieldErrors)
-      setMultipleFieldErrors(error.fieldErrors)
-    } else {
-      setGeneralError(error.message)
-    }
-  }, [setError, setMultipleFieldErrors, setGeneralError])
+  const handleFormErrors = React.useCallback(
+    (error: FormError) => {
+      if (Object.keys(error.fieldErrors).length > 0) {
+        setFormErrors<ForgotPasswordSchema>(setError, error.fieldErrors)
+        setMultipleFieldErrors(error.fieldErrors)
+      } else {
+        setGeneralError(error.message)
+      }
+    },
+    [setError, setMultipleFieldErrors, setGeneralError]
+  )
 
-  const onSubmit = async (data: RegisterSchema) => {
+  const onSubmit = async (data: ForgotPasswordSchema) => {
     clearFormErrors()
     clearErrors()
 
-    const { confirmPassword: _, ...registerData } = data
-
-    registerUserMutation.mutate(registerData, {
+    forgotPasswordMutation.mutate(data, {
       onSuccess: (response) => {
         reset()
         clearFormErrors()
@@ -78,11 +77,11 @@ export function RegisterForm({ onSuccess }: RegisterFormProps) {
         } else {
           setGeneralError('An unexpected error occurred. Please try again.')
         }
-      }
+      },
     })
   }
 
-  const isFormLoading = isSubmitting || registerUserMutation.isPending
+  const isFormLoading = isSubmitting || forgotPasswordMutation.isPending
 
   return (
     <FormStateDisplay
@@ -98,7 +97,7 @@ export function RegisterForm({ onSuccess }: RegisterFormProps) {
             id="email"
             type="email"
             {...register("email")}
-            placeholder="Enter your email"
+            placeholder="Enter your email address"
             disabled={isFormLoading}
             aria-invalid={!!(errors.email || fieldErrors.email)}
             className={errors.email || fieldErrors.email ? "border-red-500 focus-visible:ring-red-500" : ""}
@@ -106,38 +105,10 @@ export function RegisterForm({ onSuccess }: RegisterFormProps) {
           <FieldError error={errors.email?.message || fieldErrors.email} />
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="password">Password</Label>
-          <Input
-            id="password"
-            type="password"
-            {...register("password")}
-            placeholder="Enter your password"
-            disabled={isFormLoading}
-            aria-invalid={!!(errors.password || fieldErrors.password)}
-            className={errors.password || fieldErrors.password ? "border-red-500 focus-visible:ring-red-500" : ""}
-          />
-          <FieldError error={errors.password?.message || fieldErrors.password} />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="confirmPassword">Confirm Password</Label>
-          <Input
-            id="confirmPassword"
-            type="password"
-            {...register("confirmPassword")}
-            placeholder="Confirm your password"
-            disabled={isFormLoading}
-            aria-invalid={!!(errors.confirmPassword || fieldErrors.confirmPassword)}
-            className={errors.confirmPassword || fieldErrors.confirmPassword ? "border-red-500 focus-visible:ring-red-500" : ""}
-          />
-          <FieldError error={errors.confirmPassword?.message || fieldErrors.confirmPassword} />
-        </div>
-
         <div className="flex justify-end space-x-2 pt-4">
           <Button type="submit" disabled={isFormLoading || hasErrors}>
             {isFormLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            Register
+            Send reset code
           </Button>
         </div>
       </form>

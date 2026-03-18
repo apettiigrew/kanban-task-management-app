@@ -16,43 +16,43 @@ todos:
     status: completed
   - id: api-register
     content: Rewrite src/app/api/auth/register/route.ts to use Cognito SignUpCommand
-    status: pending
+    status: completed
   - id: api-confirm-registration
     content: Create src/app/api/auth/confirm-registration/route.ts with ConfirmSignUpCommand
-    status: pending
+    status: completed
   - id: api-login
     content: Create src/app/api/auth/login/route.ts with InitiateAuthCommand + httpOnly cookie setting
-    status: pending
+    status: completed
   - id: api-logout
     content: Create src/app/api/auth/logout/route.ts to clear auth cookies
-    status: pending
+    status: completed
   - id: api-forgot-password
     content: Create src/app/api/auth/forgot-password/route.ts with ForgotPasswordCommand
-    status: pending
+    status: completed
   - id: api-reset-password
     content: Create src/app/api/auth/reset-password/route.ts with ConfirmForgotPasswordCommand
-    status: pending
+    status: completed
   - id: verify-email-page
     content: Create /verify-email page and verify-email-form.tsx component
-    status: pending
+    status: completed
   - id: forgot-password-page
     content: Create /forgot-password page and forgot-password-form.tsx component
-    status: pending
+    status: completed
   - id: reset-password-page
     content: Create /reset-password page and reset-password-form.tsx component
-    status: pending
+    status: completed
   - id: update-login-form
     content: Add 'Forgot password?' link to login-form.tsx
-    status: pending
+    status: completed
   - id: update-register-form
     content: Update register-form.tsx onSuccess to redirect to /verify-email?email=
-    status: pending
+    status: completed
   - id: update-auth-mutations
     content: Add useConfirmRegistration, useForgotPassword, useResetPassword to use-auth-mutations.ts
-    status: pending
+    status: completed
   - id: middleware
     content: Create src/middleware.ts to protect (app) routes using accessToken cookie
-    status: pending
+    status: completed
 isProject: false
 ---
 

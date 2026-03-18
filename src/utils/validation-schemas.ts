@@ -121,6 +121,7 @@ export const authSchemas = {
 export type RegisterSchema = z.infer<typeof authSchemas.register>
 export type LoginSchema = z.infer<typeof authSchemas.signIn>
 export type ConfirmRegistrationSchema = z.infer<typeof authSchemas.confirmRegistration>
+export type ForgotPasswordSchema = z.infer<typeof authSchemas.forgotPassword>
 export type ResetPasswordSchema = z.infer<typeof authSchemas.resetPassword>
 
 // Query parameter schemas

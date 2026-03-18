@@ -63,7 +63,7 @@ Next.js middleware runs on the **Edge runtime** — the full AWS SDK is not avai
 
 - `src/lib/auth.ts` — `verifyAccessToken(token: string): Promise<boolean>` helper using `jose`; reads `COGNITO_USER_POOL_ID` and `AWS_REGION` from env
 - `src/middleware.ts` — main middleware logic:
-  1. Skip `/api/`* and static assets (`/_next/*`, `/favicon.ico`)
+  1. Skip `/api/`* and static assets (`/_next/`*, `/favicon.ico`)
   2. Read `accessToken` from `request.cookies`
   3. Call `verifyAccessToken()` → returns `true | false`
   4. If protected route + invalid token → `NextResponse.redirect('/login?from={pathname}')`

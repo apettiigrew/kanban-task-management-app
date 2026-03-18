@@ -1,6 +1,7 @@
 "use client"
 
 import { LoginForm } from "@/components/login-form"
+import Link from "next/link"
 import { useRouter } from "next/navigation"
 
 export default function LoginPage() {
@@ -21,6 +22,23 @@ export default function LoginPage() {
         </div>
         <div className="border rounded-lg p-6 bg-card shadow-sm">
           <LoginForm onSuccess={handleSuccess} />
+          <div className="mt-4 text-center text-sm text-muted-foreground">
+            Don&apos;t have an account?{" "}
+            <Link
+              href="/register"
+              className="text-primary underline-offset-4 hover:underline focus-visible:ring-2 focus-visible:ring-primary/50"
+              aria-label="Go to register page"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault()
+                  window.location.href = "/register"
+                }
+              }}
+            >
+              Register
+            </Link>
+          </div>
         </div>
       </div>
     </div>

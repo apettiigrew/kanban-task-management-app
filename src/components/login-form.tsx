@@ -117,8 +117,14 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
           <FieldError error={errors.password?.message || fieldErrors.password} />
         </div>
 
-        <div className="flex justify-end space-x-2 pt-4">
-          <Button type="submit" disabled={isFormLoading || hasErrors}>
+        <div className="flex items-center justify-between pt-4">
+          <a
+            href="/forgot-password"
+            className="text-sm text-muted-foreground underline-offset-4 hover:underline hover:text-primary"
+          >
+            Forgot your password?
+          </a>
+          <Button type="submit" disabled={isFormLoading}>
             {isFormLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
             Login
           </Button>
