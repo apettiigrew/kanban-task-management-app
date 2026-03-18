@@ -4,19 +4,19 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { FormError, setFormErrors } from "@/lib/form-error-handler"
-import { useRegisterUser } from "@/hooks/mutations/use-auth-mutations"
-import { authSchemas, type RegisterSchema } from "@/utils/validation-schemas"
+import { useLoginUser } from "@/hooks/mutations/use-auth-mutations"
+import { authSchemas, type LoginSchema } from "@/utils/validation-schemas"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Loader2 } from "lucide-react"
 import React from "react"
 import { useForm } from "react-hook-form"
 import { FieldError, FormStateDisplay, useFormErrorState } from "./ui/form-error"
 
-interface RegisterFormProps {
-  onSuccess?: (email: string) => void
+interface LoginFormProps {
+  onSuccess?: () => void
 }
 
-export function RegisterForm({ onSuccess }: RegisterFormProps) {
+export function LoginForm({ onSuccess }: LoginFormProps) {
   const {
     register,
     handleSubmit,
@@ -24,12 +24,11 @@ export function RegisterForm({ onSuccess }: RegisterFormProps) {
     reset,
     setError,
     clearErrors
-  } = useForm<RegisterSchema>({
-    resolver: zodResolver(authSchemas.register),
+  } = useForm<LoginSchema>({
+    resolver: zodResolver(authSchemas.signIn),
     defaultValues: {
       email: "",
       password: "",
-      confirmPassword: "",
     }
   })
 
@@ -43,7 +42,7 @@ export function RegisterForm({ onSuccess }: RegisterFormProps) {
     hasErrors
   } = useFormErrorState()
 
-  const registerUserMutation = useRegisterUser()
+  const loginUserMutation = useLoginUser()
 
   React.useEffect(() => {
     if (Object.keys(errors).length > 0) {
@@ -53,24 +52,22 @@ export function RegisterForm({ onSuccess }: RegisterFormProps) {
 
   const handleFormErrors = React.useCallback((error: FormError) => {
     if (Object.keys(error.fieldErrors).length > 0) {
-      setFormErrors<RegisterSchema>(setError, error.fieldErrors)
+      setFormErrors<LoginSchema>(setError, error.fieldErrors)
       setMultipleFieldErrors(error.fieldErrors)
     } else {
       setGeneralError(error.message)
     }
   }, [setError, setMultipleFieldErrors, setGeneralError])
 
-  const onSubmit = async (data: RegisterSchema) => {
+  const onSubmit = async (data: LoginSchema) => {
     clearFormErrors()
     clearErrors()
 
-    const { confirmPassword: _, ...registerData } = data
-
-    registerUserMutation.mutate(registerData, {
-      onSuccess: (response) => {
+    loginUserMutation.mutate(data, {
+      onSuccess: () => {
         reset()
         clearFormErrors()
-        onSuccess?.(response.email)
+        onSuccess?.()
       },
       onError: (error) => {
         if (error instanceof FormError) {
@@ -82,7 +79,7 @@ export function RegisterForm({ onSuccess }: RegisterFormProps) {
     })
   }
 
-  const isFormLoading = isSubmitting || registerUserMutation.isPending
+  const isFormLoading = isSubmitting || loginUserMutation.isPending
 
   return (
     <FormStateDisplay
@@ -120,24 +117,16 @@ export function RegisterForm({ onSuccess }: RegisterFormProps) {
           <FieldError error={errors.password?.message || fieldErrors.password} />
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="confirmPassword">Confirm Password</Label>
-          <Input
-            id="confirmPassword"
-            type="password"
-            {...register("confirmPassword")}
-            placeholder="Confirm your password"
-            disabled={isFormLoading}
-            aria-invalid={!!(errors.confirmPassword || fieldErrors.confirmPassword)}
-            className={errors.confirmPassword || fieldErrors.confirmPassword ? "border-red-500 focus-visible:ring-red-500" : ""}
-          />
-          <FieldError error={errors.confirmPassword?.message || fieldErrors.confirmPassword} />
-        </div>
-
-        <div className="flex justify-end space-x-2 pt-4">
-          <Button type="submit" disabled={isFormLoading || hasErrors}>
+        <div className="flex items-center justify-between pt-4">
+          <a
+            href="/forgot-password"
+            className="text-sm text-muted-foreground underline-offset-4 hover:underline hover:text-primary"
+          >
+            Forgot your password?
+          </a>
+          <Button type="submit" disabled={isFormLoading}>
             {isFormLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            Register
+            Login
           </Button>
         </div>
       </form>

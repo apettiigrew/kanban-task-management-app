@@ -1,0 +1,65 @@
+Resources:
+  CognitoUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: ${self:service}-${sls:stage}-user-pool
+      UsernameAttributes:
+        - email
+      AutoVerifiedAttributes:
+        - email
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireUppercase: true
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: false
+      Schema:
+        - Name: email
+          AttributeDataType: String
+          Mutable: true
+          Required: true
+        - Name: name
+          AttributeDataType: String
+          Mutable: true
+          Required: false
+      AccountRecoverySetting:
+        RecoveryMechanisms:
+          - Name: verified_email
+            Priority: 1
+      DeletionProtection: INACTIVE
+
+  CognitoUserPoolWebClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: ${self:service}-${sls:stage}-web-client
+      UserPoolId: !Ref CognitoUserPool
+      ExplicitAuthFlows:
+        - ALLOW_USER_PASSWORD_AUTH
+        - ALLOW_USER_SRP_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+      GenerateSecret: false
+      PreventUserExistenceErrors: ENABLED
+      TokenValidityUnits:
+        AccessToken: hours
+        IdToken: hours
+        RefreshToken: days
+      AccessTokenValidity: 1
+      IdTokenValidity: 1
+      RefreshTokenValidity: 30
+
+Outputs:
+  UserPoolId:
+    Value: !Ref CognitoUserPool
+    Export:
+      Name: ${self:service}-${sls:stage}-user-pool-id
+
+  UserPoolArn:
+    Value: !GetAtt CognitoUserPool.Arn
+    Export:
+      Name: ${self:service}-${sls:stage}-user-pool-arn
+
+  UserPoolWebClientId:
+    Value: !Ref CognitoUserPoolWebClient
+    Export:
+      Name: ${self:service}-${sls:stage}-web-client-id

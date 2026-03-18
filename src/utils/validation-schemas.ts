@@ -99,13 +99,30 @@ export const authSchemas = {
     message: 'Passwords do not match',
     path: ['confirmPassword'],
   }),
+  confirmRegistration: z.object({
+    email: commonValidations.email,
+    code: z.string().length(6, 'Code must be 6 characters'),
+  }),
+  forgotPassword: z.object({
+    email: commonValidations.email,
+  }),
   resetPassword: z.object({
     email: commonValidations.email,
+    code: z.string().length(6, 'Code must be 6 characters'),
+    newPassword: commonValidations.password,
+    confirmPassword: z.string().min(1, 'Please confirm your password'),
+  }).refine((data) => data.newPassword === data.confirmPassword, {
+    message: 'Passwords do not match',
+    path: ['confirmPassword'],
   }),
 }
 
 // Export types for auth schemas
 export type RegisterSchema = z.infer<typeof authSchemas.register>
+export type LoginSchema = z.infer<typeof authSchemas.signIn>
+export type ConfirmRegistrationSchema = z.infer<typeof authSchemas.confirmRegistration>
+export type ForgotPasswordSchema = z.infer<typeof authSchemas.forgotPassword>
+export type ResetPasswordSchema = z.infer<typeof authSchemas.resetPassword>
 
 // Query parameter schemas
 export const querySchemas = {

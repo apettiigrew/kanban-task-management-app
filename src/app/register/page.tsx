@@ -6,8 +6,8 @@ import { useRouter } from "next/navigation"
 export default function RegisterPage() {
   const router = useRouter()
 
-  const handleSuccess = () => {
-    router.push('/')
+  const handleSuccess = (email: string) => {
+    router.push(`/verify-email?email=${encodeURIComponent(email)}`)
   }
 
   return (

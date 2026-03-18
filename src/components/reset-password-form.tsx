@@ -4,33 +4,37 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { FormError, setFormErrors } from "@/lib/form-error-handler"
-import { useRegisterUser } from "@/hooks/mutations/use-auth-mutations"
-import { authSchemas, type RegisterSchema } from "@/utils/validation-schemas"
+import { useResetPassword } from "@/hooks/mutations/use-auth-mutations"
+import { authSchemas, type ResetPasswordSchema } from "@/utils/validation-schemas"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Loader2 } from "lucide-react"
+import { useRouter } from "next/navigation"
 import React from "react"
 import { useForm } from "react-hook-form"
 import { FieldError, FormStateDisplay, useFormErrorState } from "./ui/form-error"
 
-interface RegisterFormProps {
-  onSuccess?: (email: string) => void
+interface ResetPasswordFormProps {
+  email: string
 }
 
-export function RegisterForm({ onSuccess }: RegisterFormProps) {
+export function ResetPasswordForm({ email }: ResetPasswordFormProps) {
+  const router = useRouter()
+
   const {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
     reset,
     setError,
-    clearErrors
-  } = useForm<RegisterSchema>({
-    resolver: zodResolver(authSchemas.register),
+    clearErrors,
+  } = useForm<ResetPasswordSchema>({
+    resolver: zodResolver(authSchemas.resetPassword),
     defaultValues: {
-      email: "",
-      password: "",
+      email,
+      code: "",
+      newPassword: "",
       confirmPassword: "",
-    }
+    },
   })
 
   const {
@@ -40,10 +44,10 @@ export function RegisterForm({ onSuccess }: RegisterFormProps) {
     setMultipleFieldErrors,
     clearErrors: clearFormErrors,
     clearGeneralError,
-    hasErrors
+    hasErrors,
   } = useFormErrorState()
 
-  const registerUserMutation = useRegisterUser()
+  const resetPasswordMutation = useResetPassword()
 
   React.useEffect(() => {
     if (Object.keys(errors).length > 0) {
@@ -51,26 +55,29 @@ export function RegisterForm({ onSuccess }: RegisterFormProps) {
     }
   }, [errors, clearFormErrors])
 
-  const handleFormErrors = React.useCallback((error: FormError) => {
-    if (Object.keys(error.fieldErrors).length > 0) {
-      setFormErrors<RegisterSchema>(setError, error.fieldErrors)
-      setMultipleFieldErrors(error.fieldErrors)
-    } else {
-      setGeneralError(error.message)
-    }
-  }, [setError, setMultipleFieldErrors, setGeneralError])
+  const handleFormErrors = React.useCallback(
+    (error: FormError) => {
+      if (Object.keys(error.fieldErrors).length > 0) {
+        setFormErrors<ResetPasswordSchema>(setError, error.fieldErrors)
+        setMultipleFieldErrors(error.fieldErrors)
+      } else {
+        setGeneralError(error.message)
+      }
+    },
+    [setError, setMultipleFieldErrors, setGeneralError]
+  )
 
-  const onSubmit = async (data: RegisterSchema) => {
+  const onSubmit = async (data: ResetPasswordSchema) => {
     clearFormErrors()
     clearErrors()
 
-    const { confirmPassword: _, ...registerData } = data
+    const { confirmPassword: _, ...requestData } = data
 
-    registerUserMutation.mutate(registerData, {
-      onSuccess: (response) => {
+    resetPasswordMutation.mutate(requestData, {
+      onSuccess: () => {
         reset()
         clearFormErrors()
-        onSuccess?.(response.email)
+        router.push('/login')
       },
       onError: (error) => {
         if (error instanceof FormError) {
@@ -78,11 +85,11 @@ export function RegisterForm({ onSuccess }: RegisterFormProps) {
         } else {
           setGeneralError('An unexpected error occurred. Please try again.')
         }
-      }
+      },
     })
   }
 
-  const isFormLoading = isSubmitting || registerUserMutation.isPending
+  const isFormLoading = isSubmitting || resetPasswordMutation.isPending
 
   return (
     <FormStateDisplay
@@ -92,41 +99,45 @@ export function RegisterForm({ onSuccess }: RegisterFormProps) {
       className="space-y-4"
     >
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <input type="hidden" {...register("email")} />
+
         <div className="space-y-2">
-          <Label htmlFor="email">Email</Label>
+          <Label htmlFor="code">Reset code</Label>
           <Input
-            id="email"
-            type="email"
-            {...register("email")}
-            placeholder="Enter your email"
+            id="code"
+            type="text"
+            inputMode="numeric"
+            maxLength={6}
+            {...register("code")}
+            placeholder="Enter the 6-digit code"
             disabled={isFormLoading}
-            aria-invalid={!!(errors.email || fieldErrors.email)}
-            className={errors.email || fieldErrors.email ? "border-red-500 focus-visible:ring-red-500" : ""}
+            aria-invalid={!!(errors.code || fieldErrors.code)}
+            className={errors.code || fieldErrors.code ? "border-red-500 focus-visible:ring-red-500" : ""}
           />
-          <FieldError error={errors.email?.message || fieldErrors.email} />
+          <FieldError error={errors.code?.message || fieldErrors.code} />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="password">Password</Label>
+          <Label htmlFor="newPassword">New password</Label>
           <Input
-            id="password"
+            id="newPassword"
             type="password"
-            {...register("password")}
-            placeholder="Enter your password"
+            {...register("newPassword")}
+            placeholder="Enter your new password"
             disabled={isFormLoading}
-            aria-invalid={!!(errors.password || fieldErrors.password)}
-            className={errors.password || fieldErrors.password ? "border-red-500 focus-visible:ring-red-500" : ""}
+            aria-invalid={!!(errors.newPassword || fieldErrors.newPassword)}
+            className={errors.newPassword || fieldErrors.newPassword ? "border-red-500 focus-visible:ring-red-500" : ""}
           />
-          <FieldError error={errors.password?.message || fieldErrors.password} />
+          <FieldError error={errors.newPassword?.message || fieldErrors.newPassword} />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="confirmPassword">Confirm Password</Label>
+          <Label htmlFor="confirmPassword">Confirm new password</Label>
           <Input
             id="confirmPassword"
             type="password"
             {...register("confirmPassword")}
-            placeholder="Confirm your password"
+            placeholder="Confirm your new password"
             disabled={isFormLoading}
             aria-invalid={!!(errors.confirmPassword || fieldErrors.confirmPassword)}
             className={errors.confirmPassword || fieldErrors.confirmPassword ? "border-red-500 focus-visible:ring-red-500" : ""}
@@ -137,7 +148,7 @@ export function RegisterForm({ onSuccess }: RegisterFormProps) {
         <div className="flex justify-end space-x-2 pt-4">
           <Button type="submit" disabled={isFormLoading || hasErrors}>
             {isFormLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            Register
+            Reset password
           </Button>
         </div>
       </form>
