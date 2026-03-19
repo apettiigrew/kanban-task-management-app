@@ -116,7 +116,7 @@ export function NavbarHeader({ className }: NavbarHeaderProps) {
       {/* App Name - Left Side */}
       <div className="flex items-center">
         <h1 onClick={homeLogoClick} className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight cursor-pointer">
-          Mello
+          Kanban
         </h1>
       </div>
 
@@ -189,7 +189,7 @@ export function NavbarHeader({ className }: NavbarHeaderProps) {
             {/* MELLO Section */}
             <div className="px-3 py-2">
               <DropdownMenuLabel className="text-xs font-semibold text-gray-500 uppercase tracking-wider px-0 py-1">
-                Mello
+                Kanban
               </DropdownMenuLabel>
 
               <div className="space-y-1">

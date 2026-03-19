@@ -1,9 +1,11 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
+import { ProjectForm } from "@/components/project-form"
 import { useProjects } from "@/hooks/queries/use-projects"
 import { TBoard } from "@/models/board"
 import { Archive, ChevronDown, Plus, Search } from "lucide-react"
@@ -17,6 +19,10 @@ export default function HomePage() {
   const router = useRouter()
   const [searchQuery, setSearchQuery] = useState("")
   const [showArchivedOnly, setShowArchivedOnly] = useState(false)
+  const [createDialogOpen, setCreateDialogOpen] = useState(false)
+
+  const handleOpenCreateDialog = () => setCreateDialogOpen(true)
+  const handleCreateSuccess = () => setCreateDialogOpen(false)
 
   // Filter boards based on search and archive status
   const filteredBoards = boards.filter((board) => {
@@ -74,7 +80,12 @@ export default function HomePage() {
               </Label>
             </div>
 
-            <Button variant="primary" className="flex items-center justify-center gap-2 w-full sm:w-auto">
+            <Button
+              variant="primary"
+              className="flex items-center justify-center gap-2 w-full sm:w-auto"
+              onClick={handleOpenCreateDialog}
+              aria-label="Create new project"
+            >
               <Plus className="w-4 h-4" />
               <span>Add</span>
               <ChevronDown className="w-4 h-4" />
@@ -107,11 +118,29 @@ export default function HomePage() {
               <EmptyState
                 isArchivedFilter={showArchivedOnly}
                 hasSearchQuery={!!searchQuery.trim()}
+                onCreateProject={handleOpenCreateDialog}
               />
             )}
           </div>
         </div>
       </div>
+
+      <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Create New Project</DialogTitle>
+            <DialogDescription>
+              Add a new project to organise your tasks and track progress.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="pt-4">
+            <ProjectForm
+              onSuccess={handleCreateSuccess}
+              onCancel={() => setCreateDialogOpen(false)}
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
@@ -154,9 +183,10 @@ const BoardItem = ({ board, onClick }: BoardItemProps) => {
 interface EmptyStateProps {
   isArchivedFilter: boolean
   hasSearchQuery: boolean
+  onCreateProject?: () => void
 }
 
-const EmptyState = ({ isArchivedFilter, hasSearchQuery }: EmptyStateProps) => {
+const EmptyState = ({ isArchivedFilter, hasSearchQuery, onCreateProject }: EmptyStateProps) => {
   const getEmptyMessage = () => {
     if (hasSearchQuery) {
       return {
@@ -185,7 +215,11 @@ const EmptyState = ({ isArchivedFilter, hasSearchQuery }: EmptyStateProps) => {
       </div>
       <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-2">{title}</h3>
       <p className="text-sm sm:text-base text-gray-600 mb-6 max-w-md mx-auto px-4">{description}</p>
-      <Button className="bg-blue-600 hover:bg-blue-700 text-white">
+      <Button
+        className="bg-blue-600 hover:bg-blue-700 text-white"
+        onClick={onCreateProject}
+        aria-label="Create your first project"
+      >
         <Plus className="w-4 h-4 mr-2" />
         Create your first project
       </Button>

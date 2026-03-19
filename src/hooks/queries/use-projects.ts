@@ -139,9 +139,32 @@ interface UseDeleteProjectOptions {
   onError?: (error: FormError) => void
 }
 
-export const useCreateProject = () => {
+export const useCreateProject = (options: UseCreateProjectOptions = {}) => {
+  const queryClient = useQueryClient()
+
   return useMutation({
     mutationFn: createProject,
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: projectKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: projectKeys.stats() })
+
+      options.onSuccess?.(data)
+    },
+    onError: (error: FormError) => {
+      console.error('Error in useCreateProject:', error)
+
+      if (options.onFieldErrors && error instanceof FormError && Object.keys(error.fieldErrors).length > 0) {
+        options.onFieldErrors(error.fieldErrors)
+      }
+
+      options.onError?.(error)
+    },
+    retry: (failureCount, error) => {
+      if (error instanceof FormError) {
+        return false
+      }
+      return failureCount < 2
+    },
   })
 }
 
