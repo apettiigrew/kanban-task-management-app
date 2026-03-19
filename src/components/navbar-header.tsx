@@ -10,6 +10,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { useLogoutUser } from "@/hooks/mutations/use-auth-mutations"
+import { useCurrentUser } from "@/hooks/queries/use-current-user"
 import { cn } from "@/utils/utils"
 import { useCallback, useState } from "react"
 import { useRouter } from "next/navigation"
@@ -22,11 +23,7 @@ export function NavbarHeader({ className }: NavbarHeaderProps) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const router = useRouter()
   const { mutate: logout, isPending: isLoggingOut } = useLogoutUser()
-  const user = {
-    name: "Andrew Pettigrew",
-    email: "pettigrewhere@gmail.com",
-    avatar: undefined,
-  }
+  const { data: currentUser } = useCurrentUser()
 
 
   const homeLogoClick = useCallback(() => {
@@ -100,13 +97,8 @@ export function NavbarHeader({ className }: NavbarHeaderProps) {
     setIsDropdownOpen(false)
   }
 
-  const getUserInitials = (name: string) => {
-    return name
-      .split(" ")
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase()
-      .slice(0, 2)
+  const getEmailInitials = (email: string) => {
+    return email.split("@")[0].slice(0, 2).toUpperCase()
   }
 
   return (
@@ -131,9 +123,9 @@ export function NavbarHeader({ className }: NavbarHeaderProps) {
               aria-label="User menu"
             >
               <Avatar className="h-8 w-8">
-                <AvatarImage src={user.avatar} alt={user.name} />
+                <AvatarImage src={undefined} alt={currentUser?.email} />
                 <AvatarFallback className="bg-blue-500 text-white text-sm font-medium">
-                  {user.name ? getUserInitials(user.name) : "U"}
+                  {currentUser?.email ? getEmailInitials(currentUser.email) : "U"}
                 </AvatarFallback>
               </Avatar>
             </button>
@@ -153,17 +145,14 @@ export function NavbarHeader({ className }: NavbarHeaderProps) {
               {/* User Info with Avatar */}
               <div className="flex items-center space-x-3 py-2">
                 <Avatar className="h-10 w-10">
-                  <AvatarImage src={user.avatar} alt={user.name} />
+                  <AvatarImage src={undefined} alt={currentUser?.email} />
                   <AvatarFallback className="bg-blue-500 text-white text-sm font-medium">
-                    {user.name ? getUserInitials(user.name) : "U"}
+                    {currentUser?.email ? getEmailInitials(currentUser.email) : "U"}
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900 truncate">
-                    {user.name || "User"}
-                  </p>
                   <p className="text-xs text-gray-500 truncate">
-                    {user.email || "user@example.com"}
+                    {currentUser?.email ?? ""}
                   </p>
                 </div>
               </div>
