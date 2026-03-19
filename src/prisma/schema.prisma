@@ -16,6 +16,7 @@ model Project {
   title       String
   description String?
   userId      String
+  isArchived  Boolean  @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -26,6 +27,7 @@ model Project {
 
   @@map("projects")
   @@index([userId])
+  @@index([isArchived])
 }
 
 model Column {

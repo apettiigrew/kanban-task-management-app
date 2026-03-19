@@ -4,11 +4,27 @@ import '@/app/board.css';
 import { Column } from '@/components/column/column';
 import { EditableProjectTitle } from '@/components/editable-project-title';
 import { ProjectDialog, ProjectDialogRef } from '@/components/project-dialog';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { useCreateColumn, useDeleteColumn, useReorderColumns } from '@/hooks/mutations/use-column-mutations';
 import { useMoveTask, useReorderTasks } from '@/hooks/mutations/use-task-mutations';
-import { useCreateProject, useProjects } from '@/hooks/queries/use-projects';
+import { useCloseBoard, useCreateProject, useProjects } from '@/hooks/queries/use-projects';
 import { useKeyboardShortcut } from '@/hooks/use-keyboard-shortcut';
 import { TCard } from '@/models/card';
 import { TColumn } from '@/models/column';
@@ -27,7 +43,7 @@ import { CleanupFn } from '@atlaskit/pragmatic-drag-and-drop/dist/types/internal
 import { monitorForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
 import { reorder } from '@atlaskit/pragmatic-drag-and-drop/reorder';
 import { bindAll } from 'bind-event-listener';
-import { FolderOpen, PlusCircle } from 'lucide-react';
+import { FolderOpen, MoreHorizontal, PlusCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import invariant from 'tiny-invariant';
@@ -59,7 +75,9 @@ export function Board(props: BoardProps) {
 
     const [isAddingList, setIsAddingList] = useState(false);
     const [newListTitle, setNewListTitle] = useState('');
+    const [isCloseBoardDialogOpen, setIsCloseBoardDialogOpen] = useState(false);
     const { settings } = useContext(SettingsContext);
+    const { mutate: closeBoard, isPending: isClosingBoard } = useCloseBoard();
     const scrollableRef = useRef<HTMLDivElement>(null);
 
     const createColumnMutation = useCreateColumn();
@@ -86,6 +104,12 @@ export function Board(props: BoardProps) {
             }
         });
     }, [createProjectMutation]);
+
+    const handleCloseBoard = useCallback(() => {
+        closeBoard(projectState.id);
+        setIsCloseBoardDialogOpen(false);
+        router.push('/home');
+    }, [closeBoard, projectState?.id, router]);
 
     const handleDeleteColumn = useCallback((columnId: string) => {
         if (!projectState) return;
@@ -661,12 +685,54 @@ export function Board(props: BoardProps) {
     return (
         <div className="flex flex-col h-full">
             <div className="flex flex-col h-full">
-                <div className="flex items-center justify-between flex-shrink-0 p-4">
+                <div className="flex items-center justify-between flex-shrink-0 px-4 py-3 bg-muted/50 border-b">
                     <EditableProjectTitle
                         projectId={projectState.id}
                         title={projectState.title}
                         className="text-2xl font-bold"
                     />
+
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                aria-label="Board options"
+                                tabIndex={0}
+                            >
+                                <MoreHorizontal className="h-5 w-5" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-56">
+                            <DropdownMenuItem
+                                className="text-destructive focus:text-destructive py-2.5"
+                                onSelect={() => setIsCloseBoardDialogOpen(true)}
+                            >
+                                Close board
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+
+                    <AlertDialog open={isCloseBoardDialogOpen} onOpenChange={setIsCloseBoardDialogOpen}>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>Close board?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    This will archive the board and all its lists, cards, and checklists. You can view archived boards from the home page.
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel disabled={isClosingBoard}>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                    onClick={handleCloseBoard}
+                                    disabled={isClosingBoard}
+                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                >
+                                    {isClosingBoard ? 'Closing…' : 'Close board'}
+                                </AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
                 </div>
 
                 <div ref={scrollableRef} className="min-w-0 overflow-x-auto overflow-y-hidden scroll-smooth w-full flex items-start gap-4 flex-shrink-0 flex-1 px-6 py-4 snap-x snap-mandatory">

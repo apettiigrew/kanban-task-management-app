@@ -13,6 +13,5 @@ export interface TProject {
   isArchived: boolean;
   createdAt: Date;
   updatedAt: Date;
-  isArchived: boolean;
 }
 

@@ -313,6 +313,72 @@ export const useDeleteProject = (options: UseDeleteProjectOptions = {}) => {
   })
 }
 
+interface UseCloseBoardOptions {
+  onSuccess?: () => void
+  onError?: (error: FormError) => void
+}
+
+const closeBoard = async (id: string): Promise<TProject> => {
+  return apiRequest<TProject>(`/api/projects/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify({ isArchived: true }),
+  })
+}
+
+export const useCloseBoard = (options: UseCloseBoardOptions = {}) => {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: closeBoard,
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: projectKeys.detail(id) })
+      await queryClient.cancelQueries({ queryKey: projectKeys.lists() })
+      await queryClient.cancelQueries({ queryKey: projectKeys.stats() })
+
+      const previousProject = queryClient.getQueryData(projectKeys.detail(id))
+      const previousProjects = queryClient.getQueryData(projectKeys.lists())
+      const previousProjectsWithStats = queryClient.getQueryData(projectKeys.stats())
+
+      // Optimistically remove the board from active lists since it will be archived
+      queryClient.setQueryData(projectKeys.lists(), (old: TProject[] | undefined) => {
+        if (!old) return old
+        return old.filter(project => project.id !== id)
+      })
+
+      queryClient.setQueryData(projectKeys.stats(), (old: TProject[] | undefined) => {
+        if (!old) return old
+        return old.filter(project => project.id !== id)
+      })
+
+      return { previousProject, previousProjects, previousProjectsWithStats }
+    },
+    onError: (error: FormError, id, context) => {
+      if (context?.previousProjects) {
+        queryClient.setQueryData(projectKeys.lists(), context.previousProjects)
+      }
+      if (context?.previousProjectsWithStats) {
+        queryClient.setQueryData(projectKeys.stats(), context.previousProjectsWithStats)
+      }
+      if (context?.previousProject) {
+        queryClient.setQueryData(projectKeys.detail(id), context.previousProject)
+      }
+
+      console.error('Error in useCloseBoard:', error)
+      options.onError?.(error)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: projectKeys.all })
+      options.onSuccess?.()
+    },
+    retry: (failureCount, error) => {
+      if (error instanceof FormError) {
+        return false
+      }
+      return failureCount < 2
+    },
+  })
+}
+
 // Utility hook for checking if any projects are being modified
 export const useInvalidateProjects = () => {
   const queryClient = useQueryClient()

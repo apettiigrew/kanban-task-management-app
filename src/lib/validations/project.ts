@@ -19,6 +19,7 @@ export const createProjectSchema = z.object({
 export const updateProjectSchema = z.object({
   title: z.string().min(1, 'Project title is required').max(100, 'Project title must be less than 100 characters').optional(),
   description: z.string().max(500, 'Description must be less than 500 characters').optional().nullable(),
+  isArchived: z.boolean().optional(),
 })
 
 // Schema for project with related data

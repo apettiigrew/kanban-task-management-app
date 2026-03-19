@@ -15,8 +15,10 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const includeRelations = searchParams.get('includeRelations') === 'true'
 
+    const includeArchived = searchParams.get('includeArchived') === 'true'
+
     const projects = await prisma.project.findMany({
-      where: { userId },
+      where: { userId, ...(includeArchived ? {} : { isArchived: false }) },
       include: {
         columns: includeRelations,
         cards: includeRelations ? {
