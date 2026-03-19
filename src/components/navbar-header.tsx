@@ -9,8 +9,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { useLogoutUser } from "@/hooks/mutations/use-auth-mutations"
 import { cn } from "@/utils/utils"
-import { ChevronRight, ExternalLink, Users } from "lucide-react"
 import { useCallback, useState } from "react"
 import { useRouter } from "next/navigation"
 
@@ -21,6 +21,7 @@ interface NavbarHeaderProps {
 export function NavbarHeader({ className }: NavbarHeaderProps) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const router = useRouter()
+  const { mutate: logout, isPending: isLoggingOut } = useLogoutUser()
   const user = {
     name: "Andrew Pettigrew",
     email: "pettigrewhere@gmail.com",
@@ -48,8 +49,10 @@ export function NavbarHeader({ className }: NavbarHeaderProps) {
   }
 
   const handleLogoutClick = () => {
-
     setIsDropdownOpen(false)
+    logout(undefined, {
+      onSuccess: () => router.push("/"),
+    })
   }
 
   const handleHelpClick = () => {
@@ -164,111 +167,16 @@ export function NavbarHeader({ className }: NavbarHeaderProps) {
                   </p>
                 </div>
               </div>
-
-              {/* Account Actions */}
-              <div className="space-y-1">
-                <DropdownMenuItem
-                  onClick={handleSwitchAccountsClick}
-                  className="px-0 py-1.5 cursor-pointer text-sm"
-                >
-                  <span>Switch accounts</span>
-                </DropdownMenuItem>
-
-                <DropdownMenuItem
-                  onClick={handleManageAccountClick}
-                  className="px-0 py-1.5 cursor-pointer text-sm flex items-center justify-between"
-                >
-                  <span>Manage account</span>
-                  <ExternalLink className="h-3 w-3 text-gray-400" />
-                </DropdownMenuItem>
-              </div>
             </div>
-
             <DropdownMenuSeparator />
-
-            {/* MELLO Section */}
-            <div className="px-3 py-2">
-              <DropdownMenuLabel className="text-xs font-semibold text-gray-500 uppercase tracking-wider px-0 py-1">
-                Kanban
-              </DropdownMenuLabel>
-
-              <div className="space-y-1">
-                <DropdownMenuItem
-                  onClick={handleProfileClick}
-                  className="px-0 py-1.5 cursor-pointer text-sm"
-                >
-                  <span>Profile and visibility</span>
-                </DropdownMenuItem>
-
-                <DropdownMenuItem
-                  onClick={handleActivityClick}
-                  className="px-0 py-1.5 cursor-pointer text-sm"
-                >
-                  <span>Activity</span>
-                </DropdownMenuItem>
-
-                <DropdownMenuItem
-                  onClick={handleCardsClick}
-                  className="px-0 py-1.5 cursor-pointer text-sm"
-                >
-                  <span>Cards</span>
-                </DropdownMenuItem>
-
-                <DropdownMenuItem
-                  onClick={handleSettingsClick}
-                  className="px-0 py-1.5 cursor-pointer text-sm"
-                >
-                  <span>Settings</span>
-                </DropdownMenuItem>
-
-                <DropdownMenuItem
-                  onClick={handleThemeClick}
-                  className="px-0 py-1.5 cursor-pointer text-sm flex items-center justify-between"
-                >
-                  <span>Theme</span>
-                  <ChevronRight className="h-3 w-3 text-gray-400" />
-                </DropdownMenuItem>
-              </div>
-            </div>
-
-            <DropdownMenuSeparator />
-
-            {/* Workspace/Help Section */}
-            <div className="px-3 py-2">
-              <div className="space-y-1">
-                <DropdownMenuItem
-                  onClick={handleCreateWorkspaceClick}
-                  className="px-0 py-1.5 cursor-pointer text-sm flex items-center"
-                >
-                  <Users className="mr-2 h-4 w-4" />
-                  <span>Create Workspace</span>
-                </DropdownMenuItem>
-
-                <DropdownMenuItem
-                  onClick={handleHelpClick}
-                  className="px-0 py-1.5 cursor-pointer text-sm"
-                >
-                  <span>Help</span>
-                </DropdownMenuItem>
-
-                <DropdownMenuItem
-                  onClick={handleShortcutsClick}
-                  className="px-0 py-1.5 cursor-pointer text-sm"
-                >
-                  <span>Shortcuts</span>
-                </DropdownMenuItem>
-              </div>
-            </div>
-
-            <DropdownMenuSeparator />
-
             {/* Logout Section */}
             <div className="px-3 py-2">
               <DropdownMenuItem
                 onClick={handleLogoutClick}
-                className="px-0 py-1.5 cursor-pointer text-sm hover:bg-blue-50 hover:text-blue-600 focus:bg-blue-50 focus:text-blue-600"
+                disabled={isLoggingOut}
+                className="px-0 py-1.5 cursor-pointer text-sm hover:bg-blue-50 hover:text-blue-600 focus:bg-blue-50 focus:text-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <span>Log out</span>
+                <span>{isLoggingOut ? "Logging out…" : "Log out"}</span>
               </DropdownMenuItem>
             </div>
           </DropdownMenuContent>
