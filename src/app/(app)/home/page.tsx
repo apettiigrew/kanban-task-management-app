@@ -14,7 +14,7 @@ import { useCallback, useState } from "react"
 
 export default function HomePage() {
 
-  const { data: boards = [], isLoading, error } = useProjects()
+  const { data: boards = [], isLoading, error } = useProjects({ includeArchived: true })
   
   const router = useRouter()
   const [searchQuery, setSearchQuery] = useState("")

@@ -16,8 +16,9 @@ export const projectKeys = {
 }
 
 // API client functions with enhanced error handling
-const fetchProjects = async (): Promise<TProject[]> => {
-  return apiRequest<TProject[]>('/api/projects')
+const fetchProjects = async (includeArchived = false): Promise<TProject[]> => {
+  const url = includeArchived ? '/api/projects?includeArchived=true' : '/api/projects'
+  return apiRequest<TProject[]>(url)
 }
 
 const fetchProject = async (id: string): Promise<TProject> => {
@@ -64,12 +65,14 @@ interface UseProjectsOptions {
   enabled?: boolean
   refetchOnWindowFocus?: boolean
   staleTime?: number
+  includeArchived?: boolean
 }
 
 export const useProjects = (options: UseProjectsOptions = {}) => {
+  const { includeArchived = false } = options
   return useQuery({
-    queryKey: projectKeys.lists(),
-    queryFn: fetchProjects,
+    queryKey: projectKeys.list({ includeArchived }),
+    queryFn: () => fetchProjects(includeArchived),
     enabled: options.enabled !== false,
     refetchOnWindowFocus: options.refetchOnWindowFocus ?? true,
     staleTime: options.staleTime ?? 5 * 60 * 1000, // 5 minutes
@@ -320,8 +323,7 @@ interface UseCloseBoardOptions {
 
 const closeBoard = async (id: string): Promise<TProject> => {
   return apiRequest<TProject>(`/api/projects/${id}`, {
-    method: 'PUT',
-    body: JSON.stringify({ isArchived: true }),
+    method: 'DELETE',
   })
 }
 

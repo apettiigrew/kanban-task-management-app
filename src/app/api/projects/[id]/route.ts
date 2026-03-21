@@ -156,7 +156,7 @@ export async function PUT(
   }
 }
 
-// DELETE /api/projects/[id] - Delete a specific project
+// DELETE /api/projects/[id] - Archive (soft-delete) a specific project
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -173,12 +173,34 @@ export async function DELETE(
       throw new NotFoundError('Project')
     }
 
-    // Delete the project (cascade deletion will handle related columns and tasks)
-    await prisma.project.delete({
+    const jamaicaDeletedAt = new Date(
+      new Date().toLocaleString('en-US', { timeZone: 'America/Jamaica' })
+    )
+
+    const project = await prisma.project.update({
       where: { id },
+      data: {
+        isArchived: true,
+        deletedAt: jamaicaDeletedAt,
+      },
+      include: {
+        _count: {
+          select: {
+            cards: true,
+            columns: true,
+          }
+        }
+      }
     })
 
-    return createSuccessResponse(undefined, 'Project deleted successfully')
+    const { _count, ...projectData } = project
+    const transformedProject = {
+      ...projectData,
+      taskCount: _count.cards,
+      columnCount: _count.columns,
+    }
+
+    return createSuccessResponse(transformedProject, 'Project archived successfully')
   } catch (error) {
     const { id } = await params;
     return handleAPIError(error, `/api/projects/${id}`)
