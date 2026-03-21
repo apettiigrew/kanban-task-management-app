@@ -4,22 +4,25 @@ import {
   NotFoundError,
   validateRequestBody
 } from '@/lib/api-error-handler'
+import { getUserIdFromRequest } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
 import { moveAllCardsSchema } from '@/lib/validations/task'
 import { NextRequest } from 'next/server'
 
 export async function PUT(request: NextRequest) {
   try {
+    const userId = getUserIdFromRequest(request)
+
     const body = await request.json()
     
-    // Validate the request body
     const validatedData = validateRequestBody(moveAllCardsSchema, body)
 
-    // Check if source column exists
+    // Check if source column exists and belongs to the authenticated user
     const sourceColumn = await prisma.column.findUnique({
       where: { 
         id: validatedData.sourceColumnId,
-        projectId: validatedData.projectId 
+        projectId: validatedData.projectId,
+        project: { userId }
       },
       include: {
         cards: {
@@ -32,11 +35,12 @@ export async function PUT(request: NextRequest) {
       throw new NotFoundError('Source column')
     }
 
-    // Check if target column exists
+    // Check if target column exists and belongs to the authenticated user
     const targetColumn = await prisma.column.findUnique({
       where: { 
         id: validatedData.targetColumnId,
-        projectId: validatedData.projectId 
+        projectId: validatedData.projectId,
+        project: { userId }
       }
     })
 
@@ -62,6 +66,7 @@ export async function PUT(request: NextRequest) {
       where: {
         columnId: validatedData.targetColumnId,
         projectId: validatedData.projectId,
+        userId,
       },
       orderBy: {
         order: 'desc'

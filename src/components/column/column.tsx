@@ -280,10 +280,9 @@ export function Column(props: ColumnProps) {
     const handleMoveList = useCallback((data: MoveColumn | RepositionColumn) => {
 
         if ('targetProjectId' in data) {
-            // Moving to different board
+            // Moving to different board — use data.targetProjectId from the form (not the current board)
             moveColumnMutation.mutate({
                 ...data,
-                targetProjectId: column.projectId,
                 columnId: column.id
             }, {
                 onSuccess: () => {

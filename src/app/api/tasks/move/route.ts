@@ -5,35 +5,36 @@ import {
   NotFoundError,
   validateRequestBody
 } from '@/lib/api-error-handler'
+import { getUserIdFromRequest } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
 import { moveTaskSchema } from '@/lib/validations/task'
 import { NextRequest } from 'next/server'
 
 export async function PUT(request: NextRequest) {
   try {
+    const userId = getUserIdFromRequest(request)
 
     const body = await request.json()
-    // Validate the request body using centralized validation
     const validatedData = validateRequestBody(moveTaskSchema, body)
 
-    // Check if task exists
     const existingTask = await prisma.card.findUnique({
-      where: { id: validatedData.taskId },
+      where: { id: validatedData.taskId, userId },
     })
 
     if (!existingTask) {
       throw new NotFoundError('Task')
     }
-    
-    // Update every cards that's in the two columns that change if they are one just update that column
-    for (const column of validatedData.columns) {
-      for (const card of column.cards) {
-        await prisma.card.update({
-          where: { id: card.id },
-          data: { columnId: column.id, order: card.order }
-        })
-      }
-    }
+
+    await prisma.$transaction(
+      validatedData.columns.flatMap(column =>
+        column.cards.map(card =>
+          prisma.card.update({
+            where: { id: card.id },
+            data: { columnId: column.id, order: card.order }
+          })
+        )
+      )
+    )
 
     const task = await prisma.card.findUnique({
       where: { id: validatedData.taskId },
@@ -58,7 +59,10 @@ export async function PUT(request: NextRequest) {
       }
     })
 
-    // Transform the data to include labels with checked status
+    if (!task) {
+      throw new NotFoundError('Task')
+    }
+
     const taskWithLabels = {
       ...task,
       labels: task.cardLabels.map(cardLabel => ({
@@ -74,7 +78,6 @@ export async function PUT(request: NextRequest) {
 
     return createSuccessResponse(taskWithLabels, 'Task updated successfully')
   } catch (error) {
-    console.log('error', error)
     return handleAPIError(error, `/api/tasks/move`)
   }
 }

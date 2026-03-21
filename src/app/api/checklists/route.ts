@@ -4,18 +4,20 @@ import { createChecklistSchema } from '@/lib/validations/checklist'
 import { 
   handleAPIError, 
   createSuccessResponse, 
-  validateRequestBody 
+  validateRequestBody,
+  NotFoundError
 } from '@/lib/api-error-handler'
+import { getUserIdFromRequest } from '@/lib/auth-helpers'
 import { TChecklist } from '@/models/checklist'
 
 // GET /api/checklists - Get checklists (optionally filtered by card)
 export async function GET(request: NextRequest) {
   try {
+    const userId = getUserIdFromRequest(request)
     const { searchParams } = new URL(request.url)
     const cardId = searchParams.get('cardId')
-    
 
-    const whereClause = cardId ? { cardId } : {}
+    const whereClause = cardId ? { cardId, userId } : { userId }
 
     const checklists = await prisma.checklist.findMany({
       where: whereClause,
@@ -31,7 +33,7 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    const response:TChecklist[] = checklists
+    const response: TChecklist[] = checklists
 
     return createSuccessResponse(response, 'Checklists fetched successfully')
   } catch (error) {
@@ -41,21 +43,18 @@ export async function GET(request: NextRequest) {
 
 // POST /api/checklists - Create a new checklist
 export async function POST(request: NextRequest) {
-  
-
   try {
-    // throw new Error("adas")
+    const userId = getUserIdFromRequest(request)
     const body = await request.json()
-    // Validate the request body using our validation helper
     const validatedData = validateRequestBody(createChecklistSchema, body)
 
-    // Check if card exists
+    // Check if card exists and belongs to the authenticated user (multitenancy)
     const card = await prisma.card.findUnique({
-      where: { id: validatedData.cardId },
+      where: { id: validatedData.cardId, userId },
     })
 
     if (!card) {
-      throw new Error('Card not found')
+      throw new NotFoundError('Card')
     }
 
     // Get the current max order for this card's checklists
@@ -65,12 +64,16 @@ export async function POST(request: NextRequest) {
       select: { order: true }
     })
 
-    const newOrder = validatedData.order || (maxOrder?.order || 0) + 1
+    // Use explicit order if provided and not 0-default, otherwise auto-increment
+    const newOrder = validatedData.order !== 0
+      ? validatedData.order
+      : (maxOrder?.order ?? -1) + 1
 
     const checklist = await prisma.checklist.create({
       data: {
         ...validatedData,
         order: newOrder,
+        userId,
       },
       include: {
         items: {
@@ -85,4 +88,4 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     return handleAPIError(error, '/api/checklists')
   }
-} 
+}

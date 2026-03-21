@@ -4,16 +4,19 @@ import { createChecklistItemSchema } from '@/lib/validations/checklist'
 import { 
   handleAPIError, 
   createSuccessResponse, 
-  validateRequestBody 
+  validateRequestBody,
+  NotFoundError
 } from '@/lib/api-error-handler'
+import { getUserIdFromRequest } from '@/lib/auth-helpers'
 
 // GET /api/checklist-items - Get checklist items (optionally filtered by checklist)
 export async function GET(request: NextRequest) {
   try {
+    const userId = getUserIdFromRequest(request)
     const { searchParams } = new URL(request.url)
     const checklistId = searchParams.get('checklistId')
 
-    const whereClause = checklistId ? { checklistId } : {}
+    const whereClause = checklistId ? { checklistId, userId } : { userId }
 
     const items = await prisma.checklistItem.findMany({
       where: whereClause,
@@ -31,18 +34,18 @@ export async function GET(request: NextRequest) {
 // POST /api/checklist-items - Create a new checklist item
 export async function POST(request: NextRequest) {
   try {
+    const userId = getUserIdFromRequest(request)
     const body = await request.json()
     
-    // Validate the request body using our validation helper
     const validatedData = validateRequestBody(createChecklistItemSchema, body)
 
-    // Check if checklist exists
+    // Check if checklist exists and belongs to the authenticated user (multitenancy)
     const checklist = await prisma.checklist.findUnique({
-      where: { id: validatedData.checklistId },
+      where: { id: validatedData.checklistId, userId },
     })
 
     if (!checklist) {
-      throw new Error('Checklist not found')
+      throw new NotFoundError('Checklist')
     }
 
     // Get the current max order for this checklist's items
@@ -52,12 +55,16 @@ export async function POST(request: NextRequest) {
       select: { order: true }
     })
 
-    const newOrder = validatedData.order || (maxOrder?.order || 0) + 1
+    // Use explicit order if provided and non-zero, otherwise auto-increment
+    const newOrder = validatedData.order !== 0
+      ? validatedData.order
+      : (maxOrder?.order ?? -1) + 1
 
     const checklistItem = await prisma.checklistItem.create({
       data: {
         ...validatedData,
         order: newOrder,
+        userId,
       }
     })
 
@@ -65,4 +72,4 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     return handleAPIError(error, '/api/checklist-items')
   }
-} 
+}

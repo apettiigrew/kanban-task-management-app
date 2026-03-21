@@ -73,11 +73,9 @@ export const useCreateLabel = () => {
             }
         },
         onSettled: (data, error, newLabel) => {
-            // Always refetch after error or success to ensure server state
-            queryClient.invalidateQueries({ queryKey: labelKeys.byCard(newLabel.projectId) })
+            // Invalidate the correct byCard cache key (was incorrectly using projectId)
+            queryClient.invalidateQueries({ queryKey: labelKeys.byCard(newLabel.cardId) })
 
-
-            // Always refetch after error or success to ensure consistency
             queryClient.invalidateQueries({ queryKey: projectKeys.detail(newLabel.projectId) })
         },
     })
@@ -149,10 +147,11 @@ export const useUpdateLabel = () => {
             }
         },
         onSettled: (data, error, payload) => {
-            // Also invalidate card-specific queries if cardId is provided
-            queryClient.invalidateQueries({ queryKey: labelKeys.byCard(payload.cardId) })
+            // Guard against undefined cardId (it is optional on UpdateLabelDTO)
+            if (payload.cardId) {
+                queryClient.invalidateQueries({ queryKey: labelKeys.byCard(payload.cardId) })
+            }
 
-            // Always refetch after error or success to ensure consistency
             queryClient.invalidateQueries({ queryKey: projectKeys.detail(payload.projectId) })
         },
     })

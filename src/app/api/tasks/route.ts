@@ -3,6 +3,7 @@ import {
   handleAPIError,
   validateRequestBody
 } from '@/lib/api-error-handler'
+import { getUserIdFromRequest } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
 import { createTaskSchema, reorderTasksSchema } from '@/lib/validations/task'
 import { NextRequest } from 'next/server'
@@ -10,13 +11,14 @@ import { NextRequest } from 'next/server'
 // GET /api/tasks - Get all tasks (optionally filtered by project or column)
 export async function GET(request: NextRequest) {
   try {
-    
+    const userId = getUserIdFromRequest(request)
+
     const { searchParams } = new URL(request.url)
     const projectId = searchParams.get('projectId')
     const columnId = searchParams.get('columnId')
     const includeRelations = searchParams.get('includeRelations') === 'true'
 
-    const whereClause: Record<string, string> = {}
+    const whereClause: Record<string, string> = { userId }
     if (projectId) whereClause.projectId = projectId
     if (columnId) whereClause.columnId = columnId
 
@@ -71,14 +73,16 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const userId = getUserIdFromRequest(request)
+
     const body = await request.json()
     
     // Validate the request body using our validation helper
     const validatedData = validateRequestBody(createTaskSchema, body)
 
-    // Check if project exists
+    // Check if project exists and belongs to the authenticated user
     const project = await prisma.project.findUnique({
-      where: { id: validatedData.projectId },
+      where: { id: validatedData.projectId, userId },
     })
 
     if (!project) {
@@ -129,6 +133,7 @@ export async function POST(request: NextRequest) {
             projectId: validatedData.projectId,
             columnId: validatedData.columnId,
             order: newOrder,
+            userId,
           }
         })
       })
@@ -158,6 +163,7 @@ export async function POST(request: NextRequest) {
           projectId: validatedData.projectId,
           columnId: validatedData.columnId,
           order: newOrder,
+          userId,
         }
       })
 
@@ -171,7 +177,8 @@ export async function POST(request: NextRequest) {
 // PUT /api/tasks - Reorder tasks within a column
 export async function PUT(request: NextRequest) {
   try {
-  
+    const userId = getUserIdFromRequest(request)
+
     const body = await request.json()
     
     // Validate the request body using our validation helper
@@ -181,7 +188,7 @@ export async function PUT(request: NextRequest) {
     await prisma.$transaction(
       validatedData.taskOrders.map(({ id, order }) =>
         prisma.card.update({
-          where: { id },
+          where: { id, userId },
           data: { order },
         })
       )

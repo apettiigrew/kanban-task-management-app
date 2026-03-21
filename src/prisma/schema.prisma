@@ -15,8 +15,11 @@ model Project {
   id          String   @id @default(cuid())
   title       String
   description String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  userId      String
+  isArchived  Boolean   @default(false)
+  deletedAt   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   // Relations
   columns     Column[]
@@ -24,6 +27,8 @@ model Project {
   labels      Label[]
 
   @@map("projects")
+  @@index([userId])
+  @@index([isArchived])
 }
 
 model Column {
@@ -31,6 +36,7 @@ model Column {
   title     String
   order     Int
   sortType  String?
+  userId    String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -40,6 +46,7 @@ model Column {
   cards     Card[]
 
   @@map("columns")
+  @@index([userId])
   @@index([projectId])
   @@index([projectId, order])
 }
@@ -51,6 +58,7 @@ model Card {
   order       Int
   labels      String[]
   dueDate     DateTime?
+  userId      String
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -63,6 +71,7 @@ model Card {
   cardLabels CardLabel[]
 
   @@map("cards")
+  @@index([userId])
   @@index([projectId])
   @@index([columnId])
   @@index([columnId, order])
@@ -72,6 +81,7 @@ model Checklist {
   id        String   @id @default(cuid())
   title     String
   order     Int      @default(0)
+  userId    String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -81,6 +91,7 @@ model Checklist {
   items  ChecklistItem[]
 
   @@map("checklists")
+  @@index([userId])
   @@index([cardId])
   @@index([cardId, order])
 }
@@ -90,6 +101,7 @@ model ChecklistItem {
   text        String
   isCompleted Boolean  @default(false)
   order       Int      @default(0)
+  userId      String
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -98,6 +110,7 @@ model ChecklistItem {
   checklist   Checklist @relation(fields: [checklistId], references: [id], onDelete: Cascade)
 
   @@map("checklist_items")
+  @@index([userId])
   @@index([checklistId])
   @@index([checklistId, order])
 }
@@ -106,6 +119,7 @@ model Label {
   id        String   @id @default(cuid())
   title     String
   color     String
+  userId    String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -115,12 +129,14 @@ model Label {
   cardLabels CardLabel[]
 
   @@map("labels")
+  @@index([userId])
   @@index([projectId])
 }
 
 model CardLabel {
   id        String   @id @default(cuid())
   checked   Boolean  @default(false)
+  userId    String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -131,18 +147,9 @@ model CardLabel {
   label   Label @relation(fields: [labelId], references: [id], onDelete: Cascade)
 
   @@map("card_labels")
+  @@index([userId])
   @@index([cardId])
   @@index([labelId])
   @@unique([cardId, labelId])
 }
 
-model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  password  String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@map("users")
-  @@index([email])
-}

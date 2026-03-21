@@ -5,16 +5,18 @@ import {
   createSuccessResponse, 
   NotFoundError 
 } from '@/lib/api-error-handler'
+import { getUserIdFromRequest } from '@/lib/auth-helpers'
 import { TLabelWithChecked } from '@/models/label'
 
 // GET /api/labels/by-card/[cardId] - Get all labels for a project with checked status for a specific card
 export async function GET(request: NextRequest, { params }: { params: Promise<{ cardId: string }> }) {
   try {
+    const userId = getUserIdFromRequest(request)
     const { cardId } = await params
 
-    // First, get the card to find the projectId
+    // First, get the card to find the projectId — scoped to the authenticated user
     const card = await prisma.card.findUnique({
-      where: { id: cardId },
+      where: { id: cardId, userId },
       select: { projectId: true }
     })
 

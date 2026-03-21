@@ -7,15 +7,18 @@ import {
   validateRequestBody,
   NotFoundError
 } from '@/lib/api-error-handler'
+import { getUserIdFromRequest } from '@/lib/auth-helpers'
 
 // GET /api/columns/[id] - Get a specific column
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   try {
+    const userId = getUserIdFromRequest(request)
     const { searchParams } = new URL(request.url)
     const includeTasks = searchParams.get('includeTasks') === 'true'
 
+    // Scope the lookup to the authenticated user (multitenancy)
     const column = await prisma.column.findUnique({
-      where: { id: params.id },
+      where: { id: params.id, userId },
       include: {
         cards: includeTasks,
         project: {
@@ -40,14 +43,15 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 // PUT /api/columns/[id] - Update a specific column
 export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
   try {
+    const userId = getUserIdFromRequest(request)
     const body = await request.json()
 
     // Validate the request body using our validation helper
     const validatedData = validateRequestBody(updateColumnSchema, body)
 
-    // Check if column exists
+    // Check if column exists and belongs to the authenticated user (multitenancy)
     const existingColumn = await prisma.column.findUnique({
-      where: { id: params.id },
+      where: { id: params.id, userId },
     })
 
     if (!existingColumn) {
@@ -78,8 +82,11 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 // DELETE /api/columns/[id] - Delete a specific column
 export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
   try {
+    const userId = getUserIdFromRequest(request)
+
+    // Check if column exists and belongs to the authenticated user (multitenancy)
     const existingColumn = await prisma.column.findUnique({
-      where: { id: params.id },
+      where: { id: params.id, userId },
       include: {
         _count: {
           select: {

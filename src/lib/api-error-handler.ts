@@ -42,6 +42,13 @@ export class ConflictError extends APIError {
   }
 }
 
+export class UnauthorizedError extends APIError {
+  constructor(message = 'Unauthorized') {
+    super(message, 401, 'UNAUTHORIZED')
+    this.name = 'UnauthorizedError'
+  }
+}
+
 // Error response interface
 interface ErrorResponse {
   success: false

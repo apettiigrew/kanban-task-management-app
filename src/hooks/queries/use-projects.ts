@@ -16,8 +16,9 @@ export const projectKeys = {
 }
 
 // API client functions with enhanced error handling
-const fetchProjects = async (): Promise<TProject[]> => {
-  return apiRequest<TProject[]>('/api/projects')
+const fetchProjects = async (includeArchived = false): Promise<TProject[]> => {
+  const url = includeArchived ? '/api/projects?includeArchived=true' : '/api/projects'
+  return apiRequest<TProject[]>(url)
 }
 
 const fetchProject = async (id: string): Promise<TProject> => {
@@ -64,12 +65,14 @@ interface UseProjectsOptions {
   enabled?: boolean
   refetchOnWindowFocus?: boolean
   staleTime?: number
+  includeArchived?: boolean
 }
 
 export const useProjects = (options: UseProjectsOptions = {}) => {
+  const { includeArchived = false } = options
   return useQuery({
-    queryKey: projectKeys.lists(),
-    queryFn: fetchProjects,
+    queryKey: projectKeys.list({ includeArchived }),
+    queryFn: () => fetchProjects(includeArchived),
     enabled: options.enabled !== false,
     refetchOnWindowFocus: options.refetchOnWindowFocus ?? true,
     staleTime: options.staleTime ?? 5 * 60 * 1000, // 5 minutes
@@ -139,9 +142,32 @@ interface UseDeleteProjectOptions {
   onError?: (error: FormError) => void
 }
 
-export const useCreateProject = () => {
+export const useCreateProject = (options: UseCreateProjectOptions = {}) => {
+  const queryClient = useQueryClient()
+
   return useMutation({
     mutationFn: createProject,
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: projectKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: projectKeys.stats() })
+
+      options.onSuccess?.(data)
+    },
+    onError: (error: FormError) => {
+      console.error('Error in useCreateProject:', error)
+
+      if (options.onFieldErrors && error instanceof FormError && Object.keys(error.fieldErrors).length > 0) {
+        options.onFieldErrors(error.fieldErrors)
+      }
+
+      options.onError?.(error)
+    },
+    retry: (failureCount, error) => {
+      if (error instanceof FormError) {
+        return false
+      }
+      return failureCount < 2
+    },
   })
 }
 
@@ -282,6 +308,72 @@ export const useDeleteProject = (options: UseDeleteProjectOptions = {}) => {
     },
     retry: (failureCount, error) => {
       // Don't retry on form validation errors
+      if (error instanceof FormError) {
+        return false
+      }
+      return failureCount < 2
+    },
+  })
+}
+
+interface UseCloseBoardOptions {
+  onSuccess?: () => void
+  onError?: (error: FormError) => void
+}
+
+const closeBoard = async (id: string): Promise<TProject> => {
+  return apiRequest<TProject>(`/api/projects/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify({ isArchived: true }),
+  })
+}
+
+export const useCloseBoard = (options: UseCloseBoardOptions = {}) => {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: closeBoard,
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: projectKeys.detail(id) })
+      await queryClient.cancelQueries({ queryKey: projectKeys.lists() })
+      await queryClient.cancelQueries({ queryKey: projectKeys.stats() })
+
+      const previousProject = queryClient.getQueryData(projectKeys.detail(id))
+      const previousProjects = queryClient.getQueryData(projectKeys.lists())
+      const previousProjectsWithStats = queryClient.getQueryData(projectKeys.stats())
+
+      // Optimistically remove the board from active lists since it will be archived
+      queryClient.setQueryData(projectKeys.lists(), (old: TProject[] | undefined) => {
+        if (!old) return old
+        return old.filter(project => project.id !== id)
+      })
+
+      queryClient.setQueryData(projectKeys.stats(), (old: TProject[] | undefined) => {
+        if (!old) return old
+        return old.filter(project => project.id !== id)
+      })
+
+      return { previousProject, previousProjects, previousProjectsWithStats }
+    },
+    onError: (error: FormError, id, context) => {
+      if (context?.previousProjects) {
+        queryClient.setQueryData(projectKeys.lists(), context.previousProjects)
+      }
+      if (context?.previousProjectsWithStats) {
+        queryClient.setQueryData(projectKeys.stats(), context.previousProjectsWithStats)
+      }
+      if (context?.previousProject) {
+        queryClient.setQueryData(projectKeys.detail(id), context.previousProject)
+      }
+
+      console.error('Error in useCloseBoard:', error)
+      options.onError?.(error)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: projectKeys.all })
+      options.onSuccess?.()
+    },
+    retry: (failureCount, error) => {
       if (error instanceof FormError) {
         return false
       }

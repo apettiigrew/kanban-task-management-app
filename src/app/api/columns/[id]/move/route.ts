@@ -8,18 +8,19 @@ import {
   NotFoundError,
   ConflictError
 } from '@/lib/api-error-handler'
+import { getUserIdFromRequest } from '@/lib/auth-helpers'
 
 // POST /api/columns/[id]/move - Move a column to a different board
 export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
   try {
+    const userId = getUserIdFromRequest(request)
     const body = await request.json()
     
-    // Validate the request body
     const validatedData = validateRequestBody(moveColumnSchema, body)
 
-    // Verify the column exists and get its current data
+    // Verify the column exists and belongs to the authenticated user
     const existingColumn = await prisma.column.findUnique({
-      where: { id: params.id },
+      where: { id: params.id, userId },
       include: {
         project: {
           select: {
@@ -34,9 +35,9 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       throw new NotFoundError('Column')
     }
 
-    // Verify the target project exists
+    // Verify the target project exists and belongs to the authenticated user
     const targetProject = await prisma.project.findUnique({
-      where: { id: validatedData.targetProjectId },
+      where: { id: validatedData.targetProjectId, userId },
       select: {
         id: true,
         title: true,
@@ -47,29 +48,24 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       throw new NotFoundError('Target project')
     }
 
-    // Check if moving to the same project
     if (existingColumn.projectId === validatedData.targetProjectId) {
       throw new ConflictError('Cannot move column to the same project. Use reposition endpoint instead.')
     }
 
-    // Get the total number of columns in the target project
     const targetProjectColumnCount = await prisma.column.count({
       where: { projectId: validatedData.targetProjectId }
     })
 
-    // Validate position is within valid range
     if (validatedData.position > targetProjectColumnCount + 1) {
       throw new ConflictError(`Position must be between 1 and ${targetProjectColumnCount + 1}`)
     }
 
-    // Use a transaction to ensure data consistency
     const movedColumn = await prisma.$transaction(async (tx) => {
-      // Update the column's projectId and order
       const updatedColumn = await tx.column.update({
         where: { id: params.id },
         data: {
           projectId: validatedData.targetProjectId,
-          order: validatedData.position - 1, // Convert to 0-based index
+          order: validatedData.position - 1,
         },
         include: {
           project: {
@@ -81,15 +77,15 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
         }
       })
 
-      // Update the order of columns in the target project that come after the new position
+      // Shift columns in target project to make room
       await tx.column.updateMany({
         where: {
           projectId: validatedData.targetProjectId,
           order: {
-            gte: validatedData.position - 1, // Convert to 0-based index
+            gte: validatedData.position - 1,
           },
           id: {
-            not: params.id, // Don't update the moved column itself
+            not: params.id,
           },
         },
         data: {
@@ -99,7 +95,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
         },
       })
 
-      // Update the order of columns in the source project that come after the original position
+      // Close the gap in the source project
       await tx.column.updateMany({
         where: {
           projectId: existingColumn.projectId,
@@ -114,7 +110,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
         },
       })
 
-      // Update all cards in the moved column to have the new projectId
+      // Reassign cards to the new project
       await tx.card.updateMany({
         where: {
           columnId: params.id,
