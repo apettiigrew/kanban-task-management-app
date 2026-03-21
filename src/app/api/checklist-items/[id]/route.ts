@@ -7,14 +7,16 @@ import {
   validateRequestBody,
   NotFoundError
 } from '@/lib/api-error-handler'
+import { getUserIdFromRequest } from '@/lib/auth-helpers'
 
 // GET /api/checklist-items/[id] - Get a specific checklist item
-export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }>}) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
+    const userId = getUserIdFromRequest(request)
 
     const checklistItem = await prisma.checklistItem.findUnique({
-      where: { id },
+      where: { id, userId },
     })
 
     if (!checklistItem) {
@@ -29,17 +31,17 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 }
 
 // PATCH /api/checklist-items/[id] - Update a checklist item
-export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }>}) {
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
+    const userId = getUserIdFromRequest(request)
     const body = await request.json()
     
-    // Validate the request body
     const validatedData = validateRequestBody(updateChecklistItemSchema, body)
 
-    // Check if checklist item exists
+    // Check if checklist item exists and belongs to the authenticated user
     const existingItem = await prisma.checklistItem.findUnique({
-      where: { id },
+      where: { id, userId },
     })
 
     if (!existingItem) {
@@ -63,20 +65,20 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 }
 
 // DELETE /api/checklist-items/[id] - Delete a checklist item
-export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }>}) {
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
+    const userId = getUserIdFromRequest(request)
 
-    // Check if checklist item exists
+    // Check if checklist item exists and belongs to the authenticated user
     const existingItem = await prisma.checklistItem.findUnique({
-      where: { id },
+      where: { id, userId },
     })
 
     if (!existingItem) {
       throw new NotFoundError('Checklist item')
     }
 
-    // Delete the checklist item
     await prisma.checklistItem.delete({
       where: { id }
     })
@@ -86,4 +88,4 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     const { id } = await params
     return handleAPIError(error, `/api/checklist-items/${id}`)
   }
-} 
+}

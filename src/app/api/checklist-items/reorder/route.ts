@@ -3,8 +3,10 @@ import { prisma } from '@/lib/prisma'
 import { 
   handleAPIError, 
   createSuccessResponse, 
-  validateRequestBody 
+  validateRequestBody,
+  NotFoundError
 } from '@/lib/api-error-handler'
+import { getUserIdFromRequest } from '@/lib/auth-helpers'
 import { z } from 'zod'
 
 const reorderChecklistItemsSchema = z.object({
@@ -19,31 +21,31 @@ const reorderChecklistItemsSchema = z.object({
 // PATCH /api/checklist-items/reorder - Reorder checklist items within or across checklists
 export async function PATCH(request: NextRequest) {
   try {
+    const userId = getUserIdFromRequest(request)
     const body = await request.json()
     
-    // Validate the request body
     const validatedData = validateRequestBody(reorderChecklistItemsSchema, body)
 
-    // Check if all checklists exist
+    // Verify all involved checklists belong to the authenticated user
     const checklistIds = [validatedData.checklistId, ...validatedData.itemOrders.map(item => item.checklistId)]
     const uniqueChecklistIds = [...new Set(checklistIds)]
     
     const checklists = await prisma.checklist.findMany({
-      where: { id: { in: uniqueChecklistIds } },
+      where: { id: { in: uniqueChecklistIds }, userId },
     })
 
     if (checklists.length !== uniqueChecklistIds.length) {
-      throw new Error('One or more checklists not found')
+      throw new NotFoundError('One or more checklists')
     }
 
-    // Update each checklist item's order and checklist in a transaction
+    // Update each checklist item's order and checklist, scoped to the authenticated user
     await prisma.$transaction(
       validatedData.itemOrders.map(({ id, order, checklistId }) =>
         prisma.checklistItem.update({
-          where: { id },
+          where: { id, userId },
           data: { 
             order,
-            checklistId // This allows moving items between checklists
+            checklistId
           },
         })
       )
@@ -53,4 +55,4 @@ export async function PATCH(request: NextRequest) {
   } catch (error) {
     return handleAPIError(error, '/api/checklist-items/reorder')
   }
-} 
+}

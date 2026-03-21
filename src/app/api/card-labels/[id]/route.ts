@@ -7,15 +7,17 @@ import {
   validateRequestBody,
   NotFoundError 
 } from '@/lib/api-error-handler'
+import { getUserIdFromRequest } from '@/lib/auth-helpers'
 import { TCardLabel } from '@/models/label'
 
 // GET /api/card-labels/[id] - Get a specific card label
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
+    const userId = getUserIdFromRequest(request)
     
     const cardLabel = await prisma.cardLabel.findUnique({
-      where: { id },
+      where: { id, userId },
       include: {
         label: true
       }
@@ -38,12 +40,13 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
+    const userId = getUserIdFromRequest(request)
     const body = await request.json()
     const validatedData = validateRequestBody(updateCardLabelSchema, body)
 
-    // Check if card label exists
+    // Check if card label exists and belongs to the authenticated user
     const existingCardLabel = await prisma.cardLabel.findUnique({
-      where: { id }
+      where: { id, userId }
     })
 
     if (!existingCardLabel) {
@@ -68,10 +71,11 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
+    const userId = getUserIdFromRequest(request)
 
-    // Check if card label exists
+    // Check if card label exists and belongs to the authenticated user
     const existingCardLabel = await prisma.cardLabel.findUnique({
-      where: { id }
+      where: { id, userId }
     })
 
     if (!existingCardLabel) {

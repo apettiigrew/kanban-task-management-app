@@ -5,9 +5,9 @@ import {
   handleAPIError,
   createSuccessResponse,
   validateRequestBody,
-  checkRateLimit,
   NotFoundError
 } from '@/lib/api-error-handler'
+import { getUserIdFromRequest } from '@/lib/auth-helpers'
 
 // GET /api/tasks/[id] - Get a specific task
 export async function GET(
@@ -15,13 +15,13 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-
+    const userId = getUserIdFromRequest(request)
 
     const { searchParams } = new URL(request.url)
     const includeRelations = searchParams.get('includeRelations') === 'true'
 
     const task = await prisma.card.findUnique({
-      where: { id: params.id },
+      where: { id: params.id, userId },
       include: {
         project: includeRelations ? {
           select: {
@@ -73,21 +73,19 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
-  
+    const userId = getUserIdFromRequest(request)
+
     const body = await request.json()
-    // Validate the request body using centralized validation
     const validatedData = validateRequestBody(updateTaskSchema, body)
 
-    // Check if task exists
     const existingTask = await prisma.card.findUnique({
-      where: { id: params.id },
+      where: { id: params.id, userId },
     })
 
     if (!existingTask) {
       throw new NotFoundError('Task')
     }
 
-  
     const task = await prisma.card.update({
       where: { id: params.id },
       data: validatedData,
@@ -138,9 +136,10 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
+    const userId = getUserIdFromRequest(request)
 
     const existingTask = await prisma.card.findUnique({
-      where: { id: params.id },
+      where: { id: params.id, userId },
     })
 
     if (!existingTask) {

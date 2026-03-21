@@ -4,37 +4,40 @@ import { createCardLabelSchema } from '@/lib/validations/label'
 import { 
   handleAPIError, 
   createSuccessResponse, 
-  validateRequestBody 
+  validateRequestBody,
+  NotFoundError
 } from '@/lib/api-error-handler'
+import { getUserIdFromRequest } from '@/lib/auth-helpers'
 import { TCardLabel } from '@/models/label'
 
 // POST /api/card-labels - Create a new card label relationship
 export async function POST(request: NextRequest) {
   try {
+    const userId = getUserIdFromRequest(request)
     const body = await request.json()
     const validatedData = validateRequestBody(createCardLabelSchema, body)
 
-    // Check if the card and label exist and belong to the same project
+    // Check if the card and label exist and belong to the authenticated user
     const card = await prisma.card.findUnique({
-      where: { id: validatedData.cardId },
+      where: { id: validatedData.cardId, userId },
       select: { projectId: true }
     })
 
     if (!card) {
-      throw new Error('Card not found')
+      throw new NotFoundError('Card')
     }
 
     const label = await prisma.label.findUnique({
-      where: { id: validatedData.labelId },
+      where: { id: validatedData.labelId, userId },
       select: { projectId: true }
     })
 
     if (!label) {
-      throw new Error('Label not found')
+      throw new NotFoundError('Label')
     }
 
     if (card.projectId !== label.projectId) {
-      throw new Error('Card and label must belong to the same project')
+      throw new NotFoundError('Label')
     }
 
     // Check if the relationship already exists
@@ -48,7 +51,6 @@ export async function POST(request: NextRequest) {
     })
 
     if (existingCardLabel) {
-      // If it exists, just update the checked status
       const cardLabel = await prisma.cardLabel.update({
         where: {
           cardId_labelId: {
@@ -65,9 +67,11 @@ export async function POST(request: NextRequest) {
       return createSuccessResponse(response, 'Card label updated successfully')
     }
 
-    // Create new card label relationship
     const cardLabel = await prisma.cardLabel.create({
-      data: validatedData
+      data: {
+        ...validatedData,
+        userId,
+      }
     })
 
     const response: TCardLabel = cardLabel

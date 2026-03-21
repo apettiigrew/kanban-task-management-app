@@ -7,15 +7,17 @@ import {
   validateRequestBody,
   NotFoundError 
 } from '@/lib/api-error-handler'
+import { getUserIdFromRequest } from '@/lib/auth-helpers'
 import { TLabel } from '@/models/label'
 
 // GET /api/labels/[id] - Get a specific label
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
+    const userId = getUserIdFromRequest(request)
     
     const label = await prisma.label.findUnique({
-      where: { id }
+      where: { id, userId }
     })
 
     if (!label) {
@@ -35,12 +37,12 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
+    const userId = getUserIdFromRequest(request)
     const body = await request.json()
     const validatedData = validateRequestBody(updateLabelSchema, body)
 
-    // Check if label exists
     const existingLabel = await prisma.label.findUnique({
-      where: { id }
+      where: { id, userId }
     })
 
     if (!existingLabel) {
@@ -65,10 +67,10 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
+    const userId = getUserIdFromRequest(request)
 
-    // Check if label exists
     const existingLabel = await prisma.label.findUnique({
-      where: { id }
+      where: { id, userId }
     })
 
     if (!existingLabel) {

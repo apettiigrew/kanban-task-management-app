@@ -3,8 +3,10 @@ import { prisma } from '@/lib/prisma'
 import { 
   handleAPIError, 
   createSuccessResponse, 
-  validateRequestBody 
+  validateRequestBody,
+  NotFoundError
 } from '@/lib/api-error-handler'
+import { getUserIdFromRequest } from '@/lib/auth-helpers'
 import { z } from 'zod'
 
 const reorderChecklistsSchema = z.object({
@@ -18,25 +20,25 @@ const reorderChecklistsSchema = z.object({
 // PATCH /api/checklists/reorder - Reorder checklists within a card
 export async function PATCH(request: NextRequest) {
   try {
+    const userId = getUserIdFromRequest(request)
     const body = await request.json()
     
-    // Validate the request body
     const validatedData = validateRequestBody(reorderChecklistsSchema, body)
 
-    // Check if card exists
+    // Check if card exists and belongs to the authenticated user
     const card = await prisma.card.findUnique({
-      where: { id: validatedData.cardId },
+      where: { id: validatedData.cardId, userId },
     })
 
     if (!card) {
-      throw new Error('Card not found')
+      throw new NotFoundError('Card')
     }
 
-    // Update each checklist's order in a transaction
+    // Update each checklist's order in a transaction, scoped to the authenticated user
     await prisma.$transaction(
       validatedData.checklistOrders.map(({ id, order }) =>
         prisma.checklist.update({
-          where: { id },
+          where: { id, userId },
           data: { order },
         })
       )
@@ -46,4 +48,4 @@ export async function PATCH(request: NextRequest) {
   } catch (error) {
     return handleAPIError(error, '/api/checklists/reorder')
   }
-} 
+}

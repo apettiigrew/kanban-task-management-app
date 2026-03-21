@@ -7,14 +7,16 @@ import {
   validateRequestBody 
 } from '@/lib/api-error-handler'
 import { TCardLabel, TLabel } from '@/models/label'
+import { getUserIdFromRequest } from '@/lib/auth-helpers'
 
 // GET /api/labels - Get all labels (optionally filtered by project)
 export async function GET(request: NextRequest) {
   try {
+    const userId = getUserIdFromRequest(request)
     const { searchParams } = new URL(request.url)
     const projectId = searchParams.get('projectId')
 
-    const whereClause = projectId ? { projectId } : {}
+    const whereClause = projectId ? { projectId, userId } : { userId }
 
     const labels = await prisma.label.findMany({
       where: whereClause,
@@ -34,28 +36,31 @@ export async function GET(request: NextRequest) {
 // POST /api/labels - Create a new label
 export async function POST(request: NextRequest) {
   try {
+    const userId = getUserIdFromRequest(request)
     const body = await request.json()
     
     const validatedData = validateRequestBody(createLabelSchema, body)
-  
-    const label = await prisma.label.create({
+
+    const cardLabel = await prisma.$transaction(async (tx) => {
+      const label = await tx.label.create({
         data: {
           title: validatedData.title,
           color: validatedData.color,
-          projectId: validatedData.projectId
+          projectId: validatedData.projectId,
+          userId
         }
+      })
+
+      return tx.cardLabel.create({
+        data: {
+          cardId: validatedData.cardId,
+          labelId: label.id,
+          checked: true,
+          userId
+        }
+      })
     })
 
-    // create card label relationship
-    const cardLabel = await prisma.cardLabel.create({
-      data: {
-        cardId: validatedData.cardId,
-        labelId: label.id,
-        checked: true
-      }
-    })
-
-    // return the card label
     const response: TCardLabel = cardLabel
 
     return createSuccessResponse(response, 'Card Label created successfully', 201)

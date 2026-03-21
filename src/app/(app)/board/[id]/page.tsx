@@ -7,8 +7,6 @@ import { useProject } from "@/hooks/queries/use-projects"
 import { TProject } from "@/models/project"
 
 import { useParams } from "next/navigation"
-import { Suspense } from "react"
-import { RenderIf } from "@/utils/render-if"
 
 export default function BoardPage() {
   const params = useParams()
@@ -22,7 +20,7 @@ export default function BoardPage() {
           <p className="text-muted-foreground mb-4">
             No project ID provided
           </p>
-          <a href="/dashboard" className="underline">Return to dashboard</a>
+          <a href="/home" className="underline">Return to home</a>
         </div>
       </div>
     )
@@ -36,7 +34,7 @@ export default function BoardPage() {
           <p className="text-muted-foreground mb-4">
             We encountered an error loading this board
           </p>
-          <a href="/dashboard" className="underline">Return to dashboard</a>
+          <a href="/home" className="underline">Return to home</a>
         </div>
       </div>
     }>
@@ -50,8 +48,12 @@ interface BoardContentProps {
 }
 
 function BoardContent({ projectId }: BoardContentProps) {
-  const { data: project, error: projectError } = useProject({ id: projectId, refetchOnWindowFocus: true })
+  const { data: project, error: projectError, isLoading } = useProject({ id: projectId, refetchOnWindowFocus: true })
   
+  if (isLoading) {
+    return <RouteLoading message="Loading board..." />
+  }
+
   if (projectError) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -60,22 +62,20 @@ function BoardContent({ projectId }: BoardContentProps) {
           <p className="text-muted-foreground mb-4">
             The project you&apos;re looking for doesn&apos;t exist or you don&apos;t have access to it.
           </p>
-          <a href="/dashboard" className="underline">Return to dashboard</a>
+          <a href="/home" className="underline">Return to home</a>
         </div>
       </div>
     )
   }
 
+  if (!project) {
+    return null
+  }
 
   return (
     <div className="bg-background bg-gradient-to-br from-blue-100 via-sky-100 to-indigo-200 flex flex-col h-full">
       <main className="flex-1">
-        <Suspense fallback={<RouteLoading message="Loading board..." />}>
-          <RenderIf
-            condition={project != null || projectError != undefined}
-            children={<Board project={project!} />}
-          />      
-        </Suspense>
+        <Board project={project as TProject} />
       </main>
     </div>
   )

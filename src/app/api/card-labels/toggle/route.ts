@@ -3,8 +3,10 @@ import { prisma } from '@/lib/prisma'
 import { 
   handleAPIError, 
   createSuccessResponse, 
-  validateRequestBody 
+  validateRequestBody,
+  NotFoundError
 } from '@/lib/api-error-handler'
+import { getUserIdFromRequest } from '@/lib/auth-helpers'
 import { TCardLabel } from '@/models/label'
 import { z } from 'zod'
 
@@ -16,32 +18,33 @@ const toggleCardLabelSchema = z.object({
 // POST /api/card-labels/toggle - Toggle a card label (create if not exists, update if exists)
 export async function POST(request: NextRequest) {
   try {
+    const userId = getUserIdFromRequest(request)
     const body = await request.json()
     const validatedData = validateRequestBody(toggleCardLabelSchema, body)
 
     const { cardId, labelId } = validatedData
 
-    // Check if the card and label exist and belong to the same project
+    // Check if the card and label exist and belong to the authenticated user
     const card = await prisma.card.findUnique({
-      where: { id: cardId },
+      where: { id: cardId, userId },
       select: { projectId: true }
     })
 
     if (!card) {
-      throw new Error('Card not found')
+      throw new NotFoundError('Card')
     }
 
     const label = await prisma.label.findUnique({
-      where: { id: labelId },
+      where: { id: labelId, userId },
       select: { projectId: true }
     })
 
     if (!label) {
-      throw new Error('Label not found')
+      throw new NotFoundError('Label')
     }
 
     if (card.projectId !== label.projectId) {
-      throw new Error('Card and label must belong to the same project')
+      throw new NotFoundError('Label')
     }
 
     // Check if the relationship already exists
@@ -57,7 +60,6 @@ export async function POST(request: NextRequest) {
     let cardLabel: TCardLabel
 
     if (existingCardLabel) {
-      // If it exists, toggle the checked status
       cardLabel = await prisma.cardLabel.update({
         where: {
           cardId_labelId: {
@@ -70,12 +72,12 @@ export async function POST(request: NextRequest) {
         }
       })
     } else {
-      // If it doesn't exist, create it with checked: true
       cardLabel = await prisma.cardLabel.create({
         data: {
           cardId: cardId,
           labelId: labelId,
-          checked: true
+          checked: true,
+          userId,
         }
       })
     }

@@ -3,6 +3,7 @@
 import { apiRequest, FormError } from '@/lib/form-error-handler'
 import { Checklist, ChecklistItem, CreateChecklist, CreateChecklistItem, UpdateChecklist, UpdateChecklistItem } from '@/lib/validations/checklist'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { projectKeys } from '../queries/use-projects'
 
 // API client functions for mutations
 const createChecklist = async (data: CreateChecklist): Promise<Checklist> => {
@@ -65,68 +66,106 @@ const reorderChecklistItems = async (data: {
     })
 }
 
-
-
 // Create checklist mutation
 export const useCreateChecklist = () => {
+    const queryClient = useQueryClient()
+
     return useMutation({
         mutationKey: ['createChecklist'],
         mutationFn: createChecklist,
+        onSettled: () => {
+            queryClient.invalidateQueries({ queryKey: projectKeys.all })
+        },
     })
 }
 
 // Update checklist mutation
 export const useUpdateChecklist = () => {
+    const queryClient = useQueryClient()
+
     return useMutation({
         mutationKey: ['updateChecklist'],
-        mutationFn: updateChecklist
+        mutationFn: updateChecklist,
+        onSettled: () => {
+            queryClient.invalidateQueries({ queryKey: projectKeys.all })
+        },
     })
 }
 
 // Delete checklist mutation
 export const useDeleteChecklist = () => {
+    const queryClient = useQueryClient()
+
     return useMutation({
         mutationKey: ['deleteChecklist'],
         mutationFn: deleteChecklist,
+        onSettled: () => {
+            queryClient.invalidateQueries({ queryKey: projectKeys.all })
+        },
     })
 }
 
 // Reorder checklists mutation
 export const useReorderChecklists = () => {
+    const queryClient = useQueryClient()
+
     return useMutation({
         mutationKey: ['reorderChecklists'],
-        mutationFn: reorderChecklists
+        mutationFn: reorderChecklists,
+        onSettled: () => {
+            queryClient.invalidateQueries({ queryKey: projectKeys.all })
+        },
     })
 }
 
 // Create checklist item mutation
 export const useCreateChecklistItem = () => {
+    const queryClient = useQueryClient()
+
     return useMutation({
         mutationKey: ['createChecklistItem'],
         mutationFn: createChecklistItem,
+        onSettled: () => {
+            queryClient.invalidateQueries({ queryKey: projectKeys.all })
+        },
     })
 }
 
 // Update checklist item mutation
 export const useUpdateChecklistItem = () => {
+    const queryClient = useQueryClient()
+
     return useMutation({
         mutationKey: ['updateChecklistItem'],
         mutationFn: updateChecklistItem,
+        onSettled: () => {
+            queryClient.invalidateQueries({ queryKey: projectKeys.all })
+        },
     })
 }
 
 // Delete checklist item mutation
 export const useDeleteChecklistItem = () => {
+    const queryClient = useQueryClient()
+
     return useMutation({
         mutationKey: ['deleteChecklistItem'],
         mutationFn: deleteChecklistItem,
+        onSettled: () => {
+            queryClient.invalidateQueries({ queryKey: projectKeys.all })
+        },
     })
 }
 
 // Reorder checklist items mutation
 export const useReorderChecklistItems = () => {
+    const queryClient = useQueryClient()
+
     return useMutation({
         mutationKey: ['reorderChecklistItems'],
         mutationFn: reorderChecklistItems,
+        onSettled: () => {
+            queryClient.invalidateQueries({ queryKey: projectKeys.all })
+        },
     })
 }

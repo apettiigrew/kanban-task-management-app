@@ -173,15 +173,11 @@ export async function DELETE(
       throw new NotFoundError('Project')
     }
 
-    const jamaicaDeletedAt = new Date(
-      new Date().toLocaleString('en-US', { timeZone: 'America/Jamaica' })
-    )
-
     const project = await prisma.project.update({
       where: { id },
       data: {
         isArchived: true,
-        deletedAt: jamaicaDeletedAt,
+        deletedAt: new Date(),
       },
       include: {
         _count: {

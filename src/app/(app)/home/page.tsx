@@ -8,7 +8,7 @@ import { Switch } from "@/components/ui/switch"
 import { ProjectForm } from "@/components/project-form"
 import { useProjects } from "@/hooks/queries/use-projects"
 import { TBoard } from "@/models/board"
-import { Archive, ChevronDown, Plus, Search } from "lucide-react"
+import { Archive, ChevronDown, Loader2, Plus, Search } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useCallback, useState } from "react"
 
@@ -108,7 +108,17 @@ export default function HomePage() {
             role="region"
             aria-label="Projects list"
             aria-live="polite">
-            {filteredBoards.length > 0 ? (
+            {isLoading ? (
+              <div className="flex items-center justify-center py-12" aria-label="Loading projects">
+                <Loader2 className="w-6 h-6 animate-spin text-gray-400 mr-2" aria-hidden="true" />
+                <span className="text-gray-500">Loading projects...</span>
+              </div>
+            ) : error ? (
+              <div className="text-center py-12" role="alert" aria-live="assertive">
+                <p className="text-red-600 font-medium mb-2">Failed to load projects</p>
+                <p className="text-sm text-gray-500">Please refresh the page and try again.</p>
+              </div>
+            ) : filteredBoards.length > 0 ? (
               <div className="space-y-2 sm:space-y-3" role="list">
                 {filteredBoards.map((board: TBoard) => (
                   <BoardItem onClick={navigateToBoard} key={board.id} board={board} />
@@ -164,6 +174,7 @@ const BoardItem = ({ board, onClick }: BoardItemProps) => {
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault()
+          onClick(board)
         }
       }}
     >

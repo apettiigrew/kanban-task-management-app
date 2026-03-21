@@ -1,19 +1,22 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { updateChecklistSchema, deleteChecklistSchema } from '@/lib/validations/checklist'
+import { updateChecklistSchema } from '@/lib/validations/checklist'
 import {
   handleAPIError,
   createSuccessResponse,
   validateRequestBody,
   NotFoundError
 } from '@/lib/api-error-handler'
+import { getUserIdFromRequest } from '@/lib/auth-helpers'
 
 // GET /api/checklists/[id] - Get a specific checklist
-export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }>}) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
+    const userId = getUserIdFromRequest(request)
+
     const checklist = await prisma.checklist.findUnique({
-      where: { id },
+      where: { id, userId },
       include: {
         items: {
           orderBy: {
@@ -35,18 +38,17 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 }
 
 // PATCH /api/checklists/[id] - Update a checklist
-export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }>}) {
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    
     const { id } = await params
+    const userId = getUserIdFromRequest(request)
     const body = await request.json()
     
-    // Validate the request body
     const validatedData = validateRequestBody(updateChecklistSchema, body)
 
-    // Check if checklist exists
+    // Check if checklist exists and belongs to the authenticated user
     const existingChecklist = await prisma.checklist.findUnique({
-      where: { id },
+      where: { id, userId },
     })
 
     if (!existingChecklist) {
@@ -76,13 +78,14 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 }
 
 // DELETE /api/checklists/[id] - Delete a checklist
-export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }>}) {
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
+    const userId = getUserIdFromRequest(request)
 
-    // Check if checklist exists and get its details
+    // Check if checklist exists and belongs to the authenticated user
     const existingChecklist = await prisma.checklist.findUnique({
-      where: { id },
+      where: { id, userId },
     })
 
     if (!existingChecklist) {
@@ -90,11 +93,11 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     }
 
     await prisma.$transaction(async (tx) => {
-
       await tx.checklist.delete({
         where: { id }
       })
 
+      // Find remaining checklists that come after the deleted one
       const checklistsToReorder = await tx.checklist.findMany({
         where: {
           cardId: existingChecklist.cardId,
@@ -107,10 +110,11 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
         }
       })
 
-      const updatePromises = checklistsToReorder.map((checklist,index) =>
+      // Fill the gap by decrementing each subsequent checklist's order by 1
+      const updatePromises = checklistsToReorder.map((checklist) =>
         tx.checklist.update({
           where: { id: checklist.id },
-          data: { order: index }
+          data: { order: checklist.order - 1 }
         })
       )
 
@@ -122,4 +126,4 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     const { id } = await params
     return handleAPIError(error, `/api/checklists/${id}`)
   }
-} 
+}

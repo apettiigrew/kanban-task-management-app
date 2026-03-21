@@ -1,29 +1,26 @@
-import { createSuccessResponse, handleAPIError, InternalServerError, NotFoundError, ValidationError } from '@/lib/api-error-handler'
+import { createSuccessResponse, handleAPIError, NotFoundError } from '@/lib/api-error-handler'
+import { getUserIdFromRequest } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
 import { sortCardsSchema } from '@/lib/validations/column'
-import { NextRequest, NextResponse } from 'next/server'
-import { z } from 'zod'
+import { NextRequest } from 'next/server'
 
 interface SortCardsRequest {
   params: { id: string }
 }
 
-export async function POST(request: NextRequest,{ params }: SortCardsRequest) {
+export async function POST(request: NextRequest, { params }: SortCardsRequest) {
   const columnId = params.id
   
   try {
-    
+    const userId = getUserIdFromRequest(request)
     const body = await request.json()
     
-    // Validate the request body
     const validatedData = sortCardsSchema.parse(body)
     const { sortType } = validatedData
 
-    // Verify the column exists
+    // Verify the column exists and belongs to the authenticated user
     const column = await prisma.column.findUnique({
-      where: {
-        id: columnId
-      },
+      where: { id: columnId, userId },
       include: {
         cards: {
           orderBy: { order: 'asc' }
@@ -32,18 +29,15 @@ export async function POST(request: NextRequest,{ params }: SortCardsRequest) {
     })
 
     if (!column) {
-      return handleAPIError(new NotFoundError('Column not found'), `/api/columns/${columnId}/sort`)
+      throw new NotFoundError('Column')
     }
 
-    // Get all cards in the column
     const cards = column.cards
 
     if (cards.length < 2) {
-      // No need to sort if there are fewer than 2 cards
-      return NextResponse.json(column)
+      return createSuccessResponse(column, 'No sorting needed')
     }
 
-    // Sort cards based on sort type
     let sortedCards = [...cards]
     
     switch (sortType) {
@@ -56,13 +50,9 @@ export async function POST(request: NextRequest,{ params }: SortCardsRequest) {
       case 'alphabetical':
         sortedCards.sort((a, b) => a.title.localeCompare(b.title))
         break
-      default:
-        return NextResponse.json({ error: 'Invalid sort type' }, { status: 400 })
     }
 
-    // Update the order of cards in the database using a transaction
     const updatedColumn = await prisma.$transaction(async (tx) => {
-      // Update all cards in a single transaction
       const updatePromises = sortedCards.map((card, index) =>
         tx.card.update({
           where: { id: card.id },
@@ -72,7 +62,6 @@ export async function POST(request: NextRequest,{ params }: SortCardsRequest) {
 
       await Promise.all(updatePromises)
 
-      // Return the updated column with sorted cards
       return await tx.column.findUnique({
         where: { id: columnId },
         include: {
@@ -84,14 +73,7 @@ export async function POST(request: NextRequest,{ params }: SortCardsRequest) {
     })
 
     return createSuccessResponse(updatedColumn, 'Cards sorted successfully')
-
   } catch (error) {
-    console.error('Error sorting cards:', error)
-    
-    if (error instanceof z.ZodError) {  
-      return handleAPIError(new ValidationError('Invalid request data', error), `/api/columns/${columnId}/sort`)
-    }
-
-    return handleAPIError(new InternalServerError('Internal server error'), `/api/columns/${columnId}/sort`)
+    return handleAPIError(error, `/api/columns/${columnId}/sort`)
   }
 }

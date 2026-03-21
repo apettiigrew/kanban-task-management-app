@@ -323,7 +323,8 @@ interface UseCloseBoardOptions {
 
 const closeBoard = async (id: string): Promise<TProject> => {
   return apiRequest<TProject>(`/api/projects/${id}`, {
-    method: 'DELETE',
+    method: 'PUT',
+    body: JSON.stringify({ isArchived: true }),
   })
 }
 
