@@ -5,18 +5,21 @@ import {
   handleAPIError, 
   createSuccessResponse, 
   validateRequestBody,
+  NotFoundError,
   checkRateLimit 
 } from '@/lib/api-error-handler'
+import { getUserIdFromRequest } from '@/lib/auth-helpers'
 
 // GET /api/columns - Get all columns (optionally filtered by project)
 export async function GET(request: NextRequest) {
   try {
-  
+    const userId = getUserIdFromRequest(request)
     const { searchParams } = new URL(request.url)
     const projectId = searchParams.get('projectId')
     const includeTasks = searchParams.get('includeTasks') === 'true'
 
-    const whereClause = projectId ? { projectId } : {}
+    // Scope all column queries to the authenticated user
+    const whereClause = projectId ? { projectId, userId } : { userId }
 
     const columns = await prisma.column.findMany({
       where: whereClause,
@@ -80,24 +83,25 @@ export async function GET(request: NextRequest) {
 // POST /api/columns - Create a new column
 export async function POST(request: NextRequest) {
   try {
-  
+    const userId = getUserIdFromRequest(request)
     const body = await request.json()
     
     // Validate the request body using our validation helper
     const validatedData = validateRequestBody(createColumnSchema, body)
 
-    // Check if project exists
+    // Check if project exists AND belongs to the authenticated user (multitenancy)
     const project = await prisma.project.findUnique({
-      where: { id: validatedData.projectId },
+      where: { id: validatedData.projectId, userId },
     })
 
     if (!project) {
-      throw new Error('Project not found')
+      throw new NotFoundError('Project')
     }
 
     const column = await prisma.column.create({
       data: {
-        ...validatedData
+        ...validatedData,
+        userId,
       },
       include: {
         project: {
@@ -124,17 +128,27 @@ export async function POST(request: NextRequest) {
 // PUT /api/columns - Reorder columns
 export async function PUT(request: NextRequest) {
   try {
-  
+    const userId = getUserIdFromRequest(request)
     const body = await request.json()
     
     // Validate the request body using our validation helper
     const validatedData = validateRequestBody(reorderColumnsSchema, body)
 
-    // Use a transaction to update all column orders atomically
+    // Verify the project belongs to the authenticated user before reordering
+    const project = await prisma.project.findUnique({
+      where: { id: validatedData.projectId, userId },
+    })
+
+    if (!project) {
+      throw new NotFoundError('Project')
+    }
+
+    // Use a transaction to update all column orders atomically,
+    // scoping each update to the authenticated user for safety
     await prisma.$transaction(
       validatedData.columnOrders.map(({ id, order }) =>
         prisma.column.update({
-          where: { id },
+          where: { id, userId },
           data: { order },
         })
       )
