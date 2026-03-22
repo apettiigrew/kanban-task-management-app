@@ -12,8 +12,9 @@ import { queryAsUser } from '@/lib/db'
 // GET /api/tasks/[id] - Get a specific task
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
     const userId = getUserIdFromRequest(request)
     const { searchParams } = new URL(request.url)
@@ -21,7 +22,7 @@ export async function GET(
 
     const task = await queryAsUser(userId, (tx) =>
       tx.card.findUnique({
-        where: { id: params.id, userId },
+        where: { id, userId },
         include: {
           project: includeRelations ? { select: { id: true, title: true } } : false,
           column: includeRelations ? { select: { id: true, title: true } } : false,
@@ -47,26 +48,27 @@ export async function GET(
 
     return createSuccessResponse(taskWithLabels, 'Task fetched successfully')
   } catch (error) {
-    return handleAPIError(error, `/api/tasks/${params.id}`)
+    return handleAPIError(error, `/api/tasks/${id}`)
   }
 }
 
 // PUT /api/tasks/[id] - Update a specific task
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
     const userId = getUserIdFromRequest(request)
     const body = await request.json()
     const validatedData = validateRequestBody(updateTaskSchema, body)
 
     const task = await queryAsUser(userId, async (tx) => {
-      const existing = await tx.card.findUnique({ where: { id: params.id, userId } })
+      const existing = await tx.card.findUnique({ where: { id, userId } })
       if (!existing) throw new NotFoundError('Task')
 
       return tx.card.update({
-        where: { id: params.id },
+        where: { id },
         data: validatedData,
         include: {
           project: { select: { id: true, title: true } },
@@ -91,27 +93,28 @@ export async function PUT(
 
     return createSuccessResponse(taskWithLabels, 'Task updated successfully')
   } catch (error) {
-    return handleAPIError(error, `/api/tasks/${params.id}`)
+    return handleAPIError(error, `/api/tasks/${id}`)
   }
 }
 
 // DELETE /api/tasks/[id] - Delete a specific task
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
     const userId = getUserIdFromRequest(request)
 
     await queryAsUser(userId, async (tx) => {
-      const existing = await tx.card.findUnique({ where: { id: params.id, userId } })
+      const existing = await tx.card.findUnique({ where: { id, userId } })
       if (!existing) throw new NotFoundError('Task')
 
-      await tx.card.delete({ where: { id: params.id } })
+      await tx.card.delete({ where: { id } })
     })
 
     return createSuccessResponse(null, 'Task deleted successfully')
   } catch (error) {
-    return handleAPIError(error, `/api/tasks/${params.id}`)
+    return handleAPIError(error, `/api/tasks/${id}`)
   }
 }

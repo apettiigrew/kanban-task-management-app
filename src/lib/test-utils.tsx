@@ -2,6 +2,7 @@ import React, { ReactElement } from 'react'
 import { render, RenderOptions } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { SettingsContext } from '@/providers/settings-context'
+import { fields } from '@/utils/settings'
 import { TaskDialogProvider } from '@/contexts/task-dialog-context'
 
 // Mock TanStack Query client for tests
@@ -42,7 +43,14 @@ const AllTheProviders = ({
 }: AllTheProvidersProps) => {
   return (
     <QueryClientProvider client={queryClient}>
-      <SettingsContext.Provider value={{ settings, updateSettings: jest.fn() }}>
+      <SettingsContext.Provider
+        value={{
+          fields,
+          settings,
+          update: jest.fn(),
+          reset: jest.fn(),
+        }}
+      >
         <TaskDialogProvider>
           {children}
         </TaskDialogProvider>

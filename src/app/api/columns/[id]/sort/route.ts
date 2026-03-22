@@ -5,11 +5,11 @@ import { sortCardsSchema } from '@/lib/validations/column'
 import { NextRequest } from 'next/server'
 
 interface SortCardsRequest {
-  params: { id: string }
+  params: Promise<{ id: string }>
 }
 
 export async function POST(request: NextRequest, { params }: SortCardsRequest) {
-  const columnId = params.id
+  const { id: columnId } = await params
 
   try {
     const userId = getUserIdFromRequest(request)

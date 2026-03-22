@@ -11,7 +11,8 @@ import { getUserIdFromRequest } from '@/lib/auth-helpers'
 import { queryAsUser } from '@/lib/db'
 
 // PUT /api/columns/[id]/reposition - Reposition a column within the same board
-export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
   try {
     const userId = getUserIdFromRequest(request)
     const body = await request.json()
@@ -19,7 +20,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
     const repositionedColumn = await queryAsUser(userId, async (tx) => {
       const existingColumn = await tx.column.findUnique({
-        where: { id: params.id, userId },
+        where: { id: id, userId },
         include: { project: { select: { id: true, title: true } } },
       })
       if (!existingColumn) throw new NotFoundError('Column')
@@ -40,7 +41,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       }
 
       const updatedColumn = await tx.column.update({
-        where: { id: params.id },
+        where: { id: id },
         data: { order: newPosition },
         include: { project: { select: { id: true, title: true } } },
       })
@@ -50,7 +51,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
           where: {
             projectId: existingColumn.projectId,
             order: { gte: newPosition, lt: currentPosition },
-            id: { not: params.id },
+            id: { not: id },
           },
           data: { order: { increment: 1 } },
         })
@@ -59,7 +60,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
           where: {
             projectId: existingColumn.projectId,
             order: { gt: currentPosition, lte: newPosition },
-            id: { not: params.id },
+            id: { not: id },
           },
           data: { order: { decrement: 1 } },
         })
@@ -70,6 +71,6 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
     return createSuccessResponse(repositionedColumn, 'Column repositioned successfully')
   } catch (error) {
-    return handleAPIError(error, `/api/columns/${params.id}/reposition`)
+    return handleAPIError(error, `/api/columns/${id}/reposition`)
   }
 }

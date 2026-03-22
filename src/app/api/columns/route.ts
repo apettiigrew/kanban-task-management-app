@@ -31,7 +31,17 @@ export async function GET(request: NextRequest) {
                       id: true,
                       cardId: true,
                       labelId: true,
-                      label: { select: { id: true, title: true, color: true } },
+                      checked: true,
+                      label: {
+                        select: {
+                          id: true,
+                          title: true,
+                          color: true,
+                          projectId: true,
+                          createdAt: true,
+                          updatedAt: true,
+                        },
+                      },
                     },
                   },
                 },
@@ -44,12 +54,30 @@ export async function GET(request: NextRequest) {
       })
     )
 
-    const columnsWithLabels = columns.map(column => ({
-      ...column,
-      cards: column.cards
-        ? column.cards.map(card => ({
-            ...card,
-            labels: card.cardLabels.map(cardLabel => ({
+    const columnsWithLabels = columns.map((column) => {
+      if (!includeTasks || !column.cards) {
+        return { ...column, cards: column.cards ?? [] }
+      }
+
+      return {
+        ...column,
+        cards: column.cards.map((card) => {
+          const { cardLabels, ...cardRest } = card as typeof card & {
+            cardLabels: Array<{
+              label: {
+                id: string
+                title: string
+                color: string
+                projectId: string
+                createdAt: Date
+                updatedAt: Date
+              }
+              checked: boolean
+            }>
+          }
+          return {
+            ...cardRest,
+            labels: cardLabels.map((cardLabel) => ({
               id: cardLabel.label.id,
               title: cardLabel.label.title,
               color: cardLabel.label.color,
@@ -58,9 +86,10 @@ export async function GET(request: NextRequest) {
               updatedAt: cardLabel.label.updatedAt,
               checked: cardLabel.checked,
             })),
-          }))
-        : [],
-    }))
+          }
+        }),
+      }
+    })
 
     return createSuccessResponse(columnsWithLabels, 'Columns fetched successfully')
   } catch (error) {
