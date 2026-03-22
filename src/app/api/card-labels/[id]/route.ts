@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import type { CardLabel, Prisma } from '@prisma/client'
+import type { Prisma } from '@prisma/client'
 import { updateCardLabelSchema } from '@/lib/validations/label'
 import {
   handleAPIError,
@@ -11,6 +11,7 @@ import { getUserIdFromRequest } from '@/lib/auth-helpers'
 import { queryAsUser } from '@/lib/db'
 import { TCardLabel } from '@/models/label'
 
+type CardLabelBase = Prisma.CardLabelGetPayload<Record<string, never>>
 type CardLabelWithLabel = Prisma.CardLabelGetPayload<{ include: { label: true } }>
 
 // GET /api/card-labels/[id] - Get a specific card label
@@ -43,7 +44,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     const body = await request.json()
     const validatedData = validateRequestBody(updateCardLabelSchema, body)
 
-    const cardLabel = await queryAsUser<CardLabel>(userId, async (tx) => {
+    const cardLabel = await queryAsUser<CardLabelBase>(userId, async (tx) => {
       const existing = await tx.cardLabel.findUnique({ where: { id, userId } })
       if (!existing) throw new NotFoundError('Card label')
 
