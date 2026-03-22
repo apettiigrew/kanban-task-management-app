@@ -1,5 +1,5 @@
 import { apiRequest } from "@/lib/form-error-handler";
-import { CreateLabelDTO, TLabel, UpdateLabelDTO, CreateCardLabelDTO, UpdateCardLabelDTO, TCardLabel, TLabelWithChecked } from "@/models/label";
+import { CreateLabelDTO, TLabel, UpdateLabelDTO, TCardLabel, TLabelWithChecked } from "@/models/label";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { labelKeys } from "../queries/use-labels";
 import { projectKeys } from "../queries/use-projects";

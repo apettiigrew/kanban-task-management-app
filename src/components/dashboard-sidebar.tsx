@@ -30,7 +30,7 @@ export function DashboardSidebar({
   onSearchChange,
   showAllProjects,
   onToggleShowAll,
-  onHelp,
+  onHelp: _onHelp,
   username,
   avatarUrl,
   userInitials

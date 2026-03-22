@@ -3,7 +3,7 @@ import { MoveColumn } from "@/lib/validations";
 import { RepositionColumn } from "@/lib/validations";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Archive, ChevronRight, Copy, MoreHorizontal, Move, Plus, SortAsc, Trash2, Users } from "lucide-react";
+import { Archive, Copy, MoreHorizontal, Move, Plus, SortAsc, Trash2 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { CopyListForm } from "./copy-list-form";
 import { MoveListForm } from "./move-list-form";

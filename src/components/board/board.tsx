@@ -114,7 +114,6 @@ export function Board(props: BoardProps) {
     const handleDeleteColumn = useCallback((columnId: string) => {
         if (!projectState) return;
 
-        const optimisticColumn = projectState.columns.find(col => col.id === columnId);
         const filteredColumns = projectState.columns.filter(col => col.id !== columnId);
 
         const reorderedColumns = filteredColumns.map((col, index) => ({
@@ -158,7 +157,7 @@ export function Board(props: BoardProps) {
             return;
         }
 
-        var order = 0;
+        let order = 0;
         if (projectState.columns.length === 0) {
             order = 0;
         } else {

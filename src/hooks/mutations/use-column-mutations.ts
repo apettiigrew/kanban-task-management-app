@@ -402,7 +402,7 @@ export const useRepositionColumn = () => {
         queryClient.setQueryData(projectKeys.detail(context.projectId), context.previousProject)
       }
     },
-    onSettled: (data, error, variables) => {
+    onSettled: (data, _error, _variables) => {
       // Invalidate the project to ensure data consistency
       if (data) {
         queryClient.invalidateQueries({ queryKey: projectKeys.all })
@@ -446,7 +446,7 @@ export const useSortCards = () => {
       }
 
       // Sort cards based on sort type
-      let sortedCards = [...columnToSort.cards]
+      const sortedCards = [...columnToSort.cards]
       
       switch (variables.sortType) {
         case 'newest-first':
@@ -492,7 +492,7 @@ export const useSortCards = () => {
         queryClient.setQueryData(projectKeys.detail(context.projectId), context.previousProject)
       }
     },
-    onSettled: (data, error, variables) => {
+    onSettled: (data, _error, _variables) => {
       // Invalidate the project to ensure data consistency
       if (data) {
         queryClient.invalidateQueries({ queryKey: projectKeys.all })
@@ -534,7 +534,7 @@ export const useSortColumns = () => {
       }
 
       // Sort columns based on sort type
-      let sortedColumns = [...columns]
+      const sortedColumns = [...columns]
       
       switch (variables.sortType) {
         case 'newest-first':

@@ -1,6 +1,6 @@
 'use client'
 
-import { apiRequest, FormError } from '@/lib/form-error-handler'
+import { apiRequest } from '@/lib/form-error-handler'
 import { Checklist, ChecklistItem, CreateChecklist, CreateChecklistItem, UpdateChecklist, UpdateChecklistItem } from '@/lib/validations/checklist'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { projectKeys } from '../queries/use-projects'

@@ -1,5 +1,5 @@
-import { TCard } from "@/models/card";
 import { handleImproveWritingDescriptionOpenAI, handleMakeLongerDescriptionOpenAI, handleMakeShorterDescriptionOpenAI, handleMakeSMARTDescriptoinOpenAI, handleMakeSoftwareTicketDescriptionOpenAI } from "@/service/openai-service";
+import type { Editor } from "@tiptap/core";
 import { Bold, ChevronDown, Code, Heading1, Heading2, Heading3, Heading4, Heading5, Heading6, Italic, List, ListOrdered, Minus, Quote, Redo2, Strikethrough, Type, Undo2 } from "lucide-react";
 import { memo, useCallback, useState } from "react";
 import { AIWritingAssistant } from "../ai-writing-assistant";
@@ -8,15 +8,14 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Separator } from "../ui/separator";
 
 interface EditorToolbarProps {
-    editor: any,
-    card: TCard
+    editor: Editor | null;
 }
 
-export const MenuBar = memo(({ editor, card }: EditorToolbarProps) => {
-    if (!editor) return null
+export const MenuBar = memo(({ editor }: EditorToolbarProps) => {
+    const [isAIProcessing, setIsAIProcessing] = useState(false);
 
-    const [isAIProcessing, setIsAIProcessing] = useState(false)
     const getHeadingIcon = () => {
+        if (!editor) return <Type className="h-4 w-4" />;
         if (editor.isActive('heading', { level: 1 })) return <Heading1 className="h-4 w-4" />
         if (editor.isActive('heading', { level: 2 })) return <Heading2 className="h-4 w-4" />
         if (editor.isActive('heading', { level: 3 })) return <Heading3 className="h-4 w-4" />
@@ -27,6 +26,7 @@ export const MenuBar = memo(({ editor, card }: EditorToolbarProps) => {
     }
 
     const handleMakeSMART = useCallback(async () => {
+        if (!editor) return;
         const description = editor.getHTML()
         
         if (description === "") return
@@ -35,9 +35,10 @@ export const MenuBar = memo(({ editor, card }: EditorToolbarProps) => {
         
         editor.chain().focus().setContent(improvedDescription).run()
         setIsAIProcessing(false)
-    }, [editor.getHTML()]);
+    }, [editor]);
 
     const handleImproveWriting = useCallback(async () => {
+        if (!editor) return;
         const description = editor.getHTML()
         
         if (description === "") return
@@ -45,9 +46,10 @@ export const MenuBar = memo(({ editor, card }: EditorToolbarProps) => {
         const improvedDescription = await handleImproveWritingDescriptionOpenAI(description)
         editor.chain().focus().setContent(improvedDescription).run()
         setIsAIProcessing(false)
-    }, [editor.getHTML()]);
+    }, [editor]);
 
     const handleMakeLonger = useCallback(async () => {
+        if (!editor) return;
         const description = editor.getHTML()
         
         if (description === "") return
@@ -55,10 +57,11 @@ export const MenuBar = memo(({ editor, card }: EditorToolbarProps) => {
         const improvedDescription = await handleMakeLongerDescriptionOpenAI(description)
         editor.chain().focus().setContent(improvedDescription).run()
         setIsAIProcessing(false)
-    }, [editor.getHTML()]);
+    }, [editor]);
 
 
     const handleMakeShorter = useCallback(async () => {
+        if (!editor) return;
         const description = editor.getHTML()
         
         if (description === "") return
@@ -66,9 +69,10 @@ export const MenuBar = memo(({ editor, card }: EditorToolbarProps) => {
         const improvedDescription = await handleMakeShorterDescriptionOpenAI(description)
         editor.chain().focus().setContent(improvedDescription).run()
         setIsAIProcessing(false)
-    }, [editor.getHTML()]);
+    }, [editor]);
 
     const handleMakeSoftwareTicket = useCallback(async () => {
+        if (!editor) return;
         const description = editor.getHTML()
         
         if (description === "") return
@@ -76,7 +80,9 @@ export const MenuBar = memo(({ editor, card }: EditorToolbarProps) => {
         const improvedDescription = await handleMakeSoftwareTicketDescriptionOpenAI(description)
         editor.chain().focus().setContent(improvedDescription).run()
         setIsAIProcessing(false)
-    }, [editor.getHTML()]);
+    }, [editor]);
+
+    if (!editor) return null;
 
     return (
         <div className="flex items-center gap-1 p-2 border-b bg-background">

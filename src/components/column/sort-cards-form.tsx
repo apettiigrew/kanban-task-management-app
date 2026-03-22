@@ -32,7 +32,7 @@ interface SortCardsFormProps {
 
 
 export function SortCardsForm({
-    columnId,
+    columnId: _columnId,
     onSortCards,
     onCancel,
 }: SortCardsFormProps) {
@@ -98,7 +98,7 @@ export function SortCardsForm({
 
             {/* Sort options */}
             <ul className="p-1" role="radiogroup" aria-label="Sort options">
-                {sortOptions.map((option, index) => {
+                {sortOptions.map((option) => {
                     const isSelected = selectedSortType === option.value;
                     return (
                         <li key={option.value}>

@@ -6,7 +6,7 @@ interface RootLayoutProps {
   params: Promise<{ id: string }>;
 }
 
-export default async function RootLayout({ children, params }: RootLayoutProps) {
+export default async function RootLayout({ children, params: _params }: RootLayoutProps) {
   return (
     <TaskDialogProvider>
       <SettingsContextProvider>

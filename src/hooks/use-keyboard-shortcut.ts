@@ -17,10 +17,6 @@ export const useKeyboardShortcut = ({
     setIsDialogOpen(true)
   }, [])
 
-  const closeDialog = useCallback(() => {
-    setIsDialogOpen(false)
-  }, [])
-
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key.toLowerCase() === key.toLowerCase() && !event.ctrlKey && !event.metaKey && !event.altKey) {

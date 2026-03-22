@@ -1,4 +1,3 @@
-import { getSession } from "next-auth/react"
 import { SortType } from "./data"
 
 export interface ApiRequestConfig extends RequestInit {

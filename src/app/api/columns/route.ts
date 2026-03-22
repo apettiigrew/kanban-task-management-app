@@ -5,7 +5,6 @@ import {
   createSuccessResponse,
   validateRequestBody,
   NotFoundError,
-  checkRateLimit
 } from '@/lib/api-error-handler'
 import { getUserIdFromRequest } from '@/lib/auth-helpers'
 import { queryAsUser } from '@/lib/db'

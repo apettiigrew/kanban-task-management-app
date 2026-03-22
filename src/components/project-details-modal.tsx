@@ -17,7 +17,7 @@ export function ProjectDetailsModal({
   project, 
   open, 
   onOpenChange,
-  onDeleteProject,
+  onDeleteProject: _onDeleteProject,
 }: ProjectDetailsModalProps) {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
 

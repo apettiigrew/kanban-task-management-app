@@ -7,7 +7,6 @@ import {
 } from '@/lib/api-error-handler'
 import { getUserIdFromRequest } from '@/lib/auth-helpers'
 import { queryAsUser } from '@/lib/db'
-import { TCardLabel } from '@/models/label'
 import { z } from 'zod'
 
 const toggleCardLabelSchema = z.object({

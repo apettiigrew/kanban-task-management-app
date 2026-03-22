@@ -10,7 +10,8 @@ import { getUserIdFromRequest } from '@/lib/auth-helpers'
 import { queryAsUser } from '@/lib/db'
 
 // POST /api/columns/[id]/copy - Copy a column with all nested data
-export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
   try {
     const userId = getUserIdFromRequest(request)
     const body = await request.json()
@@ -101,6 +102,6 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
 
     return createSuccessResponse(copiedColumn, 'Column copied successfully', 201)
   } catch (error) {
-    return handleAPIError(error, `/api/columns/${params.id}/copy`)
+    return handleAPIError(error, `/api/columns/${id}/copy`)
   }
 }

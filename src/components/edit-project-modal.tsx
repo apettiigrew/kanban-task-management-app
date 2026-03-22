@@ -3,9 +3,7 @@
 import React from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { ProjectForm } from "@/components/project-form"
-import { useUpdateProject } from "@/hooks/queries/use-projects"
 import { TProject } from '@/models/project'
-import { FormError } from "@/lib/form-error-handler"
 
 interface EditProjectModalProps {
   project: TProject
@@ -14,17 +12,6 @@ interface EditProjectModalProps {
 }
 
 export function EditProjectModal({ project, open, onOpenChange }: EditProjectModalProps) {
-  const updateProjectMutation = useUpdateProject({
-    onSuccess: () => {
-      onOpenChange(false)
-    },
-    onError: (error: FormError) => {
-      // Error handling is now managed by the ProjectForm component
-      // This callback is mainly for additional actions if needed
-      console.error("Failed to update project:", error)
-    }
-  })
-
   const handleSuccess = () => {
     onOpenChange(false)
   }

@@ -209,8 +209,6 @@ interface CardDisplayProps {
 
 export function CardDisplay(props: CardDisplayProps) {
   const { card, state, outerRef, innerRef, handleCardClick, handleDeleteClick } = props;
-  const formattedDate = new Date(card.createdAt)
-  const formattedDateString = `${card.title} ${formattedDate.getMilliseconds()}`
 
   console.log(card.labels)
   return (

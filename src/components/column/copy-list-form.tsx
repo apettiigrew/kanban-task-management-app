@@ -1,10 +1,8 @@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { FieldError } from '@/components/ui/form-error';
-import { copyColumnSchema, type CopyColumn } from '@/lib/validations/column';
 import { ArrowLeft } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { z } from 'zod';
 
 interface CopyListFormProps {
     originalTitle: string;

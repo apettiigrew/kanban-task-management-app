@@ -8,7 +8,6 @@ import {
 } from '@/lib/api-error-handler'
 import { getUserIdFromRequest } from '@/lib/auth-helpers'
 import { queryAsUser } from '@/lib/db'
-import { TProject } from '@/models/project';
 
 // GET /api/projects/[id] - Get a specific project
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {

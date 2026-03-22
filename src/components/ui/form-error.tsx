@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react'
+import React from 'react'
 import { AlertCircle, X } from 'lucide-react'
 import { cn } from '@/utils/utils'
 
@@ -127,7 +127,7 @@ interface FormStateDisplayProps {
 }
 
 export function FormStateDisplay({ 
-  isLoading, 
+  isLoading: _isLoading, 
   error, 
   fieldErrors = {}, 
   onErrorDismiss,

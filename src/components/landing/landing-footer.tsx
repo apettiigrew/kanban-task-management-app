@@ -33,7 +33,7 @@ const FOOTER_COLUMNS: FooterColumn[] = [
   // }
 ];
 
-const SOCIAL_LINKS: SocialLink[] = [
+const _SOCIAL_LINKS: SocialLink[] = [
   { id: "twitter", icon: Twitter, label: "Twitter", href: "#" },
   { id: "linkedin", icon: Linkedin, label: "LinkedIn", href: "#" },
   { id: "github", icon: Github, label: "GitHub", href: "#" },

@@ -100,7 +100,7 @@ export function FormErrorExamples() {
     }
   }
 
-  const onSubmit = (data: TestFormData) => {
+  const onSubmit = (_data: TestFormData) => {
     clearFormErrors()
   }
 

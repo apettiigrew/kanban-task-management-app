@@ -4,7 +4,6 @@ import { TChecklistItem } from '@/models/checklist-item';
 import {
     getChecklistItemData,
     getChecklistItemDropTargetData,
-    isCardData,
     isChecklistItemData,
     isDraggingAChecklistItem,
     isShallowEqual

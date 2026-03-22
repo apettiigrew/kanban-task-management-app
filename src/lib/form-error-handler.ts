@@ -1,5 +1,3 @@
-import { z } from 'zod'
-
 // Type definitions for API error responses
 export interface ApiErrorResponse {
   success: false

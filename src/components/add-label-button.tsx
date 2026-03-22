@@ -82,7 +82,7 @@ export function AddLabelButton({
       title: labelData.title,
       color: labelData.color,
     }, {
-      onSuccess: (newLabel) => {
+      onSuccess: () => {
         setShowCreateLabel(false)
       }
     })
@@ -283,10 +283,6 @@ function CreateNewLabel({ onBack, onClose, onCreate, isCreating = false, error }
 
   const handleColorSelect = useCallback((color: string) => {
     setSelectedColor(color)
-  }, [])
-
-  const handleRemoveColor = useCallback(() => {
-    setSelectedColor('')
   }, [])
 
   const handleCreate = useCallback(() => {

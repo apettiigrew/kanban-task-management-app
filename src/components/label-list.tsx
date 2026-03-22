@@ -3,7 +3,6 @@
 import { memo, useMemo } from 'react'
 import { TLabelWithChecked } from '@/models/label'
 import { LabelPill } from './label-pill'
-import { TagIcon } from 'lucide-react'
 
 interface LabelListProps {
   labels: TLabelWithChecked[]

@@ -9,7 +9,7 @@ interface AppLayoutProps {
 }
 export default function AppLayout({ children }: AppLayoutProps) {
 
-  const { data: projects = [] } = useProjects({ staleTime: 5 * 60 * 1000, refetchOnWindowFocus: true })
+  const { data: _projects = [] } = useProjects({ staleTime: 5 * 60 * 1000, refetchOnWindowFocus: true })
 
   return (
     <>

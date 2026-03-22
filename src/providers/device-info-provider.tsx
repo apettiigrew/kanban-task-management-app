@@ -80,7 +80,7 @@ export class DeviceInfoProvider extends React.Component<WrapperProps, DeviceInfo
 			this._touchMatcher.removeEventListener("change", this.onInputTypeChange);
 	}
 
-	onWindowResize(ev: UIEvent) {
+	onWindowResize(_ev: UIEvent) {
 		this.updateBreakPoint();
 	}
 

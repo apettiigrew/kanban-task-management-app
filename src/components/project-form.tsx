@@ -75,7 +75,7 @@ export function ProjectForm({
   }, [setError, setMultipleFieldErrors, setGeneralError])
 
   const createProjectMutation = useCreateProject({
-    onSuccess: (data) => {
+    onSuccess: (_data) => {
       reset()
       clearFormErrors()
       onSuccess?.()
@@ -90,7 +90,7 @@ export function ProjectForm({
   })
 
   const updateProjectMutation = useUpdateProject({
-    onSuccess: (data) => {
+    onSuccess: (_data) => {
       reset()
       clearFormErrors()
       onSuccess?.()

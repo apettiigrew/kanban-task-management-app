@@ -10,7 +10,8 @@ import { getUserIdFromRequest } from '@/lib/auth-helpers'
 import { queryAsUser } from '@/lib/db'
 
 // GET /api/columns/[id] - Get a specific column
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
   try {
     const userId = getUserIdFromRequest(request)
     const { searchParams } = new URL(request.url)
@@ -18,7 +19,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 
     const column = await queryAsUser(userId, (tx) =>
       tx.column.findUnique({
-        where: { id: params.id, userId },
+        where: { id, userId },
         include: {
           cards: includeTasks,
           project: { select: { id: true, title: true } },
@@ -30,23 +31,24 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 
     return createSuccessResponse(column, 'Column fetched successfully')
   } catch (error) {
-    return handleAPIError(error, `/api/columns/${params.id}`)
+    return handleAPIError(error, `/api/columns/${id}`)
   }
 }
 
 // PUT /api/columns/[id] - Update a specific column
-export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
   try {
     const userId = getUserIdFromRequest(request)
     const body = await request.json()
     const validatedData = validateRequestBody(updateColumnSchema, body)
 
     const column = await queryAsUser(userId, async (tx) => {
-      const existing = await tx.column.findUnique({ where: { id: params.id, userId } })
+      const existing = await tx.column.findUnique({ where: { id, userId } })
       if (!existing) throw new NotFoundError('Column')
 
       return tx.column.update({
-        where: { id: params.id },
+        where: { id },
         data: { title: validatedData.title },
         include: { project: { select: { id: true, title: true } } },
       })
@@ -54,24 +56,25 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
     return createSuccessResponse(column, 'Column updated successfully')
   } catch (error) {
-    return handleAPIError(error, `/api/columns/${params.id}`)
+    return handleAPIError(error, `/api/columns/${id}`)
   }
 }
 
 // DELETE /api/columns/[id] - Delete a specific column
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
   try {
     const userId = getUserIdFromRequest(request)
 
     await queryAsUser(userId, async (tx) => {
       const existing = await tx.column.findUnique({
-        where: { id: params.id, userId },
+        where: { id, userId },
         include: { _count: { select: { cards: true } } },
       })
       if (!existing) throw new NotFoundError('Column')
 
-      await tx.card.deleteMany({ where: { columnId: params.id } })
-      await tx.column.delete({ where: { id: params.id } })
+      await tx.card.deleteMany({ where: { columnId: id } })
+      await tx.column.delete({ where: { id } })
 
       const remainingColumns = await tx.column.findMany({
         where: { projectId: existing.projectId },
@@ -92,6 +95,6 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
 
     return createSuccessResponse(undefined, 'Column deleted successfully')
   } catch (error) {
-    return handleAPIError(error, `/api/columns/${params.id}`)
+    return handleAPIError(error, `/api/columns/${id}`)
   }
 }

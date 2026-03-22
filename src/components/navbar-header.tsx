@@ -34,67 +34,11 @@ export function NavbarHeader({ className }: NavbarHeaderProps) {
   
   }, [router])
 
-
-
-  const handleProfileClick = () => {
-    setIsDropdownOpen(false)
-  }
-
-  const handleSettingsClick = () => {
-
-    setIsDropdownOpen(false)
-  }
-
   const handleLogoutClick = () => {
     setIsDropdownOpen(false)
     logout(undefined, {
       onSuccess: () => router.push("/"),
     })
-  }
-
-  const handleHelpClick = () => {
-
-    setIsDropdownOpen(false)
-  }
-
-  const handleNotificationsClick = () => {
-
-    setIsDropdownOpen(false)
-  }
-
-  const handleSwitchAccountsClick = () => {
-
-    setIsDropdownOpen(false)
-  }
-
-  const handleManageAccountClick = () => {
-
-    setIsDropdownOpen(false)
-  }
-
-  const handleActivityClick = () => {
-
-    setIsDropdownOpen(false)
-  }
-
-  const handleCardsClick = () => {
-
-    setIsDropdownOpen(false)
-  }
-
-  const handleThemeClick = () => {
-
-    setIsDropdownOpen(false)
-  }
-
-  const handleCreateWorkspaceClick = () => {
-
-    setIsDropdownOpen(false)
-  }
-
-  const handleShortcutsClick = () => {
-
-    setIsDropdownOpen(false)
   }
 
   const getEmailInitials = (email: string) => {

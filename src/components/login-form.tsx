@@ -39,7 +39,7 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
     setMultipleFieldErrors,
     clearErrors: clearFormErrors,
     clearGeneralError,
-    hasErrors
+    hasErrors: _hasErrors
   } = useFormErrorState()
 
   const loginUserMutation = useLoginUser()

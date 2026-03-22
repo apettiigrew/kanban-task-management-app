@@ -27,7 +27,6 @@ import { projectKeys } from '@/hooks/queries/use-projects'
 import { TCard } from '@/models/card'
 import { TChecklist } from '@/models/checklist'
 import { TChecklistItem } from '@/models/checklist-item'
-import { TLabelWithChecked } from '@/models/label'
 import {
   isChecklistData,
   isChecklistDropTargetData,
@@ -105,7 +104,7 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
         spellcheck: 'false',
       },
     },
-    onUpdate: ({ editor }) => {
+    onUpdate: () => {
       // setDescription(editor.getHTML())
     },
   })
@@ -117,11 +116,6 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
   const {
     data: labelsWithChecked = [],
   } = useLabelsWithCheckedStatus(card.id)
-
-  const handleLabelClick = useCallback((label: TLabelWithChecked) => {
-    // Optional: Handle label click if needed in the future
-    console.log('Label clicked:', label.title)
-  }, [])
 
   useEffect(() => {
     if (fetchedChecklists.length > 0 && !checklistsInitialized.current) {
@@ -1017,7 +1011,7 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
                     {isEditingDescription ? (
                       <div className="space-y-2">
                         <div className="bg-background border border-gray-500">
-                          <MenuBar editor={editor} card={card} />
+                          <MenuBar editor={editor} />
                           <div className="min-h-[200px] p-4">
                             <EditorContent
                               editor={editor}

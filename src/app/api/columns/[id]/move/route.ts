@@ -11,7 +11,8 @@ import { getUserIdFromRequest } from '@/lib/auth-helpers'
 import { queryAsUser } from '@/lib/db'
 
 // POST /api/columns/[id]/move - Move a column to a different board
-export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
   try {
     const userId = getUserIdFromRequest(request)
     const body = await request.json()
@@ -19,7 +20,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
 
     const movedColumn = await queryAsUser(userId, async (tx) => {
       const existingColumn = await tx.column.findUnique({
-        where: { id: params.id, userId },
+        where: { id, userId },
         include: { project: { select: { id: true, title: true } } },
       })
       if (!existingColumn) throw new NotFoundError('Column')
@@ -43,7 +44,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       }
 
       const updatedColumn = await tx.column.update({
-        where: { id: params.id },
+        where: { id },
         data: {
           projectId: validatedData.targetProjectId,
           order: validatedData.position - 1,
@@ -55,7 +56,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
         where: {
           projectId: validatedData.targetProjectId,
           order: { gte: validatedData.position - 1 },
-          id: { not: params.id },
+          id: { not: id },
         },
         data: { order: { increment: 1 } },
       })
@@ -69,7 +70,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       })
 
       await tx.card.updateMany({
-        where: { columnId: params.id },
+        where: { columnId: id },
         data: { projectId: validatedData.targetProjectId },
       })
 
@@ -78,6 +79,6 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
 
     return createSuccessResponse(movedColumn, 'Column moved successfully')
   } catch (error) {
-    return handleAPIError(error, `/api/columns/${params.id}/move`)
+    return handleAPIError(error, `/api/columns/${id}/move`)
   }
 }
