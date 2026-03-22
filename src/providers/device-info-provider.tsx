@@ -1,6 +1,6 @@
 
 
-import { WrapperProps } from "@/models/component";
+import type { WrapperProps } from "@/models/component";
 import { BreakpointPlatform, getCurrentBreakpointPlatform } from "@/models/css-vars";
 import React, { createContext } from "react";
 
@@ -32,7 +32,7 @@ export const DeviceInfoContext = createContext<DeviceInfoContextState>(defaultSt
 export class DeviceInfoProvider extends React.Component<WrapperProps, DeviceInfoContextState> {
 	_touchMatcher: MediaQueryList | undefined;
 
-	constructor(props: any) {
+	constructor(props: WrapperProps) {
 		super(props);
 		this.state = { ...defaultState };
 

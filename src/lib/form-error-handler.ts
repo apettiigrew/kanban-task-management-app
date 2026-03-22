@@ -44,7 +44,7 @@ export function isApiErrorResponse(error: unknown): error is ApiErrorResponse {
     'success' in error &&
     error.success === false &&
     'error' in error &&
-    typeof (error as any).error === 'string'
+    typeof (error as { error?: unknown }).error === 'string'
   )
 }
 
@@ -88,11 +88,11 @@ export function parseApiError(error: unknown): FormErrorState {
 
   // Handle fetch response errors
   if (typeof error === 'object' && error !== null) {
-    const errorObj = error as any
-    
-    if (errorObj.message) {
+    const errorObj = error as Record<string, unknown>
+
+    if (typeof errorObj.message === 'string') {
       formError.general = errorObj.message
-    } else if (errorObj.error) {
+    } else if (typeof errorObj.error === 'string') {
       formError.general = errorObj.error
     } else {
       formError.general = 'An unexpected error occurred'
@@ -185,7 +185,7 @@ function parseFieldErrors(details?: ValidationErrorDetail[]): Record<string, str
 
 // Utility function to merge React Hook Form errors with server errors
 export function mergeFormErrors(
-  hookFormErrors: Record<string, any>,
+  hookFormErrors: Record<string, { message?: string } | undefined>,
   serverErrors: Record<string, string>
 ): Record<string, string> {
   const mergedErrors: Record<string, string> = {}
@@ -207,7 +207,7 @@ export function mergeFormErrors(
 }
 
 // React Hook Form integration helper - updated for better type safety
-export function setFormErrors<T extends Record<string, any>>(
+export function setFormErrors<T extends Record<string, unknown>>(
   setError: (name: keyof T, error: { type: string; message: string }) => void,
   errors: Record<string, string>
 ): void {

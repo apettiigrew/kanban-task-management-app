@@ -54,13 +54,13 @@ interface ErrorResponse {
   success: false
   error: string
   code?: string
-  details?: any
+  details?: unknown
   timestamp: string
   path?: string
 }
 
 // Success response interface
-interface SuccessResponse<T = any> {
+interface SuccessResponse<T = unknown> {
   success: true
   data?: T
   message?: string
@@ -233,17 +233,22 @@ export function validateRequestBody<T>(
 }
 
 // Async handler wrapper for API routes
-export function withErrorHandling<T extends any[], R>(
-  handler: (...args: T) => Promise<R>
+export function withErrorHandling<TArgs extends unknown[], R>(
+  handler: (...args: TArgs) => Promise<R>
 ) {
-  return async (...args: T): Promise<R> => {
+  return async (...args: TArgs): Promise<R> => {
     try {
       return await handler(...args)
     } catch (error) {
-      // Extract path from request if available
-      const request = args.find(arg => arg && typeof arg.url === 'string')
+      const request = args.find(
+        (arg): arg is { url: string } =>
+          !!arg &&
+          typeof arg === 'object' &&
+          'url' in arg &&
+          typeof (arg as { url: unknown }).url === 'string'
+      )
       const path = request ? new URL(request.url).pathname : undefined
-      
+
       throw handleAPIError(error, path)
     }
   }

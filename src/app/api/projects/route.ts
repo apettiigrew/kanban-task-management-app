@@ -31,11 +31,7 @@ export async function GET(request: NextRequest) {
     )
 
     return createSuccessResponse(projects, 'Projects fetched successfully')
-  } catch (error: any) {
-    console.log(error)
-    // #region agent log
-    import('fs').then(fs=>fs.appendFileSync('/Users/andrewpettigrew/Documents/Projects/Personal/Personal/kanban-app/.cursor/debug-8bc891.log',JSON.stringify({sessionId:'8bc891',timestamp:Date.now(),location:'projects/route.ts:catch',message:'caught error',data:{name:error?.name,msg:error?.message,code:error?.code,ctor:error?.constructor?.name},hypothesisId:'A,B,C,D,E'})+'\n')).catch(()=>{})
-    // #endregion
+  } catch (error) {
     return handleAPIError(error, '/api/projects')
   }
 }

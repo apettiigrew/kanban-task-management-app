@@ -163,12 +163,18 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
 
     setIsEditingTitle(false)
   }, [
+    title,
+    card.id,
     card.title,
     card.description,
     card.columnId,
     card.order,
     card.projectId,
-    setTitle, setIsEditingTitle, updateTaskMutation])
+    setTitle,
+    setIsEditingTitle,
+    updateTaskMutation,
+    queryClient,
+  ])
 
   const handleDescriptionSave = useCallback(async () => {
     const description = editor?.getHTML()
@@ -193,7 +199,19 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
         })
     }
     setIsEditingDescription(false)
-  }, [card.description, setIsEditingDescription, updateTaskMutation])
+  }, [
+    card.description,
+    card.title,
+    card.columnId,
+    card.id,
+    card.order,
+    card.projectId,
+    editor,
+    setIsEditingDescription,
+    setDescription,
+    updateTaskMutation,
+    queryClient,
+  ])
 
   const handleDescriptionCancel = useCallback(() => {
     // form.setValue('description', card.description || '')
@@ -480,7 +498,7 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
         }
       })
     );
-  }, [checklists, card.id, reorderChecklistsMutation])
+  }, [checklists, card.id, reorderChecklistsMutation, reorderChecklistItemsMutation])
 
   const addChecklist = useCallback((title: string) => {
 
@@ -523,7 +541,7 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
         }
       }
     )
-  }, [card.id, createChecklistMutation, checklists.length])
+  }, [card.id, card.projectId, createChecklistMutation, checklists.length, queryClient])
 
   const deleteChecklist = useCallback((checklistId: string) => {
     // Optimistically remove checklist
@@ -543,7 +561,7 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
       }
     })
 
-  }, [checklists, checklists, deleteChecklistMutation])
+  }, [checklists, deleteChecklistMutation, queryClient, card.projectId])
 
   const updateChecklistTitle = useCallback((checklistId: string, newTitle: string) => {
     const originalTitle = checklists.find(c => c.id === checklistId)?.title
@@ -571,7 +589,7 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
       }
     )
 
-  }, [checklists, checklists, updateChecklistMutation])
+  }, [checklists, updateChecklistMutation])
 
   const addChecklistItem = useCallback((checklistId: string, itemText: string) => {
     const tempId = `temp-item-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
@@ -633,7 +651,7 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
         }
       }
     )
-  }, [checklists, checklists, createChecklistItemMutation])
+  }, [checklists, createChecklistItemMutation, card.projectId, queryClient])
 
   const deleteChecklistItem = useCallback((checklistId: string, itemId: string) => {
     // Find the item to delete for potential restoration
@@ -652,7 +670,7 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
 
     deleteChecklistItemMutation.mutate(itemId);
 
-  }, [checklists, deleteChecklistItemMutation, card.projectId]);
+  }, [checklists, deleteChecklistItemMutation]);
 
   const toggleChecklistItem = useCallback((checklistId: string, itemId: string) => {
     const checklist = checklists.find(c => c.id === checklistId)
@@ -714,7 +732,7 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
         }
       }
     )
-  }, [checklists, updateChecklistItemMutation])
+  }, [checklists, updateChecklistItemMutation, card.projectId, queryClient])
 
   const updateChecklistItemText = useCallback((checklistId: string, itemId: string, newText: string) => {
     const checklist = checklists.find(c => c.id === checklistId)
@@ -795,7 +813,17 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
       setTitle(oldTitle);
       setIsAIProcessing(false);
     }
-  }, [title]);
+  }, [
+    title,
+    card.id,
+    card.columnId,
+    card.order,
+    card.projectId,
+    card.description,
+    updateTaskMutation,
+    queryClient,
+    setIsAIProcessing,
+  ]);
 
   const handleMakeLonger = useCallback(async () => {
     const oldTitle = title;
@@ -834,7 +862,17 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
       setTitle(oldTitle);
       setIsAIProcessing(false);
     }
-  }, [title]);
+  }, [
+    title,
+    card.id,
+    card.columnId,
+    card.order,
+    card.projectId,
+    card.description,
+    updateTaskMutation,
+    queryClient,
+    setIsAIProcessing,
+  ]);
 
   const handleMakeShorter = useCallback(async () => {
     const oldTitle = title;
@@ -873,7 +911,17 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
       setTitle(oldTitle);
       setIsAIProcessing(false);
     }
-  }, [title]);
+  }, [
+    title,
+    card.id,
+    card.columnId,
+    card.order,
+    card.projectId,
+    card.description,
+    updateTaskMutation,
+    queryClient,
+    setIsAIProcessing,
+  ]);
 
   const handleMakeSMART = useCallback(async () => {
     const oldTitle = title;
@@ -912,7 +960,17 @@ export function TaskEditModal({ card, isOpen, onClose, columnTitle }: TaskEditMo
       setTitle(oldTitle);
       setIsAIProcessing(false);
     }
-  }, [title]);
+  }, [
+    title,
+    card.id,
+    card.columnId,
+    card.order,
+    card.projectId,
+    card.description,
+    updateTaskMutation,
+    queryClient,
+    setIsAIProcessing,
+  ]);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>

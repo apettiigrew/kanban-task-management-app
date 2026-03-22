@@ -90,7 +90,7 @@ export function Board(props: BoardProps) {
         if (projectState && selectedProject.id !== projectState.id) {
             router.push(`/board/${selectedProject.id}`);
         }
-    }, [projectState?.id, router]);
+    }, [projectState, router]);
 
     const handleCreateProject = useCallback((projectName: string) => {
         createProjectMutation.mutate({
@@ -103,7 +103,7 @@ export function Board(props: BoardProps) {
                 router.push(`/board/${newProject.id}`);
             }
         });
-    }, [createProjectMutation]);
+    }, [createProjectMutation, router, setIsProjectDialogOpen]);
 
     const handleCloseBoard = useCallback(() => {
         closeBoard(projectState.id);
@@ -594,7 +594,15 @@ export function Board(props: BoardProps) {
                 },
             }),
         );
-    }, [projectState, settings.boardScrollSpeed, settings.isOverElementAutoScrollEnabled, settings.isOverflowScrollingEnabled]);
+    }, [
+        projectState,
+        settings.boardScrollSpeed,
+        settings.isOverElementAutoScrollEnabled,
+        settings.isOverflowScrollingEnabled,
+        moveTaskMutation,
+        reorderTasksMutation,
+        reorderColumnsMutation,
+    ]);
 
 
     // Panning the board

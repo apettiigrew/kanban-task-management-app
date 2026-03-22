@@ -8,6 +8,12 @@ import { sortColumns as sortColumnsApi } from '@/utils/api-client'
 import { SortType } from '@/utils/data'
 import { TProject } from '@/models/project'
 
+const isCachedProject = (value: unknown): value is TProject => {
+  if (typeof value !== 'object' || value === null) return false
+  const o = value as Record<string, unknown>
+  return typeof o.id === 'string' && Array.isArray(o.columns)
+}
+
 // Types for mutation data
 interface CreateColumnData {
   title: string
@@ -113,8 +119,8 @@ const repositionColumn = async (data: RepositionColumnData): Promise<TColumn & {
   })
 }
 
-const sortCards = async (data: SortCardsData): Promise<any> => {
-  return apiRequest<any>(`/api/columns/${data.columnId}/sort`, {
+const sortCards = async (data: SortCardsData): Promise<unknown> => {
+  return apiRequest<unknown>(`/api/columns/${data.columnId}/sort`, {
     method: 'POST',
     body: JSON.stringify({
       sortType: data.sortType,
@@ -122,7 +128,7 @@ const sortCards = async (data: SortCardsData): Promise<any> => {
   })
 }
 
-const sortColumns = async (data: SortColumnsData): Promise<any> => {
+const sortColumns = async (data: SortColumnsData): Promise<unknown> => {
   return sortColumnsApi(data.projectId, data.sortType)
 }
 
@@ -174,7 +180,7 @@ export const useCopyColumn = () => {
       const previousProject = queryClient.getQueryData(projectKeys.detail(variables.projectId))
 
       // Optimistically update the cache with a temporary column
-      queryClient.setQueryData(projectKeys.detail(variables.projectId), (oldProject: any) => {
+      queryClient.setQueryData(projectKeys.detail(variables.projectId), (oldProject: TProject | undefined) => {
         if (!oldProject) return oldProject
 
         const maxOrder = Math.max(...oldProject.columns.map((col: TColumn) => col.order), -1)
@@ -220,16 +226,15 @@ export const useMoveColumn = () => {
       // Find the source project by looking for the column in all projects
       const allProjects = queryClient.getQueriesData({ queryKey: projectKeys.all })
       let sourceProjectId = ''
-      let sourceProject = null
+      let sourceProject: TProject | null = null
       
       for (const [, project] of allProjects) {
-        if (project && (project as any).columns) {
-          const columnExists = (project as any).columns.find((col: TColumn) => col.id === variables.columnId)
-          if (columnExists) {
-            sourceProjectId = (project as any).id
-            sourceProject = project
-            break
-          }
+        if (!isCachedProject(project)) continue
+        const columnExists = project.columns.find((col: TColumn) => col.id === variables.columnId)
+        if (columnExists) {
+          sourceProjectId = project.id
+          sourceProject = project
+          break
         }
       }
 
@@ -253,14 +258,14 @@ export const useMoveColumn = () => {
       const previousTargetProject = queryClient.getQueryData(projectKeys.detail(variables.targetProjectId))
 
       // Get the column being moved from source project
-      const columnToMove = (sourceProject as any)?.columns?.find((col: TColumn) => col.id === variables.columnId)
+      const columnToMove = sourceProject.columns.find((col: TColumn) => col.id === variables.columnId)
       
       if (!columnToMove) {
         throw new Error('Column not found in source project')
       }
 
       // Optimistically update source project (remove the column)
-      queryClient.setQueryData(projectKeys.detail(sourceProjectId), (oldProject: any) => {
+      queryClient.setQueryData(projectKeys.detail(sourceProjectId), (oldProject: TProject | undefined) => {
         if (!oldProject) return oldProject
         return {
           ...oldProject,
@@ -269,7 +274,7 @@ export const useMoveColumn = () => {
       })
 
       // Optimistically update target project (add the column at new position)
-      queryClient.setQueryData(projectKeys.detail(variables.targetProjectId), (oldProject: any) => {
+      queryClient.setQueryData(projectKeys.detail(variables.targetProjectId), (oldProject: TProject | undefined) => {
         if (!oldProject) return oldProject
         
         const updatedColumn = {
@@ -332,16 +337,15 @@ export const useRepositionColumn = () => {
       // Find the project by looking for the column in all projects
       const allProjects = queryClient.getQueriesData({ queryKey: projectKeys.all })
       let projectId = ''
-      let project = null
+      let project: TProject | null = null
       
       for (const [, proj] of allProjects) {
-        if (proj && (proj as any).columns) {
-          const columnExists = (proj as any).columns.find((col: TColumn) => col.id === variables.columnId)
-          if (columnExists) {
-            projectId = (proj as any).id
-            project = proj
-            break
-          }
+        if (!isCachedProject(proj)) continue
+        const columnExists = proj.columns.find((col: TColumn) => col.id === variables.columnId)
+        if (columnExists) {
+          projectId = proj.id
+          project = proj
+          break
         }
       }
 
@@ -361,14 +365,14 @@ export const useRepositionColumn = () => {
       const previousProject = queryClient.getQueryData(projectKeys.detail(projectId))
 
       // Get the column being repositioned
-      const columnToMove = (project as any)?.columns?.find((col: TColumn) => col.id === variables.columnId)
+      const columnToMove = project.columns.find((col: TColumn) => col.id === variables.columnId)
       
       if (!columnToMove) {
         throw new Error('Column not found in project')
       }
 
       // Optimistically update the project with new column order
-      queryClient.setQueryData(projectKeys.detail(projectId), (oldProject: any) => {
+      queryClient.setQueryData(projectKeys.detail(projectId), (oldProject: TProject | undefined) => {
         if (!oldProject) return oldProject
         
         // Remove the column from its current position
@@ -467,7 +471,7 @@ export const useSortCards = () => {
       }))
 
       // Optimistically update the project with sorted cards
-      queryClient.setQueryData(projectKeys.detail(variables.projectId), (oldProject: any) => {
+      queryClient.setQueryData(projectKeys.detail(variables.projectId), (oldProject: TProject | undefined) => {
         if (!oldProject) return oldProject
         
         return {
@@ -514,16 +518,15 @@ export const useSortColumns = () => {
       // Snapshot the previous value
       const previousProject = queryClient.getQueryData(projectKeys.detail(variables.projectId))
 
-      if (!previousProject) {
+      if (!isCachedProject(previousProject)) {
         return { 
           previousProject: null, 
           projectId: variables.projectId 
         }
       }
 
-      // Get the project columns
-      const project = previousProject as any
-      const columns = project.columns || []
+      const project = previousProject
+      const columns = project.columns
 
       if (columns.length < 2) {
         // If project has fewer than 2 columns, no sorting needed
@@ -555,7 +558,7 @@ export const useSortColumns = () => {
       }))
 
       // Optimistically update the project with sorted columns
-      queryClient.setQueryData(projectKeys.detail(variables.projectId), (oldProject: any) => {
+      queryClient.setQueryData(projectKeys.detail(variables.projectId), (oldProject: TProject | undefined) => {
         if (!oldProject) return oldProject
         
         return {

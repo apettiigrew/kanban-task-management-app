@@ -245,7 +245,7 @@ export function FormErrorExamples() {
                 hookFormErrors: Object.keys(errors).reduce((acc, key) => {
                   acc[key] = errors[key as keyof typeof errors]?.message
                   return acc
-                }, {} as Record<string, any>),
+                }, {} as Record<string, string | undefined>),
                 hasErrors
               }, null, 2)}
             </pre>

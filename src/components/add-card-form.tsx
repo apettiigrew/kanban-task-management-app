@@ -34,7 +34,7 @@ export function AddCardForm(props: AddCardFormProps) {
         const timeoutId = setTimeout(focusInput, 100);
         
         return () => clearTimeout(timeoutId);
-    }, [inputRef.current]);
+    }, []);
 
     const handleSubmit = useCallback(() => {
         const trimmedCardTitle = cardTitle.trim();
@@ -49,7 +49,7 @@ export function AddCardForm(props: AddCardFormProps) {
 
         setCardTitle('');
 
-    }, [cardTitle, onAddCard]);
+    }, [cardTitle, onAddCard, position]);
 
     const handleCancel = useCallback(() => {
         onCancel();

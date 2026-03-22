@@ -24,7 +24,7 @@ export const queryAsUser = async <T>(
   // #region agent log
   const dbUrl = process.env.DATABASE_URL || ''
   let parsedUser = 'parse-failed', parsedHost = 'parse-failed'
-  try { const u = new URL(dbUrl); parsedUser = u.username; parsedHost = u.hostname } catch(e:any) { parsedUser = 'url-parse-error:'+e.message }
+  try { const u = new URL(dbUrl); parsedUser = u.username; parsedHost = u.hostname } catch (e: unknown) { parsedUser = 'url-parse-error:' + (e instanceof Error ? e.message : String(e)) }
   dbgWrite({location:'db.ts:entry',message:'queryAsUser called',data:{parsedUser,parsedHost,urlLength:dbUrl.length},hypothesisId:'A'})
   // #endregion
 
@@ -36,9 +36,20 @@ export const queryAsUser = async <T>(
       await tx.$executeRaw`SELECT set_config('app.current_user_id', ${userId}, true)`
       return fn(tx)
     })
-  } catch (err: any) {
+  } catch (err: unknown) {
     // #region agent log
-    dbgWrite({location:'db.ts:error',message:'queryAsUser threw',data:{name:err?.name,message:err?.message,code:err?.code,meta:err?.meta},hypothesisId:'A,B,C,D,E'})
+    const prismaMeta = err && typeof err === 'object' && 'meta' in err ? (err as { meta?: unknown }).meta : undefined
+    dbgWrite({
+      location: 'db.ts:error',
+      message: 'queryAsUser threw',
+      data: {
+        name: err instanceof Error ? err.name : undefined,
+        message: err instanceof Error ? err.message : undefined,
+        code: err && typeof err === 'object' && 'code' in err ? (err as { code?: unknown }).code : undefined,
+        meta: prismaMeta,
+      },
+      hypothesisId: 'A,B,C,D,E',
+    })
     // #endregion
     throw err
   }

@@ -257,12 +257,12 @@ export function Column(props: ColumnProps) {
 
         setIsAddingCard(false);
         setAddCardPosition('bottom');
-    }, [column.projectId, column.id, createTaskMutation]);
+    }, [column.projectId, column.id, createTaskMutation, currentColumn.cards.length]);
 
     const handleCancelAddCard = useCallback(() => {
         setIsAddingCard(false);
         setAddCardPosition('bottom');
-    }, [isAddingCard]);
+    }, []);
 
     const handleCopyList = useCallback((title: string, columnId: string) => {
         copylistMutation.mutate({
@@ -275,7 +275,7 @@ export function Column(props: ColumnProps) {
             onError: () => {
             }
         });
-    }, []);
+    }, [copylistMutation, column.projectId]);
 
     const handleMoveList = useCallback((data: MoveColumn | RepositionColumn) => {
 
@@ -304,7 +304,7 @@ export function Column(props: ColumnProps) {
                 }
             });
         }
-    }, [moveColumnMutation, repositionColumnMutation]);
+    }, [moveColumnMutation, repositionColumnMutation, column.id]);
 
     const handleMoveAllCards = useCallback((data: { columnId: string; targetColumnId: string }) => {
 
@@ -327,7 +327,7 @@ export function Column(props: ColumnProps) {
             projectId: column.projectId,
             sortType: sortType
         });
-    }, [sortCardsMutation, column.id]);
+    }, [sortCardsMutation, column.id, column.projectId]);
 
     return (
         <>

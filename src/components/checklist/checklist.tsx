@@ -176,7 +176,13 @@ export function Checklist(props: ChecklistProps) {
     })
 
     );
-  }, [checklist, cardId]);
+  }, [
+    checklist,
+    cardId,
+    settings.columnScrollSpeed,
+    settings.isOverElementAutoScrollEnabled,
+    settings.isOverflowScrollingEnabled,
+  ]);
 
   const handleAddItem = () => {
     const trimmedText = newItemText.trim();

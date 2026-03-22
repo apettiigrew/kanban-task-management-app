@@ -86,7 +86,7 @@ export function AddLabelButton({
         setShowCreateLabel(false)
       }
     })
-  }, [createLabelMutation])
+  }, [createLabelMutation, cardId, projectId])
 
   const handleLabelToggle = useCallback((label: TLabelWithChecked) => {
     toggleCardLabelMutation.mutate({
@@ -94,7 +94,7 @@ export function AddLabelButton({
       labelId: label.id,
       projectId: projectId
     })
-  }, [toggleCardLabelMutation, cardId])
+  }, [toggleCardLabelMutation, cardId, projectId])
 
   const handleUpdateLabel = useCallback((labelData: { id: string; title: string; color: string; projectId: string }) => {
     updateLabelMutation.mutate({
@@ -116,7 +116,7 @@ export function AddLabelButton({
         setEditingLabel(null)
       }
     } )
-  }, [deleteLabelMutation])
+  }, [deleteLabelMutation, cardId, projectId])
 
   const filteredLabels = useMemo(() => labelsWithChecked.filter(label =>
     label.title.toLowerCase().includes(searchQuery.toLowerCase())

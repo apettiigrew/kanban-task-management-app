@@ -76,7 +76,7 @@ export function ColumnHeader({
         onCopyList(title, columnId);
         setDropdownView('menu');
         setIsDropdownOpen(false);
-    }, [onCopyList]);
+    }, [onCopyList, columnId]);
 
     const handleMoveListClick = useCallback(() => {
         setDropdownView('move-form');
