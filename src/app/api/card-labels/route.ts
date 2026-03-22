@@ -1,13 +1,13 @@
 import { NextRequest } from 'next/server'
-import { prisma } from '@/lib/prisma'
 import { createCardLabelSchema } from '@/lib/validations/label'
-import { 
-  handleAPIError, 
-  createSuccessResponse, 
+import {
+  handleAPIError,
+  createSuccessResponse,
   validateRequestBody,
   NotFoundError
 } from '@/lib/api-error-handler'
 import { getUserIdFromRequest } from '@/lib/auth-helpers'
+import { queryAsUser } from '@/lib/db'
 import { TCardLabel } from '@/models/label'
 
 // POST /api/card-labels - Create a new card label relationship
@@ -17,61 +17,39 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const validatedData = validateRequestBody(createCardLabelSchema, body)
 
-    // Check if the card and label exist and belong to the authenticated user
-    const card = await prisma.card.findUnique({
-      where: { id: validatedData.cardId, userId },
-      select: { projectId: true }
-    })
+    const cardLabel = await queryAsUser(userId, async (tx) => {
+      const card = await tx.card.findUnique({
+        where: { id: validatedData.cardId, userId },
+        select: { projectId: true },
+      })
+      if (!card) throw new NotFoundError('Card')
 
-    if (!card) {
-      throw new NotFoundError('Card')
-    }
+      const label = await tx.label.findUnique({
+        where: { id: validatedData.labelId, userId },
+        select: { projectId: true },
+      })
+      if (!label) throw new NotFoundError('Label')
 
-    const label = await prisma.label.findUnique({
-      where: { id: validatedData.labelId, userId },
-      select: { projectId: true }
-    })
+      if (card.projectId !== label.projectId) throw new NotFoundError('Label')
 
-    if (!label) {
-      throw new NotFoundError('Label')
-    }
-
-    if (card.projectId !== label.projectId) {
-      throw new NotFoundError('Label')
-    }
-
-    // Check if the relationship already exists
-    const existingCardLabel = await prisma.cardLabel.findUnique({
-      where: {
-        cardId_labelId: {
-          cardId: validatedData.cardId,
-          labelId: validatedData.labelId
-        }
-      }
-    })
-
-    if (existingCardLabel) {
-      const cardLabel = await prisma.cardLabel.update({
+      const existing = await tx.cardLabel.findUnique({
         where: {
-          cardId_labelId: {
-            cardId: validatedData.cardId,
-            labelId: validatedData.labelId
-          }
+          cardId_labelId: { cardId: validatedData.cardId, labelId: validatedData.labelId },
         },
-        data: {
-          checked: validatedData.checked
-        }
       })
 
-      const response: TCardLabel = cardLabel
-      return createSuccessResponse(response, 'Card label updated successfully')
-    }
-
-    const cardLabel = await prisma.cardLabel.create({
-      data: {
-        ...validatedData,
-        userId,
+      if (existing) {
+        return tx.cardLabel.update({
+          where: {
+            cardId_labelId: { cardId: validatedData.cardId, labelId: validatedData.labelId },
+          },
+          data: { checked: validatedData.checked },
+        })
       }
+
+      return tx.cardLabel.create({
+        data: { ...validatedData, userId },
+      })
     })
 
     const response: TCardLabel = cardLabel

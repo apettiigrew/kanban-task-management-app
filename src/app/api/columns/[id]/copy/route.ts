@@ -1,5 +1,4 @@
 import { NextRequest } from 'next/server'
-import { prisma } from '@/lib/prisma'
 import { copyColumnSchema } from '@/lib/validations/column'
 import {
   handleAPIError,
@@ -8,48 +7,30 @@ import {
   NotFoundError
 } from '@/lib/api-error-handler'
 import { getUserIdFromRequest } from '@/lib/auth-helpers'
+import { queryAsUser } from '@/lib/db'
 
 // POST /api/columns/[id]/copy - Copy a column with all nested data
 export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const userId = getUserIdFromRequest(request)
     const body = await request.json()
-    
     const validatedData = validateRequestBody(copyColumnSchema, body)
 
-    // Find the original column and verify it belongs to the authenticated user
-    const originalColumn = await prisma.column.findUnique({
-      where: { id: validatedData.columnId, userId },
-      include: {
-        cards: {
-          include: {
-            checklists: {
-              include: {
-                items: true
-              }
-            }
+    const copiedColumn = await queryAsUser(userId, async (tx) => {
+      const originalColumn = await tx.column.findUnique({
+        where: { id: validatedData.columnId, userId },
+        include: {
+          cards: {
+            include: { checklists: { include: { items: true } } },
+            orderBy: { order: 'asc' },
           },
-          orderBy: {
-            order: 'asc'
-          }
+          project: { select: { id: true, title: true } },
         },
-        project: {
-          select: {
-            id: true,
-            title: true,
-          }
-        }
-      },
-    })
+      })
+      if (!originalColumn) throw new NotFoundError('Column')
 
-    if (!originalColumn) {
-      throw new NotFoundError('Column')
-    }
+      const nextOrder = originalColumn.order + 1
 
-    const nextOrder = originalColumn.order + 1
-
-    const copiedColumn = await prisma.$transaction(async (tx) => {
-      // Create the new column with userId
       const newColumn = await tx.column.create({
         data: {
           title: validatedData.title,
@@ -59,25 +40,15 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
         },
       })
 
-      // Shift orders of columns after the original to make room
       await tx.column.updateMany({
         where: {
           projectId: originalColumn.projectId,
-          order: {
-            gte: nextOrder,
-          },
-          id: {
-            not: newColumn.id,
-          },
+          order: { gte: nextOrder },
+          id: { not: newColumn.id },
         },
-        data: {
-          order: {
-            increment: 1,
-          },
-        },
+        data: { order: { increment: 1 } },
       })
 
-      // Copy all cards from the original column
       for (const originalCard of originalColumn.cards) {
         const newCard = await tx.card.create({
           data: {
@@ -92,7 +63,6 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
           },
         })
 
-        // Copy all checklists for this card
         for (const originalChecklist of originalCard.checklists) {
           const newChecklist = await tx.checklist.create({
             data: {
@@ -103,7 +73,6 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
             },
           })
 
-          // Copy all checklist items for this checklist
           for (const originalItem of originalChecklist.items) {
             await tx.checklistItem.create({
               data: {
@@ -118,29 +87,15 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
         }
       }
 
-      // Return the new column with all nested data
-      return await tx.column.findUnique({
+      return tx.column.findUnique({
         where: { id: newColumn.id },
         include: {
           cards: {
-            include: {
-              checklists: {
-                include: {
-                  items: true
-                }
-              }
-            },
-            orderBy: {
-              order: 'asc'
-            }
+            include: { checklists: { include: { items: true } } },
+            orderBy: { order: 'asc' },
           },
-          project: {
-            select: {
-              id: true,
-              title: true,
-            }
-          }
-        }
+          project: { select: { id: true, title: true } },
+        },
       })
     })
 

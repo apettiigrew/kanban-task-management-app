@@ -1,5 +1,4 @@
 import { NextRequest } from 'next/server'
-import { prisma } from '@/lib/prisma'
 import { updateTaskSchema } from '@/lib/validations/task'
 import {
   handleAPIError,
@@ -8,6 +7,7 @@ import {
   NotFoundError
 } from '@/lib/api-error-handler'
 import { getUserIdFromRequest } from '@/lib/auth-helpers'
+import { queryAsUser } from '@/lib/db'
 
 // GET /api/tasks/[id] - Get a specific task
 export async function GET(
@@ -16,38 +16,22 @@ export async function GET(
 ) {
   try {
     const userId = getUserIdFromRequest(request)
-
     const { searchParams } = new URL(request.url)
     const includeRelations = searchParams.get('includeRelations') === 'true'
 
-    const task = await prisma.card.findUnique({
-      where: { id: params.id, userId },
-      include: {
-        project: includeRelations ? {
-          select: {
-            id: true,
-            title: true,
-          }
-        } : false,
-        column: includeRelations ? {
-          select: {
-            id: true,
-            title: true,
-          }
-        } : false,
-        cardLabels: {
-          include: {
-            label: true
-          }
-        }
-      },
-    })
+    const task = await queryAsUser(userId, (tx) =>
+      tx.card.findUnique({
+        where: { id: params.id, userId },
+        include: {
+          project: includeRelations ? { select: { id: true, title: true } } : false,
+          column: includeRelations ? { select: { id: true, title: true } } : false,
+          cardLabels: { include: { label: true } },
+        },
+      })
+    )
 
-    if (!task) {
-      throw new NotFoundError('Task')
-    }
+    if (!task) throw new NotFoundError('Task')
 
-    // Transform the data to include labels with checked status
     const taskWithLabels = {
       ...task,
       labels: task.cardLabels.map(cardLabel => ({
@@ -57,8 +41,8 @@ export async function GET(
         projectId: cardLabel.label.projectId,
         createdAt: cardLabel.label.createdAt,
         updatedAt: cardLabel.label.updatedAt,
-        checked: cardLabel.checked
-      }))
+        checked: cardLabel.checked,
+      })),
     }
 
     return createSuccessResponse(taskWithLabels, 'Task fetched successfully')
@@ -74,43 +58,24 @@ export async function PUT(
 ) {
   try {
     const userId = getUserIdFromRequest(request)
-
     const body = await request.json()
     const validatedData = validateRequestBody(updateTaskSchema, body)
 
-    const existingTask = await prisma.card.findUnique({
-      where: { id: params.id, userId },
+    const task = await queryAsUser(userId, async (tx) => {
+      const existing = await tx.card.findUnique({ where: { id: params.id, userId } })
+      if (!existing) throw new NotFoundError('Task')
+
+      return tx.card.update({
+        where: { id: params.id },
+        data: validatedData,
+        include: {
+          project: { select: { id: true, title: true } },
+          column: { select: { id: true, title: true } },
+          cardLabels: { include: { label: true } },
+        },
+      })
     })
 
-    if (!existingTask) {
-      throw new NotFoundError('Task')
-    }
-
-    const task = await prisma.card.update({
-      where: { id: params.id },
-      data: validatedData,
-      include: {
-        project: {
-          select: {
-            id: true,
-            title: true,
-          }
-        },
-        column: {
-          select: {
-            id: true,
-            title: true,
-          }
-        },
-        cardLabels: {
-          include: {
-            label: true
-          }
-        }
-      }
-    })
-
-    // Transform the data to include labels with checked status
     const taskWithLabels = {
       ...task,
       labels: task.cardLabels.map(cardLabel => ({
@@ -120,8 +85,8 @@ export async function PUT(
         projectId: cardLabel.label.projectId,
         createdAt: cardLabel.label.createdAt,
         updatedAt: cardLabel.label.updatedAt,
-        checked: cardLabel.checked
-      }))
+        checked: cardLabel.checked,
+      })),
     }
 
     return createSuccessResponse(taskWithLabels, 'Task updated successfully')
@@ -138,17 +103,11 @@ export async function DELETE(
   try {
     const userId = getUserIdFromRequest(request)
 
-    const existingTask = await prisma.card.findUnique({
-      where: { id: params.id, userId },
-    })
+    await queryAsUser(userId, async (tx) => {
+      const existing = await tx.card.findUnique({ where: { id: params.id, userId } })
+      if (!existing) throw new NotFoundError('Task')
 
-    if (!existingTask) {
-      throw new NotFoundError('Task')
-    }
-
-    // Delete the task
-    await prisma.card.delete({
-      where: { id: params.id },
+      await tx.card.delete({ where: { id: params.id } })
     })
 
     return createSuccessResponse(null, 'Task deleted successfully')

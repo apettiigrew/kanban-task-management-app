@@ -1,5 +1,4 @@
 import { NextRequest } from 'next/server'
-import { prisma } from '@/lib/prisma'
 import { updateChecklistItemSchema } from '@/lib/validations/checklist'
 import {
   handleAPIError,
@@ -8,6 +7,7 @@ import {
   NotFoundError
 } from '@/lib/api-error-handler'
 import { getUserIdFromRequest } from '@/lib/auth-helpers'
+import { queryAsUser } from '@/lib/db'
 
 // GET /api/checklist-items/[id] - Get a specific checklist item
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -15,13 +15,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const { id } = await params
     const userId = getUserIdFromRequest(request)
 
-    const checklistItem = await prisma.checklistItem.findUnique({
-      where: { id, userId },
-    })
+    const checklistItem = await queryAsUser(userId, (tx) =>
+      tx.checklistItem.findUnique({ where: { id, userId } })
+    )
 
-    if (!checklistItem) {
-      throw new NotFoundError('Checklist item')
-    }
+    if (!checklistItem) throw new NotFoundError('Checklist item')
 
     return createSuccessResponse(checklistItem, 'Checklist item fetched successfully')
   } catch (error) {
@@ -36,25 +34,20 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     const { id } = await params
     const userId = getUserIdFromRequest(request)
     const body = await request.json()
-    
     const validatedData = validateRequestBody(updateChecklistItemSchema, body)
 
-    // Check if checklist item exists and belongs to the authenticated user
-    const existingItem = await prisma.checklistItem.findUnique({
-      where: { id, userId },
-    })
+    const updatedItem = await queryAsUser(userId, async (tx) => {
+      const existing = await tx.checklistItem.findUnique({ where: { id, userId } })
+      if (!existing) throw new NotFoundError('Checklist item')
 
-    if (!existingItem) {
-      throw new NotFoundError('Checklist item')
-    }
-
-    const updatedItem = await prisma.checklistItem.update({
-      where: { id },
-      data: {
-        text: validatedData.text,
-        isCompleted: validatedData.isCompleted,
-        order: validatedData.order,
-      }
+      return tx.checklistItem.update({
+        where: { id },
+        data: {
+          text: validatedData.text,
+          isCompleted: validatedData.isCompleted,
+          order: validatedData.order,
+        },
+      })
     })
 
     return createSuccessResponse(updatedItem, 'Checklist item updated successfully')
@@ -70,17 +63,11 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     const { id } = await params
     const userId = getUserIdFromRequest(request)
 
-    // Check if checklist item exists and belongs to the authenticated user
-    const existingItem = await prisma.checklistItem.findUnique({
-      where: { id, userId },
-    })
+    await queryAsUser(userId, async (tx) => {
+      const existing = await tx.checklistItem.findUnique({ where: { id, userId } })
+      if (!existing) throw new NotFoundError('Checklist item')
 
-    if (!existingItem) {
-      throw new NotFoundError('Checklist item')
-    }
-
-    await prisma.checklistItem.delete({
-      where: { id }
+      await tx.checklistItem.delete({ where: { id } })
     })
 
     return createSuccessResponse(null, 'Checklist item deleted successfully')

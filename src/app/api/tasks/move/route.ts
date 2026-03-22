@@ -1,4 +1,3 @@
-
 import {
   createSuccessResponse,
   handleAPIError,
@@ -6,62 +5,45 @@ import {
   validateRequestBody
 } from '@/lib/api-error-handler'
 import { getUserIdFromRequest } from '@/lib/auth-helpers'
-import { prisma } from '@/lib/prisma'
+import { queryAsUser } from '@/lib/db'
 import { moveTaskSchema } from '@/lib/validations/task'
 import { NextRequest } from 'next/server'
 
 export async function PUT(request: NextRequest) {
   try {
     const userId = getUserIdFromRequest(request)
-
     const body = await request.json()
     const validatedData = validateRequestBody(moveTaskSchema, body)
 
-    const existingTask = await prisma.card.findUnique({
-      where: { id: validatedData.taskId, userId },
-    })
+    const task = await queryAsUser(userId, async (tx) => {
+      const existingTask = await tx.card.findUnique({
+        where: { id: validatedData.taskId, userId },
+      })
+      if (!existingTask) throw new NotFoundError('Task')
 
-    if (!existingTask) {
-      throw new NotFoundError('Task')
-    }
-
-    await prisma.$transaction(
-      validatedData.columns.flatMap(column =>
-        column.cards.map(card =>
-          prisma.card.update({
-            where: { id: card.id },
-            data: { columnId: column.id, order: card.order }
-          })
+      await Promise.all(
+        validatedData.columns.flatMap(column =>
+          column.cards.map(card =>
+            tx.card.update({
+              where: { id: card.id },
+              data: { columnId: column.id, order: card.order },
+            })
+          )
         )
       )
-    )
 
-    const task = await prisma.card.findUnique({
-      where: { id: validatedData.taskId },
-      include: {
-        project: {
-          select: {
-            id: true,
-            title: true,
-          }
+      const updated = await tx.card.findUnique({
+        where: { id: validatedData.taskId },
+        include: {
+          project: { select: { id: true, title: true } },
+          column: { select: { id: true, title: true } },
+          cardLabels: { include: { label: true } },
         },
-        column: {
-          select: {
-            id: true,
-            title: true,
-          }
-        },
-        cardLabels: {
-          include: {
-            label: true
-          }
-        }
-      }
+      })
+      if (!updated) throw new NotFoundError('Task')
+
+      return updated
     })
-
-    if (!task) {
-      throw new NotFoundError('Task')
-    }
 
     const taskWithLabels = {
       ...task,
@@ -72,12 +54,12 @@ export async function PUT(request: NextRequest) {
         projectId: cardLabel.label.projectId,
         createdAt: cardLabel.label.createdAt,
         updatedAt: cardLabel.label.updatedAt,
-        checked: cardLabel.checked
-      }))
+        checked: cardLabel.checked,
+      })),
     }
 
     return createSuccessResponse(taskWithLabels, 'Task updated successfully')
   } catch (error) {
-    return handleAPIError(error, `/api/tasks/move`)
+    return handleAPIError(error, '/api/tasks/move')
   }
 }

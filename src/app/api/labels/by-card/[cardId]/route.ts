@@ -1,11 +1,11 @@
 import { NextRequest } from 'next/server'
-import { prisma } from '@/lib/prisma'
-import { 
-  handleAPIError, 
-  createSuccessResponse, 
-  NotFoundError 
+import {
+  handleAPIError,
+  createSuccessResponse,
+  NotFoundError
 } from '@/lib/api-error-handler'
 import { getUserIdFromRequest } from '@/lib/auth-helpers'
+import { queryAsUser } from '@/lib/db'
 import { TLabelWithChecked } from '@/models/label'
 
 // GET /api/labels/by-card/[cardId] - Get all labels for a project with checked status for a specific card
@@ -14,34 +14,20 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const userId = getUserIdFromRequest(request)
     const { cardId } = await params
 
-    // First, get the card to find the projectId — scoped to the authenticated user
-    const card = await prisma.card.findUnique({
-      where: { id: cardId, userId },
-      select: { projectId: true }
+    const labelsWithCheckedStatus = await queryAsUser(userId, async (tx) => {
+      const card = await tx.card.findUnique({
+        where: { id: cardId, userId },
+        select: { projectId: true },
+      })
+      if (!card) throw new NotFoundError('Card')
+
+      return tx.label.findMany({
+        where: { projectId: card.projectId },
+        include: { cardLabels: { where: { cardId } } },
+        orderBy: { createdAt: 'asc' },
+      })
     })
 
-    if (!card) {
-      throw new NotFoundError('Card')
-    }
-
-    // Get all labels for the project with their checked status for this specific card
-    const labelsWithCheckedStatus = await prisma.label.findMany({
-      where: {
-        projectId: card.projectId
-      },
-      include: {
-        cardLabels: {
-          where: {
-            cardId: cardId
-          },
-        }
-      },
-      orderBy: {
-        createdAt: 'asc'
-      }
-    })
-
-    // Transform the data to match TLabelWithChecked type
     const response: TLabelWithChecked[] = labelsWithCheckedStatus.map(label => ({
       id: label.id,
       title: label.title,
@@ -49,7 +35,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       projectId: label.projectId,
       createdAt: label.createdAt,
       updatedAt: label.updatedAt,
-      checked: label.cardLabels.length > 0 ? label.cardLabels[0].checked : false
+      checked: label.cardLabels.length > 0 ? label.cardLabels[0].checked : false,
     }))
 
     return createSuccessResponse(response, 'Labels with checked status fetched successfully')

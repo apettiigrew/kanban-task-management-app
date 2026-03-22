@@ -1,13 +1,13 @@
 import { NextRequest } from 'next/server'
-import { prisma } from '@/lib/prisma'
 import { updateCardLabelSchema } from '@/lib/validations/label'
-import { 
-  handleAPIError, 
-  createSuccessResponse, 
+import {
+  handleAPIError,
+  createSuccessResponse,
   validateRequestBody,
-  NotFoundError 
+  NotFoundError
 } from '@/lib/api-error-handler'
 import { getUserIdFromRequest } from '@/lib/auth-helpers'
+import { queryAsUser } from '@/lib/db'
 import { TCardLabel } from '@/models/label'
 
 // GET /api/card-labels/[id] - Get a specific card label
@@ -15,17 +15,15 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   try {
     const { id } = await params
     const userId = getUserIdFromRequest(request)
-    
-    const cardLabel = await prisma.cardLabel.findUnique({
-      where: { id, userId },
-      include: {
-        label: true
-      }
-    })
 
-    if (!cardLabel) {
-      throw new NotFoundError('Card label')
-    }
+    const cardLabel = await queryAsUser(userId, (tx) =>
+      tx.cardLabel.findUnique({
+        where: { id, userId },
+        include: { label: true },
+      })
+    )
+
+    if (!cardLabel) throw new NotFoundError('Card label')
 
     const response: TCardLabel = cardLabel
 
@@ -44,18 +42,11 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     const body = await request.json()
     const validatedData = validateRequestBody(updateCardLabelSchema, body)
 
-    // Check if card label exists and belongs to the authenticated user
-    const existingCardLabel = await prisma.cardLabel.findUnique({
-      where: { id, userId }
-    })
+    const cardLabel = await queryAsUser(userId, async (tx) => {
+      const existing = await tx.cardLabel.findUnique({ where: { id, userId } })
+      if (!existing) throw new NotFoundError('Card label')
 
-    if (!existingCardLabel) {
-      throw new NotFoundError('Card label')
-    }
-
-    const cardLabel = await prisma.cardLabel.update({
-      where: { id },
-      data: validatedData
+      return tx.cardLabel.update({ where: { id }, data: validatedData })
     })
 
     const response: TCardLabel = cardLabel
@@ -73,17 +64,11 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     const { id } = await params
     const userId = getUserIdFromRequest(request)
 
-    // Check if card label exists and belongs to the authenticated user
-    const existingCardLabel = await prisma.cardLabel.findUnique({
-      where: { id, userId }
-    })
+    await queryAsUser(userId, async (tx) => {
+      const existing = await tx.cardLabel.findUnique({ where: { id, userId } })
+      if (!existing) throw new NotFoundError('Card label')
 
-    if (!existingCardLabel) {
-      throw new NotFoundError('Card label')
-    }
-
-    await prisma.cardLabel.delete({
-      where: { id }
+      await tx.cardLabel.delete({ where: { id } })
     })
 
     return createSuccessResponse(null, 'Card label deleted successfully')

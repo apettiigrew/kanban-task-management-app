@@ -1,13 +1,13 @@
 import { NextRequest } from 'next/server'
-import { prisma } from '@/lib/prisma'
 import { updateLabelSchema } from '@/lib/validations/label'
-import { 
-  handleAPIError, 
-  createSuccessResponse, 
+import {
+  handleAPIError,
+  createSuccessResponse,
   validateRequestBody,
-  NotFoundError 
+  NotFoundError
 } from '@/lib/api-error-handler'
 import { getUserIdFromRequest } from '@/lib/auth-helpers'
+import { queryAsUser } from '@/lib/db'
 import { TLabel } from '@/models/label'
 
 // GET /api/labels/[id] - Get a specific label
@@ -15,14 +15,12 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   try {
     const { id } = await params
     const userId = getUserIdFromRequest(request)
-    
-    const label = await prisma.label.findUnique({
-      where: { id, userId }
-    })
 
-    if (!label) {
-      throw new NotFoundError('Label')
-    }
+    const label = await queryAsUser(userId, (tx) =>
+      tx.label.findUnique({ where: { id, userId } })
+    )
+
+    if (!label) throw new NotFoundError('Label')
 
     const response: TLabel = label
 
@@ -33,7 +31,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   }
 }
 
-// PATCH /api/labels/[id] - Update a label (mainly for checking/unchecking)
+// PATCH /api/labels/[id] - Update a label
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
@@ -41,17 +39,11 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     const body = await request.json()
     const validatedData = validateRequestBody(updateLabelSchema, body)
 
-    const existingLabel = await prisma.label.findUnique({
-      where: { id, userId }
-    })
+    const label = await queryAsUser(userId, async (tx) => {
+      const existing = await tx.label.findUnique({ where: { id, userId } })
+      if (!existing) throw new NotFoundError('Label')
 
-    if (!existingLabel) {
-      throw new NotFoundError('Label')
-    }
-
-    const label = await prisma.label.update({
-      where: { id },
-      data: validatedData
+      return tx.label.update({ where: { id }, data: validatedData })
     })
 
     const response: TLabel = label
@@ -69,16 +61,11 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     const { id } = await params
     const userId = getUserIdFromRequest(request)
 
-    const existingLabel = await prisma.label.findUnique({
-      where: { id, userId }
-    })
+    await queryAsUser(userId, async (tx) => {
+      const existing = await tx.label.findUnique({ where: { id, userId } })
+      if (!existing) throw new NotFoundError('Label')
 
-    if (!existingLabel) {
-      throw new NotFoundError('Label')
-    }
-
-    await prisma.label.delete({
-      where: { id }
+      await tx.label.delete({ where: { id } })
     })
 
     return createSuccessResponse(null, 'Label deleted successfully')

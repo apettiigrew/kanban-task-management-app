@@ -1,5 +1,4 @@
 import { NextRequest } from 'next/server'
-import { prisma } from '@/lib/prisma'
 import { updateProjectSchema } from '@/lib/validations/project'
 import {
   handleAPIError,
@@ -8,6 +7,7 @@ import {
   NotFoundError
 } from '@/lib/api-error-handler'
 import { getUserIdFromRequest } from '@/lib/auth-helpers'
+import { queryAsUser } from '@/lib/db'
 import { TProject } from '@/models/project';
 
 // GET /api/projects/[id] - Get a specific project
@@ -16,59 +16,46 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const { id } = await params;
     const userId = getUserIdFromRequest(request);
 
-    const project = await prisma.project.findFirst({
-      where: { id, userId },
-      include: {
-        columns: {
-          orderBy: {
-            order: 'asc'
-          },
-          include: {
-            cards: {
-              orderBy: {
-                order: 'asc'
-              },
-              include: {
-                checklists: {
-                  select: {
-                    id: true, // only include id if needed
-                    _count: {
-                      select: { items: true }
+    const project = await queryAsUser(userId, (tx) =>
+      tx.project.findFirst({
+        where: { id, userId },
+        include: {
+          columns: {
+            orderBy: { order: 'asc' },
+            include: {
+              cards: {
+                orderBy: { order: 'asc' },
+                include: {
+                  checklists: {
+                    select: {
+                      id: true,
+                      _count: { select: { items: true } },
+                      items: { select: { isCompleted: true } },
                     },
-                    items: {
-                      select: { isCompleted: true }
-                    }
-                  }
+                  },
+                  cardLabels: {
+                    select: {
+                      id: true,
+                      cardId: true,
+                      labelId: true,
+                      label: { select: { id: true, title: true, color: true } },
+                      checked: true,
+                    },
+                  },
                 },
-                cardLabels: {
-                  select: { 
-                    id: true,
-                    cardId: true,
-                    labelId: true,
-                    label: {
-                      select: {
-                        id: true,
-                        title: true,
-                        color: true,
-                      }
-                    },
-                    checked: true,
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    });
+              },
+            },
+          },
+        },
+      })
+    );
 
     if (!project) {
       throw new NotFoundError('Project')
     }
 
-    // get all items in all checklists
     const transformedProject = {
-      ...project, 
+      ...project,
       columns: project.columns.map((column) => {
         const transformedCards = column.cards.map((card) => {
           let totalChecklistItems = 0;
@@ -79,8 +66,6 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             totalCompletedChecklistItems += checklist.items.filter((item) => item.isCompleted).length;
           });
 
-
-
           return {
             ...card,
             totalChecklistItems,
@@ -89,15 +74,12 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
               id: cardLabel.id,
               title: cardLabel.label.title,
               color: cardLabel.label.color,
-              checked: cardLabel.checked
-            }))
+              checked: cardLabel.checked,
+            })),
           };
         });
 
-        return {
-          ...column,
-          cards: transformedCards,
-        };
+        return { ...column, cards: transformedCards };
       }),
     };
 
@@ -117,31 +99,21 @@ export async function PUT(
     const { id } = await params;
     const userId = getUserIdFromRequest(request);
     const body = await request.json()
-
     const validatedData = validateRequestBody(updateProjectSchema, body)
 
-    const existingProject = await prisma.project.findFirst({
-      where: { id, userId },
+    const project = await queryAsUser(userId, async (tx) => {
+      const existing = await tx.project.findFirst({ where: { id, userId } })
+      if (!existing) throw new NotFoundError('Project')
+
+      return tx.project.update({
+        where: { id },
+        data: validatedData,
+        include: {
+          _count: { select: { cards: true, columns: true } },
+        },
+      })
     })
 
-    if (!existingProject) {
-      throw new NotFoundError('Project')
-    }
-
-    const project = await prisma.project.update({
-      where: { id },
-      data: validatedData,
-      include: {
-        _count: {
-          select: {
-            cards: true,
-            columns: true,
-          }
-        }
-      }
-    })
-
-    // Transform to include stats
     const { _count, ...projectData } = project
     const transformedProject = {
       ...projectData,
@@ -165,28 +137,17 @@ export async function DELETE(
     const { id } = await params;
     const userId = getUserIdFromRequest(request);
 
-    const existingProject = await prisma.project.findFirst({
-      where: { id, userId },
-    })
+    const project = await queryAsUser(userId, async (tx) => {
+      const existing = await tx.project.findFirst({ where: { id, userId } })
+      if (!existing) throw new NotFoundError('Project')
 
-    if (!existingProject) {
-      throw new NotFoundError('Project')
-    }
-
-    const project = await prisma.project.update({
-      where: { id },
-      data: {
-        isArchived: true,
-        deletedAt: new Date(),
-      },
-      include: {
-        _count: {
-          select: {
-            cards: true,
-            columns: true,
-          }
-        }
-      }
+      return tx.project.update({
+        where: { id },
+        data: { isArchived: true, deletedAt: new Date() },
+        include: {
+          _count: { select: { cards: true, columns: true } },
+        },
+      })
     })
 
     const { _count, ...projectData } = project
