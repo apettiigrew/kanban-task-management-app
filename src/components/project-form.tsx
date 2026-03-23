@@ -9,7 +9,7 @@ import { createProjectSchema, updateProjectSchema, type CreateProject, type Upda
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Loader2 } from "lucide-react"
 import React from "react"
-import { useForm } from "react-hook-form"
+import { useForm, type Resolver } from "react-hook-form"
 import { FieldError, FormStateDisplay, useFormErrorState } from "./ui/form-error"
 import { Textarea } from "./ui/textarea"
 
@@ -36,7 +36,7 @@ export function ProjectForm({
     setError,
     clearErrors
   } = useForm<CreateProject | UpdateProject>({
-    resolver: zodResolver(mode === 'create' ? createProjectSchema : updateProjectSchema),
+    resolver: zodResolver(mode === 'create' ? createProjectSchema : updateProjectSchema) as Resolver<CreateProject | UpdateProject>,
     defaultValues: {
       title: "",
       description: "",
