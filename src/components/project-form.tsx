@@ -36,7 +36,6 @@ export function ProjectForm({
     setError,
     clearErrors
   } = useForm<CreateProject | UpdateProject>({
-    resolver: zodResolver(mode === 'create' ? createProjectSchema : updateProjectSchema) as Resolver<CreateProject | UpdateProject>,
     defaultValues: {
       title: "",
       description: "",
@@ -172,7 +171,7 @@ export function ProjectForm({
               Cancel
             </Button>
           )}
-          <Button type="submit" disabled={isLoading || hasErrors}>
+          <Button type="submit" disabled={isLoading}>
             {isLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
             {mode === 'create' ? 'Create Project' : 'Update Project'}
           </Button>
