@@ -9,7 +9,7 @@ const isProtectedPath = (pathname: string): boolean =>
 const isAuthPath = (pathname: string): boolean =>
   AUTH_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`))
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
   const accessToken = request.cookies.get('accessToken')?.value
   const isAuthenticated = Boolean(accessToken)
