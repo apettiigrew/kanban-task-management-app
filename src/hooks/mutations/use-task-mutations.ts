@@ -179,6 +179,27 @@ export const useMoveTask = () => {
     return useMutation({
         mutationKey: ['moveTask'],
         mutationFn: moveTask,
+        onMutate: async (moveData) => {
+            // Cancel any outgoing refetches to avoid overwriting our optimistic update
+            await queryClient.cancelQueries({ queryKey: projectKeys.detail(moveData.projectId) })
+
+            // Snapshot the previous value for rollback
+            const previousProject = queryClient.getQueryData(projectKeys.detail(moveData.projectId))
+
+            // Optimistically update the cache with the new column arrangement
+            queryClient.setQueryData(projectKeys.detail(moveData.projectId), (oldData: TProject | undefined) => {
+                if (!oldData) return oldData
+                return { ...oldData, columns: moveData.columns }
+            })
+
+            return { previousProject, projectId: moveData.projectId }
+        },
+        onError: (error: FormError, moveData, context) => {
+            // Revert to previous state on error
+            if (context?.previousProject && context?.projectId) {
+                queryClient.setQueryData(projectKeys.detail(context.projectId), context.previousProject)
+            }
+        },
         onSettled: (data, error, variables) => {
             queryClient.invalidateQueries({ queryKey: projectKeys.detail(variables.projectId) })
         }
