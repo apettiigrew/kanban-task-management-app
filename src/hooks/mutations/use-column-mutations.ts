@@ -148,9 +148,32 @@ export const useUpdateColumn = () => {
 }
 
 export const useDeleteColumn = () => {
+  const queryClient = useQueryClient()
   return useMutation({
     mutationKey: ['deleteColumn'],
     mutationFn: deleteColumn,
+    onMutate: async (variables) => {
+      await queryClient.cancelQueries({ queryKey: projectKeys.detail(variables.projectId) })
+      const previousProject = queryClient.getQueryData(projectKeys.detail(variables.projectId))
+
+      queryClient.setQueryData(projectKeys.detail(variables.projectId), (old: TProject | undefined) => {
+        if (!old) return old
+        return {
+          ...old,
+          columns: old.columns.filter((col: TColumn) => col.id !== variables.id)
+        }
+      })
+
+      return { previousProject, projectId: variables.projectId }
+    },
+    onError: (_err, _variables, context) => {
+      if (context?.previousProject && context.projectId) {
+        queryClient.setQueryData(projectKeys.detail(context.projectId), context.previousProject)
+      }
+    },
+    onSettled: (_data, _error, variables) => {
+      queryClient.invalidateQueries({ queryKey: projectKeys.detail(variables.projectId) })
+    },
   })
 }
 
