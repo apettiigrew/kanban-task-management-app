@@ -8,7 +8,7 @@ A modern, feature-rich Kanban-style task management application designed for ind
 ![TailwindCSS](https://img.shields.io/badge/TailwindCSS-4-38bdf8)
 ![Prisma](https://img.shields.io/badge/Prisma-6.8.2-2d3748)
 
-## ✨ Features
+## ✨ Features 
 
 ### 🚀 Core Functionality
 - **Multi-Project Support**: Organize tasks across different projects and contexts
