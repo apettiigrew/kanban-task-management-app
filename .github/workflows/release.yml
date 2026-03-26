@@ -25,7 +25,17 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
-
+      - name: Validate Commit Messages
+        run: |
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          
+          if [ -z "$LAST_TAG" ]; then
+            echo "No previous tag found, checking last commit only"
+            npx commitlint --last
+          else
+            echo "Checking commits from $LAST_TAG to HEAD"
+            npx commitlint --from=$LAST_TAG --to=HEAD
+          fi
       - name: Configure Git
         run: |
           git config user.name "github-actions[bot]"
