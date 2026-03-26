@@ -61,7 +61,7 @@ jobs:
         if: env.RELEASE_CREATED == 'true'
         uses: peter-evans/create-pull-request@v5
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.PERSONAL_TOKEN }}
           branch: release/${{ env.VERSION }}
           base: main
           title: "chore: merging release ${{ env.VERSION }}"
