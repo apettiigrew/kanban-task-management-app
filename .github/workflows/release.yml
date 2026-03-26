@@ -66,3 +66,4 @@ jobs:
           base: main
           title: "chore: merging release ${{ env.VERSION }}"
           body: "This commit will merge the release udpates"
+          commit-message: "chore(release): merge release ${{ env.VERSION }}"
