@@ -64,5 +64,5 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           branch: release/${{ env.VERSION }}
           base: main
-          title: "Release ${{ env.VERSION }}"
-          body: "Automated release PR"
+          title: "chore: merging release ${{ env.VERSION }}"
+          body: "This commit will merge the release udpates"
