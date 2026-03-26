@@ -13,13 +13,13 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6   
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
-          persist-credentials: false   
+          persist-credentials: false
 
       - name: Setup Node
-        uses: actions/setup-node@v6 
+        uses: actions/setup-node@v6
         with:
           node-version: 24
 
@@ -37,19 +37,18 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          npx semantic-release || echo "No release triggered"
-
-      - name: Get version
-        run: |
-          VERSION=$(jq -r '.version' package.json)
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
-
-      - name: Create release branch
-        run: |
-          git checkout -b release/$VERSION
-          git push origin release/$VERSION
+          npx semantic-release > release.log 2>&1 || true
+          
+          if grep -q "Published release" release.log; then
+            VERSION=$(jq -r '.version' package.json)
+            echo "RELEASE_CREATED=true" >> $GITHUB_ENV
+            echo "VERSION=$VERSION" >> $GITHUB_ENV
+          else
+            echo "RELEASE_CREATED=false" >> $GITHUB_ENV
+          fi
 
       - name: Create Pull Request
+        if: env.RELEASE_CREATED == 'true'
         uses: peter-evans/create-pull-request@v5
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
