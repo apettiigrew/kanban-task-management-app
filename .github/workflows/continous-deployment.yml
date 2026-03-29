@@ -38,4 +38,4 @@ jobs:
           echo "production_url=$url" >> $GITHUB_OUTPUT
 
       - name: Show Production URL
-        run: echo "Production URL: ${{ steps.deploy.outputs.production_url }}"
+        run: echo '"Production URL: ${{ steps.deploy.outputs.production_url }}"'
