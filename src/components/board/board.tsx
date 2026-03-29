@@ -849,11 +849,11 @@ export function Board(props: BoardProps) {
                         </DropdownMenuContent>
                     </DropdownMenu>
 
-                    {process.env.NODE_ENV !== 'production' && (
+                    {/* {process.env.NODE_ENV !== 'production' && ( */}
                         <div className="text-xs text-muted-foreground">
                             Queue: {boardQueueStats.pending} pending, {boardQueueStats.coalesced} coalesced
                         </div>
-                    )}
+                    {/* )} */}
 
                     <AlertDialog open={isCloseBoardDialogOpen} onOpenChange={setIsCloseBoardDialogOpen}>
                         <AlertDialogContent>
