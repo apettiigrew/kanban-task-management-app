@@ -42,6 +42,16 @@ export const deleteTaskSchema = z.object({
   columnId: z.string().cuid(),
 })
 
+const clientOperationSchema = z.object({
+  clientOperationId: z.string().min(1).optional(),
+  clientSequence: z.number().int().min(1).optional(),
+})
+
+const taskOrderPatchSchema = z.object({
+  id: z.string().cuid(),
+  order: z.number().int().min(0),
+})
+
 // Schema for moving a task (drag and drop)
 export const moveTaskSchema = z.object({
   taskId: z.string().cuid(),
@@ -49,31 +59,18 @@ export const moveTaskSchema = z.object({
   destinationColumnId: z.string().cuid(),
   destinationOrder: z.number().int().min(0, 'Order must be a non-negative integer'),
   projectId: z.string().cuid(),
-  columns: z.array(z.object({
+  columnPatches: z.array(z.object({
     id: z.string().cuid(),
-    title: z.string(),
-    cards: z.array(
-      createTaskSchema.extend({
-        id: z.string().cuid()
-      })
-    ),
-  })).min(1, 'At least one column must be provided'),
-})
+    cards: z.array(taskOrderPatchSchema).min(0),
+  })).min(1, 'At least one column patch must be provided'),
+}).merge(clientOperationSchema)
 
 // Schema for reordering tasks within a column
 export const reorderTasksSchema = z.object({
   columnId: z.string().cuid(),
   projectId: z.string().cuid(),
-  taskOrders: z.array(z.object({
-    id: z.string().cuid(),
-    order: z.number().int().min(0),
-  })).min(1, 'At least one task order must be provided'),
-  columns: z.array(z.object({
-    id: z.string().cuid(),
-    title: z.string(),
-    cards: createTaskSchema.array(),
-  })).min(1, 'At least one column must be provided'),
-})
+  taskOrders: z.array(taskOrderPatchSchema).min(1, 'At least one task order must be provided'),
+}).merge(clientOperationSchema)
 
 
 // Schema for task with relations

@@ -6,6 +6,7 @@ import { CreateTask, DeleteTask, MoveTask, MoveAllCards, ReorderTasks, Task, Upd
 import { TCard } from '@/models/card'
 import { TProject } from '@/models/project'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { scheduleInvalidate } from './invalidation-scheduler'
 
 // API client functions for mutations
 const createTask = async (data: CreateTask): Promise<Task> => {
@@ -47,6 +48,11 @@ const moveAllCards = async (data: MoveAllCards): Promise<{ movedCount: number; s
         method: 'PUT',
         body: JSON.stringify(data),
     })
+}
+
+interface MutationBehaviorOptions {
+    enableOptimisticUpdate?: boolean
+    autoInvalidate?: boolean
 }
 
 export const useCreateTask = () => {
@@ -130,13 +136,18 @@ export const useUpdateTask = () => {
     })
 }
 
-export const useDeleteTask = () => {
+export const useDeleteTask = (options: MutationBehaviorOptions = {}) => {
     const queryClient = useQueryClient()
+    const { enableOptimisticUpdate = true, autoInvalidate = true } = options
 
     return useMutation({
         mutationKey: ['deleteTask'],
         mutationFn: deleteTask,
         onMutate: async (variables: DeleteTask) => {
+            if (!enableOptimisticUpdate) {
+                return { previousProject: undefined, variables }
+            }
+
             // Cancel any outgoing refetches to avoid overwriting our optimistic update
             await queryClient.cancelQueries({ queryKey: projectKeys.detail(variables.projectId) })
 
@@ -166,30 +177,68 @@ export const useDeleteTask = () => {
             }
         },
         onSettled: (data, error, variables) => {
-            // Always refetch after error or success to ensure consistency
-            queryClient.invalidateQueries({ queryKey: projectKeys.detail(variables.projectId) })
+            if (!autoInvalidate) {
+                return
+            }
+            scheduleInvalidate(queryClient, projectKeys.detail(variables.projectId))
         }
     })
 }
 
 
-export const useMoveTask = () => {
+export const useMoveTask = (options: MutationBehaviorOptions = {}) => {
     const queryClient = useQueryClient()
+    const { enableOptimisticUpdate = true, autoInvalidate = true } = options
 
     return useMutation({
         mutationKey: ['moveTask'],
         mutationFn: moveTask,
         onMutate: async (moveData) => {
+            if (!enableOptimisticUpdate) {
+                return { previousProject: undefined, projectId: moveData.projectId }
+            }
+
             // Cancel any outgoing refetches to avoid overwriting our optimistic update
             await queryClient.cancelQueries({ queryKey: projectKeys.detail(moveData.projectId) })
 
             // Snapshot the previous value for rollback
             const previousProject = queryClient.getQueryData(projectKeys.detail(moveData.projectId))
 
-            // Optimistically update the cache with the new column arrangement
+            // Optimistically update the cache with patched column order snapshots
             queryClient.setQueryData(projectKeys.detail(moveData.projectId), (oldData: TProject | undefined) => {
                 if (!oldData) return oldData
-                return { ...oldData, columns: moveData.columns }
+
+                const patchMap = new Map(moveData.columnPatches.map((patch) => [patch.id, patch.cards]))
+                const cardMap = new Map<string, TCard>()
+                oldData.columns.forEach((column) => {
+                    column.cards.forEach((card) => cardMap.set(String(card.id), card))
+                })
+
+                return {
+                    ...oldData,
+                    columns: oldData.columns.map((column) => {
+                        const patch = patchMap.get(column.id)
+                        if (!patch) {
+                            return column
+                        }
+
+                        const cards = patch
+                            .map((cardPatch) => {
+                                const existing = cardMap.get(cardPatch.id)
+                                if (!existing) {
+                                    return null
+                                }
+                                return {
+                                    ...existing,
+                                    columnId: column.id,
+                                    order: cardPatch.order,
+                                }
+                            })
+                            .filter((card): card is TCard => Boolean(card))
+
+                        return { ...column, cards }
+                    })
+                }
             })
 
             return { previousProject, projectId: moveData.projectId }
@@ -201,28 +250,57 @@ export const useMoveTask = () => {
             }
         },
         onSettled: (data, error, variables) => {
-            queryClient.invalidateQueries({ queryKey: projectKeys.detail(variables.projectId) })
+            if (!autoInvalidate) {
+                return
+            }
+            scheduleInvalidate(queryClient, projectKeys.detail(variables.projectId))
         }
     })
 }
 
-export const useReorderTasks = () => {
+export const useReorderTasks = (options: MutationBehaviorOptions = {}) => {
     const queryClient = useQueryClient()
+    const { enableOptimisticUpdate = true, autoInvalidate = true } = options
 
     return useMutation({
         mutationKey: ['reorderTasks'],
         mutationFn: reorderTasks,
         onMutate: async (reorderData) => {
+            if (!enableOptimisticUpdate) {
+                return { previousProject: undefined, projectId: reorderData.projectId }
+            }
+
             // Cancel any outgoing refetches to avoid overwriting our optimistic update
             await queryClient.cancelQueries({ queryKey: projectKeys.detail(reorderData.projectId) })
 
             // Get snapshot of previous state
             const previousProject = queryClient.getQueryData(projectKeys.detail(reorderData.projectId))
 
-            // Optimistically reorder tasks within the column
+            // Optimistically reorder tasks within the target column
             queryClient.setQueryData(projectKeys.detail(reorderData.projectId), (oldData: TProject | undefined) => {
                 if (!oldData) return oldData
-                return { ...oldData, columns: reorderData.columns }
+                const orderMap = new Map(reorderData.taskOrders.map((taskOrder) => [taskOrder.id, taskOrder.order]))
+
+                return {
+                    ...oldData,
+                    columns: oldData.columns.map((column) => {
+                        if (column.id !== reorderData.columnId) {
+                            return column
+                        }
+
+                        const cards = [...column.cards]
+                            .map((card) => ({
+                                ...card,
+                                order: orderMap.get(String(card.id)) ?? card.order,
+                            }))
+                            .sort((a, b) => a.order - b.order)
+
+                        return {
+                            ...column,
+                            cards,
+                        }
+                    })
+                }
             })
 
             return { previousProject, projectId: reorderData.projectId }
@@ -234,8 +312,10 @@ export const useReorderTasks = () => {
             }
         },
         onSettled: (data, error, reorderData) => {
-            // Always refetch after error or success to ensure consistency
-            queryClient.invalidateQueries({ queryKey: projectKeys.detail(reorderData.projectId) })
+            if (!autoInvalidate) {
+                return
+            }
+            scheduleInvalidate(queryClient, projectKeys.detail(reorderData.projectId))
         },
     })
 }
@@ -303,8 +383,7 @@ export const useMoveAllCards = () => {
             }
         },
         onSettled: (data, error, moveData) => {
-            // Always refetch after error or success to ensure consistency
-            queryClient.invalidateQueries({ queryKey: projectKeys.detail(moveData.projectId) })
+            scheduleInvalidate(queryClient, projectKeys.detail(moveData.projectId))
         },
     })
 }

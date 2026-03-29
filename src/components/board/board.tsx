@@ -24,8 +24,9 @@ import {
 import { Input } from '@/components/ui/input';
 import { useCreateColumn, useDeleteColumn, useReorderColumns } from '@/hooks/mutations/use-column-mutations';
 import { useMoveTask, useReorderTasks } from '@/hooks/mutations/use-task-mutations';
-import { useCloseBoard, useCreateProject, useProjects } from '@/hooks/queries/use-projects';
+import { projectKeys, useCloseBoard, useCreateProject, useProjects } from '@/hooks/queries/use-projects';
 import { useKeyboardShortcut } from '@/hooks/use-keyboard-shortcut';
+import { BoardOperationQueue } from '@/lib/board-operation-queue';
 import { TCard } from '@/models/card';
 import { TColumn } from '@/models/column';
 import { TProject } from '@/models/project';
@@ -46,6 +47,7 @@ import { bindAll } from 'bind-event-listener';
 import { FolderOpen, MoreHorizontal, PlusCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import invariant from 'tiny-invariant';
 
 interface BoardProps {
@@ -54,7 +56,10 @@ interface BoardProps {
 
 export function Board(props: BoardProps) {
     const { project } = props;
-    const [projectState, setProjectState] = useState<TProject>(project);
+    const projectState = project;
+    const queryClient = useQueryClient();
+    const boardQueueRef = useRef<BoardOperationQueue>(new BoardOperationQueue());
+    const [boardQueueStats, setBoardQueueStats] = useState(boardQueueRef.current.getStats());
     const createProjectMutation = useCreateProject();
     const {
         isDialogOpen: isProjectDialogOpen,
@@ -67,11 +72,15 @@ export function Board(props: BoardProps) {
     const { data: projects = [], isLoading: isLoadingProjects } = useProjects();
     const projectDialogRef = useRef<ProjectDialogRef>(null);
 
-    useEffect(() => {
-        if (project) {
-            setProjectState(project)
-        }
-    }, [project])
+    const setProjectState = useCallback((updater: TProject | ((prev: TProject) => TProject)) => {
+        queryClient.setQueryData(projectKeys.detail(project.id), (oldProject: TProject | undefined) => {
+            const previous = oldProject ?? project;
+            if (typeof updater === 'function') {
+                return (updater as (prev: TProject) => TProject)(previous);
+            }
+            return updater;
+        });
+    }, [project, queryClient]);
 
     const [isAddingList, setIsAddingList] = useState(false);
     const [newListTitle, setNewListTitle] = useState('');
@@ -81,10 +90,36 @@ export function Board(props: BoardProps) {
     const scrollableRef = useRef<HTMLDivElement>(null);
 
     const createColumnMutation = useCreateColumn();
-    const moveTaskMutation = useMoveTask();
-    const reorderTasksMutation = useReorderTasks();
-    const reorderColumnsMutation = useReorderColumns();
-    const deleteColumnMutation = useDeleteColumn();
+    const moveTaskMutation = useMoveTask({ enableOptimisticUpdate: false, autoInvalidate: false });
+    const reorderTasksMutation = useReorderTasks({ enableOptimisticUpdate: false, autoInvalidate: false });
+    const reorderColumnsMutation = useReorderColumns({ autoInvalidate: false });
+    const deleteColumnMutation = useDeleteColumn({ enableOptimisticUpdate: false, autoInvalidate: false });
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setBoardQueueStats(boardQueueRef.current.getStats());
+        }, 1000);
+        return () => clearInterval(interval);
+    }, []);
+
+    useEffect(() => {
+        const refreshFromServer = () => {
+            void queryClient.invalidateQueries({ queryKey: projectKeys.detail(project.id) });
+        };
+
+        const interval = setInterval(refreshFromServer, 15000);
+        const onVisibilityChange = () => {
+            if (document.visibilityState === 'visible') {
+                refreshFromServer();
+            }
+        };
+
+        window.addEventListener('visibilitychange', onVisibilityChange);
+        return () => {
+            clearInterval(interval);
+            window.removeEventListener('visibilitychange', onVisibilityChange);
+        };
+    }, [project.id, queryClient]);
 
     const handleProjectSelect = useCallback((selectedProject: { id: string; name: string }) => {
         if (projectState && selectedProject.id !== projectState.id) {
@@ -114,9 +149,10 @@ export function Board(props: BoardProps) {
     const handleDeleteColumn = useCallback((columnId: string) => {
         if (!projectState) return;
 
-        const filteredColumns = projectState.columns.filter(col => col.id !== columnId);
-
-        const reorderedColumns = filteredColumns.map((col, index) => ({
+        const previousColumns = projectState.columns;
+        const reorderedColumns = projectState.columns
+            .filter((col) => col.id !== columnId)
+            .map((col, index) => ({
             ...col,
             order: index
         }));
@@ -128,25 +164,26 @@ export function Board(props: BoardProps) {
             } as TProject;
         });
 
-        // Make the API call
-        deleteColumnMutation.mutate({
-            id: columnId,
-            projectId: projectState.id
-        }, {
-            onError: () => {
-                // On re add the column that was deleted optimistically
-                const oldColumns = [...projectState.columns]
-
-                setProjectState((prev) => {
-                    if (!prev) return prev;
-                    return {
-                        ...prev,
-                        columns: oldColumns
-                    } as TProject;
-                })
+        void boardQueueRef.current.enqueue({
+            scopeKey: projectState.id,
+            coalesceKey: `delete-column-${columnId}`,
+            payload: {
+                id: columnId,
+                projectId: projectState.id
+            },
+            execute: async (payload) => {
+                await deleteColumnMutation.mutateAsync(payload);
             }
+        }).catch(() => {
+            setProjectState((prev) => {
+                if (!prev) return prev;
+                return {
+                    ...prev,
+                    columns: previousColumns
+                } as TProject;
+            });
         });
-    }, [projectState, deleteColumnMutation]);
+    }, [projectState, deleteColumnMutation, setProjectState]);
 
     const handleAddList = useCallback(() => {
         if (!projectState) return;
@@ -216,7 +253,7 @@ export function Board(props: BoardProps) {
                 });
             }
         });
-    }, [projectState, createColumnMutation, newListTitle]);
+    }, [projectState, createColumnMutation, newListTitle, setProjectState]);
 
     useEffect(() => {
         const element = scrollableRef.current;
@@ -302,11 +339,24 @@ export function Board(props: BoardProps) {
                                 } as TProject;
                             });
 
-                            reorderTasksMutation.mutate({
-                                columnId: home.id,
-                                projectId: projectState.id,
-                                taskOrders: reorderedCards,
-                                columns
+                            const taskOrders = reorderedCards.map((card, index) => ({
+                                id: String(card.id),
+                                order: index
+                            }));
+
+                            void boardQueueRef.current.enqueue({
+                                scopeKey: projectState.id,
+                                coalesceKey: `reorder-cards-${home.id}`,
+                                payload: {
+                                    columnId: home.id,
+                                    projectId: projectState.id,
+                                    taskOrders
+                                },
+                                execute: async (payload) => {
+                                    await reorderTasksMutation.mutateAsync(payload);
+                                }
+                            }).catch(() => {
+                                void queryClient.invalidateQueries({ queryKey: projectKeys.detail(projectState.id) });
                             });
                             return;
                         }
@@ -338,7 +388,7 @@ export function Board(props: BoardProps) {
                             id: String(card.id),
                             title: card.title,
                             description: card.description,
-                            columnId: card.columnId,
+                            columnId: destination.id,
                             projectId: card.projectId,
                             order: index,
                             checklists: card.checklists,
@@ -352,7 +402,7 @@ export function Board(props: BoardProps) {
                             id: String(card.id),
                             title: card.title,
                             description: card.description,
-                            columnId: card.columnId,
+                            columnId: home.id,
                             projectId: card.projectId,
                             order: index,
                             checklists: card.checklists,
@@ -381,14 +431,39 @@ export function Board(props: BoardProps) {
                             } as TProject;
                         });
 
-                        // Move the task between columns
-                        moveTaskMutation.mutate({
-                            taskId: String(dragging.card.id),
-                            sourceColumnId: home.id,
-                            destinationColumnId: destination.id,
-                            destinationOrder: finalIndex,
-                            projectId: projectState.id,
-                            columns: columns
+                        const columnPatches = [
+                            {
+                                id: home.id,
+                                cards: reorderedHomeCards.map((card) => ({
+                                    id: String(card.id),
+                                    order: card.order
+                                }))
+                            },
+                            {
+                                id: destination.id,
+                                cards: reorderedDestinationCards.map((card) => ({
+                                    id: String(card.id),
+                                    order: card.order
+                                }))
+                            }
+                        ];
+
+                        void boardQueueRef.current.enqueue({
+                            scopeKey: projectState.id,
+                            coalesceKey: `move-card-${dragging.card.id}`,
+                            payload: {
+                                taskId: String(dragging.card.id),
+                                sourceColumnId: home.id,
+                                destinationColumnId: destination.id,
+                                destinationOrder: finalIndex,
+                                projectId: projectState.id,
+                                columnPatches
+                            },
+                            execute: async (payload) => {
+                                await moveTaskMutation.mutateAsync(payload);
+                            }
+                        }).catch(() => {
+                            void queryClient.invalidateQueries({ queryKey: projectKeys.detail(projectState.id) });
                         });
                         return;
                     }
@@ -433,11 +508,19 @@ export function Board(props: BoardProps) {
                                 order: index
                             }));
 
-                            reorderTasksMutation.mutate({
-                                columnId: home.id,
-                                projectId: projectState.id,
-                                taskOrders,
-                                columns
+                            void boardQueueRef.current.enqueue({
+                                scopeKey: projectState.id,
+                                coalesceKey: `reorder-cards-${home.id}`,
+                                payload: {
+                                    columnId: home.id,
+                                    projectId: projectState.id,
+                                    taskOrders
+                                },
+                                execute: async (payload) => {
+                                    await reorderTasksMutation.mutateAsync(payload);
+                                }
+                            }).catch(() => {
+                                void queryClient.invalidateQueries({ queryKey: projectKeys.detail(projectState.id) });
                             });
                             return;
                         }
@@ -450,14 +533,26 @@ export function Board(props: BoardProps) {
                         const destinationCards = Array.from(destination.cards);
                         destinationCards.splice(destination.cards.length, 0, dragging.card);
 
+                        const reorderedDestinationCards = destinationCards.map((card, index) => ({
+                            ...card,
+                            columnId: destination.id,
+                            order: index
+                        }));
+
+                        const reorderedHomeCards = homeCards.map((card, index) => ({
+                            ...card,
+                            columnId: home.id,
+                            order: index
+                        }));
+
                         const columns = Array.from(projectState.columns);
                         columns[homeColumnIndex] = {
                             ...home,
-                            cards: homeCards,
+                            cards: reorderedHomeCards,
                         };
                         columns[destinationColumnIndex] = {
                             ...destination,
-                            cards: destinationCards,
+                            cards: reorderedDestinationCards,
                         };
 
                         // Optimistically update UI
@@ -468,14 +563,37 @@ export function Board(props: BoardProps) {
                             } as TProject;
                         });
 
-                        // Move the task to another column
-                        moveTaskMutation.mutate({
-                            taskId: String(dragging.card.id),
-                            sourceColumnId: home.id,
-                            destinationColumnId: destination.id,
-                            destinationOrder: destination.cards.length,
-                            projectId: projectState.id,
-                            columns
+                        void boardQueueRef.current.enqueue({
+                            scopeKey: projectState.id,
+                            coalesceKey: `move-card-${dragging.card.id}`,
+                            payload: {
+                                taskId: String(dragging.card.id),
+                                sourceColumnId: home.id,
+                                destinationColumnId: destination.id,
+                                destinationOrder: destination.cards.length,
+                                projectId: projectState.id,
+                                columnPatches: [
+                                    {
+                                        id: home.id,
+                                        cards: reorderedHomeCards.map((card) => ({
+                                            id: String(card.id),
+                                            order: card.order
+                                        }))
+                                    },
+                                    {
+                                        id: destination.id,
+                                        cards: reorderedDestinationCards.map((card) => ({
+                                            id: String(card.id),
+                                            order: card.order
+                                        }))
+                                    }
+                                ]
+                            },
+                            execute: async (payload) => {
+                                await moveTaskMutation.mutateAsync(payload);
+                            }
+                        }).catch(() => {
+                            void queryClient.invalidateQueries({ queryKey: projectKeys.detail(projectState.id) });
                         });
 
                         return;
@@ -524,28 +642,37 @@ export function Board(props: BoardProps) {
                         closestEdgeOfTarget: closestEdge,
                     });
 
-                    // Update the order in the database
-                    const columnOrders = reordered.map((column, index) => ({
-                        id: column.id,
-                        title: column.title,
-                        projectId: column.projectId,
-                        createdAt: column.createdAt,
-                        updatedAt: column.updatedAt,
-                        cards: column.cards,
+                    const reorderedColumns = reordered.map((column, index) => ({
+                        ...column,
                         order: index
+                    }));
+
+                    // Minimal payload for server update
+                    const columnOrders = reorderedColumns.map((column) => ({
+                        id: column.id,
+                        order: column.order
                     }));
 
                     // Optimistically update UI
                     setProjectState((prev) => {
                         return {
                             ...prev,
-                            columns: columnOrders
+                            columns: reorderedColumns
                         } as TProject;
                     });
 
-                    reorderColumnsMutation.mutate({
-                        projectId: projectState.id,
-                        columnOrders
+                    void boardQueueRef.current.enqueue({
+                        scopeKey: projectState.id,
+                        coalesceKey: `reorder-columns-${projectState.id}`,
+                        payload: {
+                            projectId: projectState.id,
+                            columnOrders
+                        },
+                        execute: async (payload) => {
+                            await reorderColumnsMutation.mutateAsync(payload);
+                        }
+                    }).catch(() => {
+                        void queryClient.invalidateQueries({ queryKey: projectKeys.detail(projectState.id) });
                     });
                 },
             }),
@@ -602,6 +729,8 @@ export function Board(props: BoardProps) {
         moveTaskMutation,
         reorderTasksMutation,
         reorderColumnsMutation,
+        queryClient,
+        setProjectState,
     ]);
 
 
@@ -719,6 +848,12 @@ export function Board(props: BoardProps) {
                             </DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>
+
+                    {process.env.NODE_ENV !== 'production' && (
+                        <div className="text-xs text-muted-foreground">
+                            Queue: {boardQueueStats.pending} pending, {boardQueueStats.coalesced} coalesced
+                        </div>
+                    )}
 
                     <AlertDialog open={isCloseBoardDialogOpen} onOpenChange={setIsCloseBoardDialogOpen}>
                         <AlertDialogContent>

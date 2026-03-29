@@ -22,14 +22,14 @@ export async function PUT(request: NextRequest) {
       if (!existingTask) throw new NotFoundError('Task')
 
       await Promise.all(
-        validatedData.columns.flatMap(column =>
-          column.cards.map(card =>
+        validatedData.columnPatches.flatMap((columnPatch) =>
+          columnPatch.cards.map((cardPatch) =>
             tx.card.update({
-              where: { id: card.id },
-              data: { columnId: column.id, order: card.order },
+              where: { id: cardPatch.id },
+              data: { columnId: columnPatch.id, order: cardPatch.order },
             })
-          )
-        )
+          ),
+        ),
       )
 
       const updated = await tx.card.findUnique({
