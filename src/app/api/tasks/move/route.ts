@@ -25,7 +25,7 @@ export async function PUT(request: NextRequest) {
         validatedData.columnPatches.flatMap((columnPatch) =>
           columnPatch.cards.map((cardPatch) =>
             tx.card.update({
-              where: { id: cardPatch.id, userId },
+              where: { id: cardPatch.id },
               data: { columnId: columnPatch.id, order: cardPatch.order },
             })
           ),
