@@ -6,16 +6,37 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
     concurrency:
       group: vercel-prod
       cancel-in-progress: false
 
     steps:
-      - uses: actions/checkout@v6
+      - name: Checkout main explicitly
+        uses: actions/checkout@v6
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Print commit being deployed
+        run: |
+          echo "Deploying commit: $GITHUB_SHA"
+          git log -1 --oneline
 
       - name: Install Vercel CLI
         run: npm install -g vercel
 
-      - name: Deploy (let Vercel build)
-        run: vercel deploy --prod --yes --token=${{ secrets.VERCEL_TOKEN }}
+      - name: Pull Vercel Project Settings (production)
+        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Build Project Artifacts
+        run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Deploy Production
+        id: deploy
+        run: |
+          url=$(vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }})
+          echo "production_url=$url" >> $GITHUB_OUTPUT
+
+      - name: Show Production URL
+        run: |
+          echo "Production URL: ${{ steps.deploy.outputs.production_url }}"

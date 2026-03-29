@@ -7,6 +7,7 @@ import { projectKeys } from '../queries/use-projects'
 import { sortColumns as sortColumnsApi } from '@/utils/api-client'
 import { SortType } from '@/utils/data'
 import { TProject } from '@/models/project'
+import { scheduleInvalidate } from './invalidation-scheduler'
 
 const isCachedProject = (value: unknown): value is TProject => {
   if (typeof value !== 'object' || value === null) return false
@@ -61,6 +62,11 @@ interface SortCardsData {
 interface SortColumnsData {
   projectId: string
   sortType: SortType
+}
+
+interface MutationBehaviorOptions {
+  enableOptimisticUpdate?: boolean
+  autoInvalidate?: boolean
 }
 
 // API client functions for mutations
@@ -147,12 +153,17 @@ export const useUpdateColumn = () => {
   })
 }
 
-export const useDeleteColumn = () => {
+export const useDeleteColumn = (options: MutationBehaviorOptions = {}) => {
   const queryClient = useQueryClient()
+  const { enableOptimisticUpdate = true, autoInvalidate = true } = options
   return useMutation({
     mutationKey: ['deleteColumn'],
     mutationFn: deleteColumn,
     onMutate: async (variables) => {
+      if (!enableOptimisticUpdate) {
+        return { previousProject: undefined, projectId: variables.projectId }
+      }
+
       await queryClient.cancelQueries({ queryKey: projectKeys.detail(variables.projectId) })
       const previousProject = queryClient.getQueryData(projectKeys.detail(variables.projectId))
 
@@ -172,19 +183,26 @@ export const useDeleteColumn = () => {
       }
     },
     onSettled: (_data, _error, variables) => {
-      queryClient.invalidateQueries({ queryKey: projectKeys.detail(variables.projectId) })
+      if (!autoInvalidate) {
+        return
+      }
+      scheduleInvalidate(queryClient, projectKeys.detail(variables.projectId))
     },
   })
 }
 
-export const useReorderColumns = () => {
+export const useReorderColumns = (options: MutationBehaviorOptions = {}) => {
   const queryClient = useQueryClient()
+  const { autoInvalidate = true } = options
 
     return useMutation({
     mutationKey: ['reorderColumns'],
     mutationFn: reorderColumns,
     onSettled: (data, error, variables) => {
-      queryClient.invalidateQueries({ queryKey: projectKeys.detail(variables.projectId) })
+      if (!autoInvalidate) {
+        return
+      }
+      scheduleInvalidate(queryClient, projectKeys.detail(variables.projectId))
     }
   })
 }
@@ -234,7 +252,7 @@ export const useCopyColumn = () => {
     },
     onSettled: (data, error, variables) => {
       // Always refetch after error or success to ensure we have the latest data
-      queryClient.invalidateQueries({ queryKey: projectKeys.detail(variables.projectId) })
+      scheduleInvalidate(queryClient, projectKeys.detail(variables.projectId))
     }
   })
 }
@@ -342,9 +360,9 @@ export const useMoveColumn = () => {
     onSettled: (data, error, variables) => {
       // Invalidate both projects to ensure data consistency
       if (data) {
-        queryClient.invalidateQueries({ queryKey: projectKeys.detail(variables.targetProjectId) })
+        scheduleInvalidate(queryClient, projectKeys.detail(variables.targetProjectId))
         // Also invalidate all projects to find the source project
-        queryClient.invalidateQueries({ queryKey: projectKeys.all })
+        scheduleInvalidate(queryClient, projectKeys.all)
       }
     }
   })
@@ -432,7 +450,7 @@ export const useRepositionColumn = () => {
     onSettled: (data, _error, _variables) => {
       // Invalidate the project to ensure data consistency
       if (data) {
-        queryClient.invalidateQueries({ queryKey: projectKeys.all })
+        scheduleInvalidate(queryClient, projectKeys.all)
       }
     }
   })
@@ -522,7 +540,7 @@ export const useSortCards = () => {
     onSettled: (data, _error, _variables) => {
       // Invalidate the project to ensure data consistency
       if (data) {
-        queryClient.invalidateQueries({ queryKey: projectKeys.all })
+        scheduleInvalidate(queryClient, projectKeys.all)
       }
     }
   })
@@ -603,7 +621,7 @@ export const useSortColumns = () => {
     },
     onSettled: (data, error, variables) => {
       if (data) {
-        queryClient.invalidateQueries({ queryKey: projectKeys.detail(variables.projectId) })
+        scheduleInvalidate(queryClient, projectKeys.detail(variables.projectId))
       }
     }
   })

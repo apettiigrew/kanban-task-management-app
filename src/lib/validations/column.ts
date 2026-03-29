@@ -22,6 +22,11 @@ export const updateColumnSchema = z.object({
   title: z.string().min(1, 'Column title is required').max(50, 'Column title must be less than 50 characters'),
 })
 
+const clientOperationSchema = z.object({
+  clientOperationId: z.string().min(1).optional(),
+  clientSequence: z.number().int().min(1).optional(),
+})
+
 // Schema for reordering columns
 export const reorderColumnsSchema = z.object({
   projectId: z.string().cuid(),
@@ -29,7 +34,7 @@ export const reorderColumnsSchema = z.object({
     id: z.string().cuid(),
     order: z.number().int().min(0),
   })).min(1, 'At least one column order must be provided'),
-})
+}).merge(clientOperationSchema)
 
 // Schema for copying a column
 export const copyColumnSchema = z.object({

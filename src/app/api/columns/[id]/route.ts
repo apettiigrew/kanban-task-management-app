@@ -82,14 +82,12 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
       })
 
       await Promise.all(
-        remainingColumns
-          .filter(column => column.order > existing.order)
-          .map((column, index) =>
-            tx.column.update({
-              where: { id: column.id },
-              data: { order: index },
-            })
-          )
+        remainingColumns.map((column, index) =>
+          tx.column.update({
+            where: { id: column.id },
+            data: { order: index },
+          }),
+        ),
       )
     })
 
