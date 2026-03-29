@@ -1,6 +1,6 @@
 {
   "name": "kanban-app",
-  "version": "1.0.0",
+  "version": "1.1.7",
   "description": "A drag-and-drop Kanban board app built with Next.js",
   "private": true,
   "scripts": {
